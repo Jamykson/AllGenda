@@ -1,4 +1,3 @@
-
 package com.allgenda.model;
 
 import jakarta.persistence.CascadeType;
