@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.io.Serializable;
+import java.util.UUID;
 
 @Entity
 @Table(name = "aulas")
@@ -23,8 +24,8 @@ public class Aula implements Serializable{
     private static final long serialVersionUID = 1L;
     
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "data")
     private LocalDate data;
