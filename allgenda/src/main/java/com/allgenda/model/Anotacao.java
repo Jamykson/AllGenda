@@ -10,6 +10,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.io.Serializable;
+import java.util.UUID;
 
 
 @Entity
@@ -19,8 +20,8 @@ public class Anotacao implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "conteudo", columnDefinition = "TEXT")
     private String conteudo;

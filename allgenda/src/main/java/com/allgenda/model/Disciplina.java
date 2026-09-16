@@ -12,6 +12,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.lang.annotation.Inherited;
+import java.util.UUID;
 
 @Entity
 @Table(name = "Disciplinas")
@@ -20,8 +21,8 @@ public class Disciplina implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "nome")
     private String nome;
