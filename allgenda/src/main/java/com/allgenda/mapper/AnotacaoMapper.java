@@ -2,6 +2,7 @@ package com.allgenda.mapper;
 
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.model.Anotacao;
+import com.allgenda.mode.Tag;
 import org.springframework.stereotype.Component;
 import java.util.List;
 
@@ -9,11 +10,16 @@ import java.util.List;
 public class AnotacaoMapper {
 
     public AnotacaoResponseDTO toDto(Anotacao anotacao) {
+        List<String> nomesDasTags = anotacao.getTags().stream()
+                .map(Tag::getNome)
+                .toList();
+
         return new AnotacaoResponseDTO(
             anotacao.getId(),
             anotacao.getConteudo(),
             anotacao.getAutor().getNome(),
-            List.of()
+            nomesDasTags
+            anotacao.getAula().getDisciplina().getNome()
         );
     }
 

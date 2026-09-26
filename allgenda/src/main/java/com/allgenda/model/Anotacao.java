@@ -12,6 +12,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.util.Set;
+import java.util.HashSet;
 
 
 @Entity
@@ -38,10 +40,10 @@ public class Anotacao implements Serializable {
     @JoinColumn(name = "usuario_id")
     private Usuario autor;
 
-    /*/@ManyToMany
+    @ManyToMany
     @JoinTable(name = "anotacao_tag", 
         joinColumns = @JoinColumn(name = "anotacao_id"), inverseJoinColumns = @JoinColumn(name = "tag_id"))
-    private Set<Tag> tags = new HashSet<>();/*/ 
+    private Set<Tag> tags = new HashSet<>();
 
     public static long getSerialversionuid() {
         return serialVersionUID;
@@ -49,10 +51,6 @@ public class Anotacao implements Serializable {
 
     public UUID getId() {
         return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
     }
 
     public LocalDateTime getDataCriacao() {
@@ -77,5 +75,17 @@ public class Anotacao implements Serializable {
 
     public void setAutor(Usuario autor) {
         this.autor = autor;
+    }
+
+    public Set<Tag> getTags() {
+        return tags;
+    }
+
+    public void addTag(Tag tag) {
+        this.tags.add(tag);
+    }
+
+    public void removeTag(Tag tag) {
+        this.tags.remove(tag);
     }
 }

@@ -31,10 +31,6 @@ public class Usuario implements Serializable {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
     public String getNome() {
         return nome;
     }
