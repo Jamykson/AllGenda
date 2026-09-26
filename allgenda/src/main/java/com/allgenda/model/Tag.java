@@ -13,7 +13,7 @@ import java.util.UUID;
 @Table(name = "tags")
 public class Tag {
 
-    @id
+    @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 

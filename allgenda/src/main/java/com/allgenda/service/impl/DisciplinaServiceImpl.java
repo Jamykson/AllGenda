@@ -1,8 +1,8 @@
-package com.allgenda.dto.request.impl;
+package com.allgenda.service.impl;
 
 import com.allgenda.dto.request.DisciplinaRequestDTO;
 import com.allgenda.dto.response.DisciplinaResponseDTO;
-import com.allgenda.dto.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.mapper.DisciplinaMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.repository.DisciplinaRepository;
@@ -24,7 +24,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     }
 
     @Override
-    public DisciplinaReponseDTO cadastrar(DisciplinaRequestDTO dto) {
+    public DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto) {
         Disciplina disciplina = new Disciplina();
         disciplina.setNome(dto.nome());
 
@@ -33,14 +33,14 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     }
 
     @Override
-    public List<DisciplinaReponseDTO> listarTodas() {
+    public List<DisciplinaResponseDTO> listarTodas() {
         return mapper.toDtoList(repository.findAll());
     }
 
     @Override
-    public DisciplinaReponseDTO buscarPorId(UUID id) {
+    public DisciplinaResponseDTO buscarPorId(UUID id) {
         Disciplina disciplina = repository.findById(id)
-            .orElseThrow(() -> new DisciplinaNaoEncontradaException("Disciplina nao encontrada: " + id));
+            .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));
         return mapper.toDto(disciplina);
     }
 }

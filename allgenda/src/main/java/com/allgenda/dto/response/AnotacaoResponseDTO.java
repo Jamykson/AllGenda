@@ -1,6 +1,7 @@
 package com.allgenda.dto.response;
 
 import java.util.UUID;
+import java.util.List;
 
 public record AnotacaoResponseDTO(
     UUID id,
