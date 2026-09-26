@@ -55,6 +55,14 @@ public class Anotacao implements Serializable {
         return id;
     }
 
+    public String getConteudo() {
+        return conteudo;
+    }
+
+    public void setConteudo(String conteudo) {
+        this.conteudo = conteudo;
+    }
+
     public LocalDateTime getDataCriacao() {
         return dataCriacao;
     }

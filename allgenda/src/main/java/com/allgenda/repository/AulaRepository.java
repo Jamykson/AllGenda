@@ -9,5 +9,5 @@ import com.allgenda.model.Aula;
 
 public interface AulaRepository extends JpaRepository<Aula, UUID> {
 
-    List<Aula> findByDisciplinaIdOrderByDataAsc(UUID disciplinaId);
+    List<Aula> findByDisciplinaId(UUID disciplinaId);
 }
