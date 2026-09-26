@@ -17,6 +17,6 @@ public class DisciplinaMapper {
     }
 
     public List<DisciplinaResponseDTO> toDtoList(List<Disciplina> disciplinas) {
-        disciplinas.stream().map(this::toDto).toList();
+        return disciplinas.stream().map(this::toDto).toList();
     }
 }
