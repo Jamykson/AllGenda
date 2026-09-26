@@ -1,4 +1,4 @@
-package com.allgenda.dto.request
+package com.allgenda.dto.request;
 
 public record DisciplinaRequestDTO(
     String nome

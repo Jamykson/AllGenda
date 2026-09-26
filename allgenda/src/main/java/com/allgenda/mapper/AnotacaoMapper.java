@@ -2,7 +2,7 @@ package com.allgenda.mapper;
 
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.model.Anotacao;
-import com.allgenda.mode.Tag;
+import com.allgenda.model.Tag;
 import org.springframework.stereotype.Component;
 import java.util.List;
 
@@ -18,9 +18,9 @@ public class AnotacaoMapper {
             anotacao.getId(),
             anotacao.getConteudo(),
             anotacao.getAutor().getNome(),
-            nomesDasTags
+            nomesDasTags,
             anotacao.getAula().getDisciplina().getNome(),
-            anotacao.getAula().getTopico
+            anotacao.getAula().getTopico()
         );
     }
 

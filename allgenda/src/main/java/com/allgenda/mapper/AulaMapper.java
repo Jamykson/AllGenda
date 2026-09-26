@@ -1,4 +1,4 @@
-package com.allgenda.mapper
+package com.allgenda.mapper;
 
 import com.allgenda.dto.response.AulaResponseDTO;
 import com.allgenda.model.Aula;
