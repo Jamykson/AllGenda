@@ -19,7 +19,8 @@ public class AnotacaoMapper {
             anotacao.getConteudo(),
             anotacao.getAutor().getNome(),
             nomesDasTags
-            anotacao.getAula().getDisciplina().getNome()
+            anotacao.getAula().getDisciplina().getNome(),
+            anotacao.getAula().getTopico
         );
     }
 
