@@ -6,9 +6,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // URL base da API do back-end (Spring Boot). Sobrescrevível via
-      // variável de ambiente NUXT_PUBLIC_API_BASE (ver .env.example).
-      apiBase: 'http://localhost:8080'
+      apiBase: 'https://super-duper-journey-xgjwpgvg7662vg6w-8080.app.github.dev'
     }
   }
 })
