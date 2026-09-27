@@ -22,9 +22,7 @@ public class AulaServiceImpl implements AulaService {
     private final DisciplinaRepository disciplinaRepository;
     private final AulaMapper mapper;
 
-    public AulaServiceImpl(AulaRepository aulaRepository,
-                            DisciplinaRepository disciplinaRepository,
-                            AulaMapper mapper) {
+    public AulaServiceImpl(AulaRepository aulaRepository, DisciplinaRepository disciplinaRepository, AulaMapper mapper) {
         this.aulaRepository = aulaRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.mapper = mapper;
@@ -32,7 +30,7 @@ public class AulaServiceImpl implements AulaService {
 
     @Override
     public AulaResponseDTO cadastrar(AulaRequestDTO dto) {
-        Disciplina disciplina = disciplinaRepository.findById(dto.disciplinaId())
+        Disciplina disciplina = disciplinaRepository.findById(dto.disciplinaId())           // checar se o disciplinaId recebido é válido (tal disciplina existe?)
                 .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));
 
         Aula aula = new Aula();
