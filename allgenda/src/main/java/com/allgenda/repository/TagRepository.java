@@ -7,5 +7,5 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface TagRepository extends JpaRepository<Tag, UUID> {
-    Optional<Tag> findByNome(String nome);
+    Optional<Tag> findByNomeIgnoreCase(String nome); // "Java" e "java" são a mesma tag
 }
