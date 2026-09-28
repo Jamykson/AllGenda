@@ -16,7 +16,7 @@ public class CorsConfig {
                 registry.addMapping("/api/**")
                     .allowedOrigins(
                         "http://localhost:3000",
-                        "https://super-duper-journey-xgjwpgvg7662vg6w-3000.app.github.dev"
+                        "https://organic-broccoli-4px7vpwpx6p24xr-3000.app.github.dev"
                     )
                     .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                     .allowedHeaders("*");

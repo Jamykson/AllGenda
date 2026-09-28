@@ -55,9 +55,14 @@
         </p>
         <ul v-else class="divide-y divide-slate-100">
           <li v-for="a in aulasOrdenadas" :key="a.id" class="py-2 text-sm text-slate-800">
-            <span class="font-medium">{{ a.data }}</span>
-            <span class="text-slate-500"> · {{ a.horario }}</span>
-            <span v-if="a.topico"> — {{ a.topico }}</span>
+            <NuxtLink
+              :to="`/aulas/${a.id}`"
+              class="block rounded-md p-2 hover:bg-slate-50"
+            >
+              <span class="font-medium">{{ a.data }}</span>
+              <span class="text-slate-500"> · {{ a.horario }}</span>
+              <span v-if="a.topico"> — {{ a.topico }}</span>
+            </NuxtLink>
           </li>
         </ul>
       </div>

@@ -6,7 +6,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: 'https://super-duper-journey-xgjwpgvg7662vg6w-8080.app.github.dev'
+      apiBase: 'https://organic-broccoli-4px7vpwpx6p24xr-8080.app.github.dev'
     }
   }
 })
