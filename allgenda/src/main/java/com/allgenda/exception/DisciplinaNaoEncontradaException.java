@@ -1,11 +1,21 @@
 package com.allgenda.exception;
 
 import java.util.UUID;
-import com.allgenda.exception.RecursoNaoEncontradoException;
 
-public class DisciplinaNaoEncontradaException extends RecursoNaoEncontradoException {
+public class DisciplinaNaoEncontradaException
+    extends RecursoNaoEncontradoException {
 
-    public DisciplinaNaoEncontradaException(UUID disciplinaId) {
-        super("Disciplina não encontrada: " + disciplinaId);
+    public DisciplinaNaoEncontradaException(
+        UUID id
+    ) {
+        super(
+            "Disciplina não encontrada: " + id
+        );
+    }
+
+    public DisciplinaNaoEncontradaException(
+        String mensagem
+    ) {
+        super(mensagem);
     }
 }

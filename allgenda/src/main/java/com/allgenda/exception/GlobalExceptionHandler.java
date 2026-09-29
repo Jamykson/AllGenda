@@ -1,20 +1,50 @@
 package com.allgenda.exception;
 
+import com.allgenda.dto.ErrorResponseDTO;
+
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice // intercepta exceções lançadas por qualquer controller e as converte em respostas HTTP
+@RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(RecursoNaoEncontradoException.class) // cobre todas as subclasses (Aula, Disciplina, Anotacao, Usuario...)
-    public ProblemDetail tratarNaoEncontrado(RecursoNaoEncontradoException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    @ExceptionHandler(
+        RecursoNaoEncontradoException.class
+    )
+    public ResponseEntity<ErrorResponseDTO>
+        handleRecursoNaoEncontrado(
+            RecursoNaoEncontradoException ex
+        ) {
+
+        ErrorResponseDTO erro =
+            new ErrorResponseDTO(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage()
+            );
+
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(erro);
     }
 
-    @ExceptionHandler(RequisicaoInvalidaException.class)
-    public ProblemDetail tratarRequisicaoInvalida(RequisicaoInvalidaException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    @ExceptionHandler(
+        IllegalArgumentException.class
+    )
+    public ResponseEntity<ErrorResponseDTO>
+        handleIllegalArgument(
+            IllegalArgumentException ex
+        ) {
+
+        ErrorResponseDTO erro =
+            new ErrorResponseDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage()
+            );
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(erro);
     }
 }
