@@ -106,21 +106,46 @@
               </div>
 
               <div class="eventos-dia">
-                <NuxtLink
+                <template
                   v-for="aula in aulasDoDia(dia.chave)"
                   :key="aula.id"
-                  :to="`/aulas/${aula.id}`"
-                  class="evento"
-                  :class="classeAula(aula)"
                 >
-                  <strong>
-                    {{ aula.disciplinaNome }}
-                  </strong>
+                  <div
+                    v-if="aula.recorrente"
+                    class="evento evento-recorrente"
+                    :style="estiloCorAula(aula)"
+                    title="Horário recorrente da disciplina"
+                  >
+                    <strong>
+                      <span v-if="iconeAula(aula)" class="evento-icone">
+                        {{ iconeAula(aula) }}
+                      </span>
+                      {{ aula.disciplinaNome }}
+                    </strong>
 
-                  <small>
-                    {{ aula.horario }}
-                  </small>
-                </NuxtLink>
+                    <small>
+                      {{ aula.horario }}
+                    </small>
+                  </div>
+
+                  <NuxtLink
+                    v-else
+                    :to="`/aulas/${aula.id}`"
+                    class="evento"
+                    :style="estiloCorAula(aula)"
+                  >
+                    <strong>
+                      <span v-if="iconeAula(aula)" class="evento-icone">
+                        {{ iconeAula(aula) }}
+                      </span>
+                      {{ aula.disciplinaNome }}
+                    </strong>
+
+                    <small>
+                      {{ aula.horario }}
+                    </small>
+                  </NuxtLink>
+                </template>
               </div>
             </div>
           </div>
@@ -184,26 +209,56 @@
               ></div>
 
               <!-- AULAS -->
-              <NuxtLink
+              <template
                 v-for="aula in aulasDoDia(dia.chave)"
                 :key="aula.id"
-                :to="`/aulas/${aula.id}`"
-                class="evento-semana"
-                :class="classeAula(aula)"
-                :style="estiloAulaSemana(aula)"
               >
-                <strong>
-                  {{ aula.disciplinaNome }}
-                </strong>
+                <div
+                  v-if="aula.recorrente"
+                  class="evento-semana evento-recorrente"
+                  :style="{
+                    ...estiloAulaSemana(aula),
+                    ...estiloCorAula(aula)
+                  }"
+                  title="Horário recorrente da disciplina"
+                >
+                  <strong>
+                    <span v-if="iconeAula(aula)" class="evento-icone">
+                      {{ iconeAula(aula) }}
+                    </span>
+                    {{ aula.disciplinaNome }}
+                  </strong>
 
-                <small>
-                  {{ aula.horario }}
-                </small>
+                  <small>
+                    {{ aula.horario }}
+                  </small>
+                </div>
 
-                <span v-if="aula.topico">
-                  {{ aula.topico }}
-                </span>
-              </NuxtLink>
+                <NuxtLink
+                  v-else
+                  :to="`/aulas/${aula.id}`"
+                  class="evento-semana"
+                  :style="{
+                    ...estiloAulaSemana(aula),
+                    ...estiloCorAula(aula)
+                  }"
+                >
+                  <strong>
+                    <span v-if="iconeAula(aula)" class="evento-icone">
+                      {{ iconeAula(aula) }}
+                    </span>
+                    {{ aula.disciplinaNome }}
+                  </strong>
+
+                  <small>
+                    {{ aula.horario }}
+                  </small>
+
+                  <span v-if="aula.topico">
+                    {{ aula.topico }}
+                  </span>
+                </NuxtLink>
+              </template>
             </div>
           </div>
         </div>
@@ -218,6 +273,20 @@ interface Disciplina {
   nome: string
 }
 
+interface HorarioRecorrente {
+  dias: number[]
+  horaInicio: string
+  horaFim: string
+  dataInicio: string
+  dataFim: string
+}
+
+interface PersonalizacaoDisciplina {
+  nome?: string
+  icone: string
+  cor: string
+}
+
 interface Aula {
   id: string
   data: string
@@ -225,6 +294,9 @@ interface Aula {
   topico?: string
   disciplinaId: string
   disciplinaNome: string
+  recorrente?: boolean
+  cor?: string
+  icone?: string
 }
 
 const { $api } = useNuxtApp()
@@ -235,6 +307,18 @@ const dataAtual = ref(new Date())
 
 const disciplinas = ref<Disciplina[]>([])
 const aulas = ref<Aula[]>([])
+
+const horariosRecorrentes =
+  ref<Record<string, HorarioRecorrente>>({})
+
+const personalizacoes =
+  ref<Record<string, PersonalizacaoDisciplina>>({})
+
+const CHAVE_HORARIOS =
+  'allgenda-horarios-recorrentes'
+
+const CHAVE_PERSONALIZACOES =
+  'allgenda-personalizacoes-disciplinas'
 
 const carregando = ref(true)
 const erro = ref('')
@@ -428,25 +512,229 @@ function aulasDoDia(chave: string) {
     )
 }
 
-function classeAula(aula: Aula) {
-  const indice =
-    disciplinas.value.findIndex(
-      d =>
-        d.id ===
-        aula.disciplinaId
+function carregarDadosLocais() {
+  if (!import.meta.client) {
+    return
+  }
+
+  try {
+    horariosRecorrentes.value =
+      JSON.parse(
+        localStorage.getItem(
+          CHAVE_HORARIOS
+        ) || '{}'
+      )
+  } catch {
+    horariosRecorrentes.value = {}
+  }
+
+  try {
+    personalizacoes.value =
+      JSON.parse(
+        localStorage.getItem(
+          CHAVE_PERSONALIZACOES
+        ) || '{}'
+      )
+  } catch {
+    personalizacoes.value = {}
+  }
+}
+
+function criarDataLocal(
+  texto: string
+) {
+  const [ano, mes, dia] =
+    texto
+      .split('-')
+      .map(Number)
+
+  return new Date(
+    ano,
+    mes - 1,
+    dia
+  )
+}
+
+function nomeDisciplina(
+  disciplina: Disciplina
+) {
+  return (
+    personalizacoes.value[
+      disciplina.id
+    ]?.nome?.trim() ||
+    disciplina.nome
+  )
+}
+
+function gerarAulasRecorrentes() {
+  const resultado: Aula[] = []
+
+  for (
+    const disciplina
+    of disciplinas.value
+  ) {
+    const horario =
+      horariosRecorrentes.value[
+        disciplina.id
+      ]
+
+    if (!horario) {
+      continue
+    }
+
+    const inicio =
+      criarDataLocal(
+        horario.dataInicio
+      )
+
+    const fim =
+      criarDataLocal(
+        horario.dataFim
+      )
+
+    if (
+      Number.isNaN(inicio.getTime()) ||
+      Number.isNaN(fim.getTime())
+    ) {
+      continue
+    }
+
+    const atual =
+      new Date(inicio)
+
+    while (
+      atual.getTime() <=
+      fim.getTime()
+    ) {
+      const diaSemana =
+        atual.getDay()
+
+      if (
+        horario.dias.includes(
+          diaSemana
+        )
+      ) {
+        const personalizacao =
+          personalizacoes.value[
+            disciplina.id
+          ]
+
+        const data =
+          chaveData(atual)
+
+        resultado.push({
+          id:
+            `recorrente-${disciplina.id}-${data}`,
+
+          data,
+
+          horario:
+            `${horario.horaInicio} - ${horario.horaFim}`,
+
+          topico: '',
+
+          disciplinaId:
+            disciplina.id,
+
+          disciplinaNome:
+            nomeDisciplina(disciplina),
+
+          recorrente:
+            true,
+
+          cor:
+            personalizacao?.cor ||
+            '#2563eb',
+
+          icone:
+            personalizacao?.icone ||
+            disciplina.nome
+              .trim()
+              .charAt(0)
+              .toUpperCase()
+        })
+      }
+
+      atual.setDate(
+        atual.getDate() + 1
+      )
+    }
+  }
+
+  return resultado
+}
+
+function corAula(
+  aula: Aula
+) {
+  return (
+    aula.cor ||
+    personalizacoes.value[
+      aula.disciplinaId
+    ]?.cor ||
+    '#2563eb'
+  )
+}
+
+function iconeAula(
+  aula: Aula
+) {
+  return (
+    aula.icone ||
+    personalizacoes.value[
+      aula.disciplinaId
+    ]?.icone ||
+    ''
+  )
+}
+
+function hexParaRgba(
+  hex: string,
+  alpha: number
+) {
+  const valor =
+    hex.replace('#', '')
+
+  if (valor.length !== 6) {
+    return `rgba(37, 99, 235, ${alpha})`
+  }
+
+  const r =
+    parseInt(
+      valor.substring(0, 2),
+      16
     )
 
-  const classes = [
-    'evento-azul',
-    'evento-ciano',
-    'evento-indigo',
-    'evento-royal'
-  ]
+  const g =
+    parseInt(
+      valor.substring(2, 4),
+      16
+    )
 
-  return classes[
-    Math.max(indice, 0) %
-      classes.length
-  ]
+  const b =
+    parseInt(
+      valor.substring(4, 6),
+      16
+    )
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function estiloCorAula(
+  aula: Aula
+) {
+  const cor =
+    corAula(aula)
+
+  return {
+    borderColor: cor,
+    color: cor,
+    background:
+      hexParaRgba(
+        cor,
+        0.13
+      )
+  }
 }
 
 function minutosInicio(
@@ -601,6 +889,8 @@ async function carregarAgenda() {
   carregando.value = true
   erro.value = ''
 
+  carregarDadosLocais()
+
   try {
     const resposta =
       await $api.get(
@@ -625,6 +915,11 @@ async function carregarAgenda() {
                 }
               )
 
+            const personalizacao =
+              personalizacoes.value[
+                disciplina.id
+              ]
+
             return resultado.data.map(
               (aula: any) => ({
                 ...aula,
@@ -633,16 +928,41 @@ async function carregarAgenda() {
                   disciplina.id,
 
                 disciplinaNome:
-                  disciplina.nome
+                  nomeDisciplina(disciplina),
+
+                cor:
+                  personalizacao?.cor ||
+                  '#2563eb',
+
+                icone:
+                  personalizacao?.icone ||
+                  ''
               })
             )
           }
         )
       )
 
-    aulas.value =
+    const aulasBackend: Aula[] =
       respostas.flat()
 
+    const aulasRecorrentes =
+      gerarAulasRecorrentes()
+        .filter(
+          recorrente =>
+            !aulasBackend.some(
+              real =>
+                real.disciplinaId ===
+                  recorrente.disciplinaId &&
+                real.data ===
+                  recorrente.data
+            )
+        )
+
+    aulas.value = [
+      ...aulasBackend,
+      ...aulasRecorrentes
+    ]
   } catch (e) {
     console.error(
       '[agenda] erro:',
@@ -1144,6 +1464,14 @@ onMounted(
   display: block;
 
   margin-top: 2px;
+}
+
+.evento-icone {
+  margin-right: 4px;
+}
+
+.evento-recorrente {
+  cursor: default;
 }
 
 /* CORES DOS EVENTOS */

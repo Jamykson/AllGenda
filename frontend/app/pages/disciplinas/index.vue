@@ -195,13 +195,16 @@
               class="disciplina-conteudo"
               @click="abrirDisciplina(disciplina)"
             >
-              <div class="icone-disciplina">
-                {{ primeiraLetra(disciplina.nome) }}
+              <div
+                class="icone-disciplina"
+                :style="estiloIcone(disciplina.id)"
+              >
+                {{ iconeDisciplina(disciplina) }}
               </div>
 
               <div class="disciplina-info">
                 <h3>
-                  {{ disciplina.nome }}
+                  {{ nomeDisciplina(disciplina) }}
                 </h3>
 
                 <p
@@ -249,18 +252,25 @@
         <!-- TOPO -->
         <div class="modal-disciplina-topo">
           <div class="titulo-disciplina-modal">
-            <div class="icone-disciplina">
-              {{ primeiraLetra(disciplinaAberta.nome) }}
+            <div
+              class="icone-disciplina"
+              :style="estiloIcone(disciplinaAberta.id)"
+            >
+              {{ iconeDisciplina(disciplinaAberta) }}
             </div>
 
             <div>
               <h2>
-                {{ disciplinaAberta.nome }}
+                {{ nomeDisciplina(disciplinaAberta) }}
               </h2>
 
               <p>
                 Configure o horário recorrente
               </p>
+
+              <div class="atalhos-edicao-mobile">
+                <span></span>
+              </div>
             </div>
           </div>
 
@@ -275,6 +285,218 @@
 
         <!-- CORPO -->
         <div class="modal-disciplina-corpo">
+          <!-- EDIÇÃO RÁPIDA DA DISCIPLINA -->
+          <section class="edicao-rapida">
+            <div class="botoes-edicao">
+              <button
+                type="button"
+                class="botao-edicao"
+                :class="{ ativo: painelEdicao === 'nome' }"
+                title="Editar nome"
+                aria-label="Editar nome da disciplina"
+                @click="alternarPainelEdicao('nome')"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                class="botao-edicao"
+                :class="{ ativo: painelEdicao === 'cor' }"
+                title="Alterar cor"
+                aria-label="Alterar cor da disciplina"
+                @click="alternarPainelEdicao('cor')"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="13.5" cy="6.5" r=".5"></circle>
+                  <circle cx="17.5" cy="10.5" r=".5"></circle>
+                  <circle cx="8.5" cy="7.5" r=".5"></circle>
+                  <circle cx="6.5" cy="12.5" r=".5"></circle>
+                  <path d="M12 2a10 10 0 0 0 0 20h1.6a2 2 0 0 0 1.4-3.4 1.9 1.9 0 0 1 1.3-3.3H18a4 4 0 0 0 4-4A9.3 9.3 0 0 0 12 2Z"></path>
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                class="botao-edicao"
+                :class="{ ativo: painelEdicao === 'icone' }"
+                title="Alterar ícone"
+                aria-label="Alterar ícone da disciplina"
+                @click="alternarPainelEdicao('icone')"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                  <path d="M9 9h.01"></path>
+                  <path d="M15 9h.01"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- EDITAR NOME -->
+            <div
+              v-if="painelEdicao === 'nome'"
+              class="painel-edicao"
+            >
+              <div class="painel-edicao-topo">
+                <div>
+                  <strong>Editar nome</strong>
+                  <p>Altere o nome exibido no front e na agenda.</p>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-fechar-painel"
+                  @click="painelEdicao = null"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div class="linha-edicao-nome">
+                <input
+                  v-model="nomeEditado"
+                  type="text"
+                  placeholder="Nome da disciplina"
+                  @keyup.enter="salvarNomePersonalizado"
+                />
+
+                <button
+                  type="button"
+                  class="btn-salvar-compacto"
+                  @click="salvarNomePersonalizado"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+
+            <!-- ALTERAR COR -->
+            <div
+              v-if="painelEdicao === 'cor'"
+              class="painel-edicao"
+            >
+              <div class="painel-edicao-topo">
+                <div>
+                  <strong>Cor da disciplina</strong>
+                  <p>Escolha a cor usada nos cards e na agenda.</p>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-fechar-painel"
+                  @click="painelEdicao = null"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div class="grade-cores">
+                <button
+                  v-for="cor in coresDisponiveis"
+                  :key="cor"
+                  type="button"
+                  class="opcao-cor"
+                  :class="{
+                    selecionada:
+                      formularioPersonalizacao.cor === cor
+                  }"
+                  :style="{ background: cor }"
+                  :aria-label="`Selecionar cor ${cor}`"
+                  @click="formularioPersonalizacao.cor = cor"
+                ></button>
+
+                <label
+                  class="cor-personalizada"
+                  title="Escolher outra cor"
+                >
+                  <input
+                    v-model="formularioPersonalizacao.cor"
+                    type="color"
+                  />
+                  <span>+</span>
+                </label>
+              </div>
+
+              <div class="rodape-painel">
+                <span class="codigo-cor">
+                  {{ formularioPersonalizacao.cor }}
+                </span>
+
+                <button
+                  type="button"
+                  class="btn-salvar-compacto"
+                  @click="salvarCor"
+                >
+                  Salvar cor
+                </button>
+              </div>
+            </div>
+
+            <!-- ALTERAR ÍCONE -->
+            <div
+              v-if="painelEdicao === 'icone'"
+              class="painel-edicao"
+            >
+              <div class="painel-edicao-topo">
+                <div>
+                  <strong>Ícone da disciplina</strong>
+                  <p>Escolha um ícone para identificar a disciplina.</p>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-fechar-painel"
+                  @click="painelEdicao = null"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div class="grade-icones grade-icones-compacta">
+                <button
+                  v-for="icone in iconesDisponiveis"
+                  :key="icone"
+                  type="button"
+                  class="opcao-icone"
+                  :class="{
+                    selecionado:
+                      formularioPersonalizacao.icone === icone
+                  }"
+                  @click="formularioPersonalizacao.icone = icone"
+                >
+                  {{ icone }}
+                </button>
+              </div>
+
+              <div class="rodape-painel">
+                <div
+                  class="mini-preview"
+                  :style="{
+                    color: formularioPersonalizacao.cor,
+                    background: hexParaRgba(
+                      formularioPersonalizacao.cor,
+                      0.14
+                    )
+                  }"
+                >
+                  {{ formularioPersonalizacao.icone }}
+                </div>
+
+                <button
+                  type="button"
+                  class="btn-salvar-compacto"
+                  @click="salvarIcone"
+                >
+                  Salvar ícone
+                </button>
+              </div>
+            </div>
+          </section>
+
           <section class="horario-recorrente">
             <div class="horario-topo">
               <div>
@@ -352,8 +574,8 @@
               </div>
 
               <div class="horario-observacao">
-                Este horário está salvo apenas temporariamente no front.
-              </div>
+  O horário será exibido automaticamente na agenda.
+</div>
             </div>
 
             <!-- FORMULÁRIO -->
@@ -507,7 +729,7 @@
         <p>
           Você está prestes a excluir
           <strong>
-            {{ disciplinaParaExcluir.nome }}
+            {{ nomeDisciplina(disciplinaParaExcluir) }}
           </strong>.
         </p>
 
@@ -548,6 +770,66 @@ interface Disciplina {
   nome: string
 }
 
+function carregarDadosLocais() {
+  if (!import.meta.client) {
+    return
+  }
+
+  const horariosSalvos =
+    localStorage.getItem(CHAVE_HORARIOS)
+
+  const personalizacoesSalvas =
+    localStorage.getItem(
+      CHAVE_PERSONALIZACOES
+    )
+
+  if (horariosSalvos) {
+    try {
+      horariosRecorrentes.value =
+        JSON.parse(horariosSalvos)
+    } catch {
+      horariosRecorrentes.value = {}
+    }
+  }
+
+  if (personalizacoesSalvas) {
+    try {
+      personalizacoes.value =
+        JSON.parse(
+          personalizacoesSalvas
+        )
+    } catch {
+      personalizacoes.value = {}
+    }
+  }
+}
+
+function persistirHorarios() {
+  if (!import.meta.client) {
+    return
+  }
+
+  localStorage.setItem(
+    CHAVE_HORARIOS,
+    JSON.stringify(
+      horariosRecorrentes.value
+    )
+  )
+}
+
+function persistirPersonalizacoes() {
+  if (!import.meta.client) {
+    return
+  }
+
+  localStorage.setItem(
+    CHAVE_PERSONALIZACOES,
+    JSON.stringify(
+      personalizacoes.value
+    )
+  )
+}
+
 interface HorarioRecorrente {
   dias: number[]
   horaInicio: string
@@ -555,6 +837,61 @@ interface HorarioRecorrente {
   dataInicio: string
   dataFim: string
 }
+
+interface PersonalizacaoDisciplina {
+  nome?: string
+  icone: string
+  cor: string
+}
+
+const personalizacoes = ref<
+  Record<string, PersonalizacaoDisciplina>
+>({})
+
+const formularioPersonalizacao = reactive({
+  icone: '📚',
+  cor: '#2563eb'
+})
+
+const painelEdicao =
+  ref<'nome' | 'cor' | 'icone' | null>(null)
+
+const nomeEditado =
+  ref('')
+
+const coresDisponiveis = [
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#dc2626',
+  '#ea580c',
+  '#ca8a04',
+  '#16a34a',
+  '#0891b2',
+  '#475569',
+  '#0f172a'
+]
+
+const iconesDisponiveis = [
+  '📚',
+  '💻',
+  '🧮',
+  '🔬',
+  '🧪',
+  '📐',
+  '📝',
+  '🌐',
+  '⚙️',
+  '🧠',
+  '📊',
+  '🎨'
+]
+
+const CHAVE_HORARIOS =
+  'allgenda-horarios-recorrentes'
+
+const CHAVE_PERSONALIZACOES =
+  'allgenda-personalizacoes-disciplinas'
 
 const { $api } = useNuxtApp()
 
@@ -669,6 +1006,241 @@ function primeiraLetra(
     .trim()
     .charAt(0)
     .toUpperCase()
+}
+
+function nomeDisciplina(
+  disciplina: Disciplina
+) {
+  return (
+    personalizacoes.value[
+      disciplina.id
+    ]?.nome?.trim() ||
+    disciplina.nome
+  )
+}
+
+function iconeDisciplina(
+  disciplina: Disciplina
+) {
+  return (
+    personalizacoes.value[
+      disciplina.id
+    ]?.icone ||
+    primeiraLetra(
+      nomeDisciplina(disciplina)
+    )
+  )
+}
+
+function corDisciplina(
+  disciplinaId: string
+) {
+  return (
+    personalizacoes.value[
+      disciplinaId
+    ]?.cor ||
+    '#2563eb'
+  )
+}
+
+function hexParaRgba(
+  hex: string,
+  alpha: number
+) {
+  const valor =
+    hex.replace('#', '')
+
+  if (valor.length !== 6) {
+    return `rgba(37, 99, 235, ${alpha})`
+  }
+
+  const r =
+    parseInt(
+      valor.substring(0, 2),
+      16
+    )
+
+  const g =
+    parseInt(
+      valor.substring(2, 4),
+      16
+    )
+
+  const b =
+    parseInt(
+      valor.substring(4, 6),
+      16
+    )
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function estiloIcone(
+  disciplinaId: string
+) {
+  const cor =
+    corDisciplina(
+      disciplinaId
+    )
+
+  return {
+    color: cor,
+    background:
+      hexParaRgba(
+        cor,
+        0.14
+      )
+  }
+}
+
+function garantirPersonalizacaoAtual() {
+  if (!disciplinaAberta.value) {
+    return null
+  }
+
+  const id =
+    disciplinaAberta.value.id
+
+  const atual =
+    personalizacoes.value[id]
+
+  return {
+    nome:
+      atual?.nome,
+    icone:
+      atual?.icone ||
+      primeiraLetra(
+        nomeDisciplina(
+          disciplinaAberta.value
+        )
+      ),
+    cor:
+      atual?.cor ||
+      '#2563eb'
+  }
+}
+
+function alternarPainelEdicao(
+  painel: 'nome' | 'cor' | 'icone'
+) {
+  if (!disciplinaAberta.value) {
+    return
+  }
+
+  if (painelEdicao.value === painel) {
+    painelEdicao.value = null
+    return
+  }
+
+  const atual =
+    garantirPersonalizacaoAtual()
+
+  if (!atual) {
+    return
+  }
+
+  nomeEditado.value =
+    atual.nome ||
+    disciplinaAberta.value.nome
+
+  formularioPersonalizacao.icone =
+    atual.icone
+
+  formularioPersonalizacao.cor =
+    atual.cor
+
+  painelEdicao.value = painel
+}
+
+function salvarNomePersonalizado() {
+  if (!disciplinaAberta.value) {
+    return
+  }
+
+  const novoNome =
+    nomeEditado.value.trim()
+
+  if (!novoNome) {
+    return
+  }
+
+  const atual =
+    garantirPersonalizacaoAtual()
+
+  if (!atual) {
+    return
+  }
+
+  personalizacoes.value[
+    disciplinaAberta.value.id
+  ] = {
+    nome: novoNome,
+    icone: atual.icone,
+    cor: atual.cor
+  }
+
+  persistirPersonalizacoes()
+
+  painelEdicao.value = null
+
+  mensagem.value =
+    'Nome da disciplina atualizado.'
+}
+
+function salvarCor() {
+  if (!disciplinaAberta.value) {
+    return
+  }
+
+  const atual =
+    garantirPersonalizacaoAtual()
+
+  if (!atual) {
+    return
+  }
+
+  personalizacoes.value[
+    disciplinaAberta.value.id
+  ] = {
+    nome: atual.nome,
+    icone: atual.icone,
+    cor: formularioPersonalizacao.cor
+  }
+
+  persistirPersonalizacoes()
+
+  painelEdicao.value = null
+
+  mensagem.value =
+    'Cor da disciplina atualizada.'
+}
+
+function salvarIcone() {
+  if (!disciplinaAberta.value) {
+    return
+  }
+
+  const atual =
+    garantirPersonalizacaoAtual()
+
+  if (!atual) {
+    return
+  }
+
+  personalizacoes.value[
+    disciplinaAberta.value.id
+  ] = {
+    nome: atual.nome,
+    icone: formularioPersonalizacao.icone,
+    cor: atual.cor
+  }
+
+  persistirPersonalizacoes()
+
+  painelEdicao.value = null
+
+  mensagem.value =
+    'Ícone da disciplina atualizado.'
 }
 
 function abrirFormulario() {
@@ -798,6 +1370,27 @@ function abrirDisciplina(
   erroHorario.value = ''
 
   limparFormularioHorario()
+
+  const personalizacao =
+    personalizacoes.value[
+      disciplina.id
+    ]
+
+  formularioPersonalizacao.icone =
+    personalizacao?.icone ||
+    primeiraLetra(
+      nomeDisciplina(disciplina)
+    )
+
+  formularioPersonalizacao.cor =
+    personalizacao?.cor ||
+    '#2563eb'
+
+  nomeEditado.value =
+    personalizacao?.nome ||
+    disciplina.nome
+
+  painelEdicao.value = null
 }
 
 function fecharDisciplina() {
@@ -810,6 +1403,8 @@ function fecharDisciplina() {
   erroHorario.value = ''
 
   limparFormularioHorario()
+
+  painelEdicao.value = null
 }
 
 /* HORÁRIOS */
@@ -950,6 +1545,8 @@ function salvarHorario() {
       formularioHorario.dataFim
   }
 
+  persistirHorarios()
+
   mostrarFormularioHorario.value =
     false
 }
@@ -1079,6 +1676,13 @@ async function excluirDisciplina() {
       disciplina.id
     ]
 
+    delete personalizacoes.value[
+      disciplina.id
+    ]
+
+    persistirHorarios()
+    persistirPersonalizacoes()
+
     disciplinaParaExcluir.value =
       null
 
@@ -1109,9 +1713,10 @@ async function sair() {
   await navigateTo('/')
 }
 
-onMounted(
-  carregarDisciplinas
-)
+onMounted(() => {
+  carregarDadosLocais()
+  carregarDisciplinas()
+})
 </script>
 
 <style scoped>
@@ -1882,6 +2487,284 @@ onMounted(
   padding: 22px;
 
   overflow-y: auto;
+}
+
+/* EDIÇÃO RÁPIDA DA DISCIPLINA */
+
+.edicao-rapida {
+  width: 100%;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.botoes-edicao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.botao-edicao {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  color: #64748b;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.botao-edicao svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.botao-edicao:hover {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.botao-edicao.ativo {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1d4ed8;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+}
+
+.atalhos-edicao-mobile {
+  display: none;
+}
+
+.painel-edicao {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.painel-edicao-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.painel-edicao-topo strong {
+  display: block;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.painel-edicao-topo p {
+  margin: 3px 0 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.btn-fechar-painel {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.btn-fechar-painel:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.linha-edicao-nome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.linha-edicao-nome input {
+  min-width: 0;
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  background: white;
+  font-size: 13px;
+}
+
+.linha-edicao-nome input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #dbeafe;
+}
+
+.btn-salvar-compacto {
+  padding: 9px 14px;
+  border: none;
+  border-radius: 7px;
+  background: #2563eb;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-salvar-compacto:hover {
+  background: #1d4ed8;
+}
+
+.grade-cores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.opcao-cor,
+.cor-personalizada {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 3px solid white;
+  border-radius: 50%;
+  outline: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    outline-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.opcao-cor:hover,
+.cor-personalizada:hover {
+  transform: scale(1.08);
+}
+
+.opcao-cor.selecionada {
+  outline: 2px solid #0f172a;
+  box-shadow: 0 0 0 2px #bfdbfe;
+}
+
+.cor-personalizada {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    conic-gradient(
+      #ef4444,
+      #f59e0b,
+      #22c55e,
+      #06b6d4,
+      #3b82f6,
+      #8b5cf6,
+      #ec4899,
+      #ef4444
+    );
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.cor-personalizada input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cor-personalizada span {
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(15, 23, 42, 0.45);
+}
+
+.grade-icones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.grade-icones-compacta {
+  max-width: 520px;
+}
+
+.opcao-icone {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: white;
+  font-size: 19px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    transform 0.15s;
+}
+
+.opcao-icone:hover {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.opcao-icone.selecionado {
+  border-color: #2563eb;
+  background: #dbeafe;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.rodape-painel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.codigo-cor {
+  font-family: monospace;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.mini-preview {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 /* HORÁRIO RECORRENTE */
