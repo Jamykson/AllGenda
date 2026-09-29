@@ -17,9 +17,12 @@ public class AnotacaoMapper {
         return new AnotacaoResponseDTO(
             anotacao.getId(),
             anotacao.getConteudo(),
+            anotacao.getDataCriacao(),
             anotacao.getAutor().getNome(),
             nomesDasTags,
             anotacao.getAula().getDisciplina().getNome(),
+            anotacao.getAula().getId(),
+            anotacao.getAula().getData(),
             anotacao.getAula().getTopico()
         );
     }
