@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface AnotacaoService {
     AnotacaoResponseDTO cadastrar(AnotacaoRequestDTO dto);
     AnotacaoResponseDTO associarTags(UUID anotacaoId, List<String> nomesTags);
+    List<AnotacaoResponseDTO> listarPorAula(UUID aulaId);
+    List<AnotacaoResponseDTO> listarPorDisciplina(UUID disciplinaId, String tag); // tag opcional: null = todas
+    List<AnotacaoResponseDTO> listarPorTag(String tag);
 }

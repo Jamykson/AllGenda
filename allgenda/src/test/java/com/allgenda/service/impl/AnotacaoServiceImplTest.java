@@ -5,6 +5,7 @@ import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.AulaNaoEncontradaException;
+import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.UsuarioNaoEncontradoException;
 import com.allgenda.mapper.AnotacaoMapper;
@@ -15,6 +16,7 @@ import com.allgenda.model.Tag;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
+import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.TagService;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +46,8 @@ class AnotacaoServiceImplTest {
     @Mock
     private AulaRepository aulaRepository;
     @Mock
+    private DisciplinaRepository disciplinaRepository;
+    @Mock
     private UsuarioRepository usuarioRepository;
     @Mock
     private TagService tagService;
@@ -56,7 +60,7 @@ class AnotacaoServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, usuarioRepository, tagService, new AnotacaoMapper());
+        service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, disciplinaRepository, usuarioRepository, tagService, new AnotacaoMapper());
 
         Disciplina disciplina = new Disciplina();
         disciplina.setNome("PDS");
@@ -72,6 +76,17 @@ class AnotacaoServiceImplTest {
         Tag tag = new Tag();
         tag.setNome(nome);
         return tag;
+    }
+
+    private Anotacao anotacao(String conteudo, Tag... tags) {
+        Anotacao anotacao = new Anotacao();
+        anotacao.setConteudo(conteudo);
+        anotacao.setAula(aula);
+        anotacao.setAutor(usuarioPadrao);
+        for (Tag tag : tags) {
+            anotacao.addTag(tag);
+        }
+        return anotacao;
     }
 
     @Test
@@ -179,6 +194,84 @@ class AnotacaoServiceImplTest {
     @Test
     void associarListaVaziaDeTagsLancaRequisicaoInvalida() {
         assertThatThrownBy(() -> service.associarTags(UUID.randomUUID(), List.of()))
+                .isInstanceOf(RequisicaoInvalidaException.class);
+    }
+
+    @Test
+    void listarPorAulaRetornaAnotacoesDaAula() {
+        when(aulaRepository.existsById(aulaId)).thenReturn(true);
+        when(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId))
+                .thenReturn(List.of(anotacao("Primeira", tag("java")), anotacao("Segunda")));
+
+        List<AnotacaoResponseDTO> resposta = service.listarPorAula(aulaId);
+
+        assertThat(resposta).extracting(AnotacaoResponseDTO::conteudo).containsExactly("Primeira", "Segunda");
+        assertThat(resposta.get(0).tags()).containsExactly("java");
+        assertThat(resposta.get(0).disciplinaNome()).isEqualTo("PDS");
+    }
+
+    @Test
+    void listarPorAulaInexistenteLancaErroTratado() {
+        when(aulaRepository.existsById(aulaId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.listarPorAula(aulaId))
+                .isInstanceOf(AulaNaoEncontradaException.class);
+    }
+
+    @Test
+    void listarPorDisciplinaSemTagRetornaTodasAsAnotacoes() {
+        UUID disciplinaId = UUID.randomUUID();
+        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(true);
+        when(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId))
+                .thenReturn(List.of(anotacao("Texto")));
+
+        List<AnotacaoResponseDTO> resposta = service.listarPorDisciplina(disciplinaId, null);
+
+        assertThat(resposta).extracting(AnotacaoResponseDTO::conteudo).containsExactly("Texto");
+    }
+
+    @Test
+    void listarPorDisciplinaComTagFiltraPelaTag() {
+        UUID disciplinaId = UUID.randomUUID();
+        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(true);
+        when(anotacaoRepository.findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(disciplinaId, "java"))
+                .thenReturn(List.of(anotacao("Com tag", tag("java"))));
+
+        List<AnotacaoResponseDTO> resposta = service.listarPorDisciplina(disciplinaId, "  java ");
+
+        assertThat(resposta).extracting(AnotacaoResponseDTO::conteudo).containsExactly("Com tag");
+        verify(anotacaoRepository, never()).findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(any());
+    }
+
+    @Test
+    void listarPorDisciplinaInexistenteLancaErroTratado() {
+        UUID disciplinaId = UUID.randomUUID();
+        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.listarPorDisciplina(disciplinaId, null))
+                .isInstanceOf(DisciplinaNaoEncontradaException.class);
+    }
+
+    @Test
+    void listarPorTagIgnoraEspacosEmVolta() {
+        when(anotacaoRepository.findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc("java"))
+                .thenReturn(List.of(anotacao("Texto", tag("java"))));
+
+        List<AnotacaoResponseDTO> resposta = service.listarPorTag(" java ");
+
+        assertThat(resposta).hasSize(1);
+    }
+
+    @Test
+    void listarPorTagInexistenteRetornaListaVazia() {
+        when(anotacaoRepository.findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc("nada")).thenReturn(List.of());
+
+        assertThat(service.listarPorTag("nada")).isEmpty();
+    }
+
+    @Test
+    void listarPorTagEmBrancoLancaRequisicaoInvalida() {
+        assertThatThrownBy(() -> service.listarPorTag("   "))
                 .isInstanceOf(RequisicaoInvalidaException.class);
     }
 }
