@@ -5,6 +5,7 @@ import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.AulaNaoEncontradaException;
+import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.UsuarioNaoEncontradoException;
 import com.allgenda.mapper.AnotacaoMapper;
@@ -13,6 +14,7 @@ import com.allgenda.model.Aula;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
+import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.AnotacaoService;
 import com.allgenda.service.TagService;
@@ -28,17 +30,20 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
     private final AnotacaoRepository anotacaoRepository;
     private final AulaRepository aulaRepository;
+    private final DisciplinaRepository disciplinaRepository;
     private final UsuarioRepository usuarioRepository;
     private final TagService tagService;
     private final AnotacaoMapper mapper;
 
     public AnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
                                 AulaRepository aulaRepository,
+                                DisciplinaRepository disciplinaRepository,
                                 UsuarioRepository usuarioRepository,
                                 TagService tagService,
                                 AnotacaoMapper mapper) {
         this.anotacaoRepository = anotacaoRepository;
         this.aulaRepository = aulaRepository;
+        this.disciplinaRepository = disciplinaRepository;
         this.usuarioRepository = usuarioRepository;
         this.tagService = tagService;
         this.mapper = mapper;
@@ -85,6 +90,38 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         return mapper.toDto(salva);
     }
 
+    @Override
+    @Transactional(readOnly = true) // mantém a sessão aberta enquanto o mapper lê as tags (carregadas sob demanda)
+    public List<AnotacaoResponseDTO> listarPorAula(UUID aulaId) {
+        if (!aulaRepository.existsById(aulaId)) {
+            throw new AulaNaoEncontradaException(aulaId);
+        }
+        return mapper.toDtoList(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnotacaoResponseDTO> listarPorDisciplina(UUID disciplinaId, String tag) {
+        if (!disciplinaRepository.existsById(disciplinaId)) {
+            throw new DisciplinaNaoEncontradaException(disciplinaId);
+        }
+        if (tag == null || tag.isBlank()) {
+            return mapper.toDtoList(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId));
+        }
+        return mapper.toDtoList(anotacaoRepository
+                .findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(disciplinaId, tag.trim()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnotacaoResponseDTO> listarPorTag(String tag) {
+        if (tag == null || tag.isBlank()) {
+            throw new RequisicaoInvalidaException("O nome da tag é obrigatório.");
+        }
+        // tag que não existe não é erro: só não há anotações com ela
+        return mapper.toDtoList(anotacaoRepository.findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(tag.trim()));
+    }
+
     // autorId é temporário até a sprint 3; sem ele, a anotação fica no nome do usuário padrão
     private Usuario buscarAutor(UUID autorId) {
         if (autorId != null) {
@@ -93,5 +130,21 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         }
         return usuarioRepository.findByNome(UsuarioPadraoInitializer.NOME_USUARIO_PADRAO)
                 .orElseThrow(() -> new IllegalStateException("Usuário padrão não foi criado na inicialização."));
+    }
+
+    @Override
+    @Transactional
+    public AnotacaoResponseDTO editar(UUID id, AnotacaoUpdateDTO dto) {
+        if (dto.conteudo() == null || dto.conteudo().isBlank()) {
+            throw new RequisicaoInvalidaException("O conteúdo da anotação é obrigatório.");
+        }
+
+        Anotacao anotacao = anotacaoRepository.findById(id)
+                .orElseThrow(() -> new AnotacaoNaoEncontradaException(id));
+
+        anotacao.setConteudo(dto.conteudo());
+
+        Anotacao salva = anotacaoRepository.save(anotacao);
+        return mapper.toDto(salva);
     }
 }

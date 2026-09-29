@@ -11,6 +11,8 @@ import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.service.AulaService;
 import org.springframework.stereotype.Service;
+import com.allgenda.exception.RequisicaoInvalidaException;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +32,19 @@ public class AulaServiceImpl implements AulaService {
 
     @Override
     public AulaResponseDTO cadastrar(AulaRequestDTO dto) {
+        if (dto.disciplinaId() == null) {
+            throw new RequisicaoInvalidaException("O id da disciplina é obrigatório.");
+        }
+        if (dto.data() == null) {
+            throw new RequisicaoInvalidaException("A data da aula é obrigatória.");
+        }
+        if (dto.horario() == null || dto.horario().isBlank()) {
+            throw new RequisicaoInvalidaException("O horário da aula é obrigatório.");
+        }
+        if (dto.topico() == null || dto.topico().isBlank()) {
+            throw new RequisicaoInvalidaException("O tópico da aula é obrigatório.");
+        }
+
         Disciplina disciplina = disciplinaRepository.findById(dto.disciplinaId())           // checar se o disciplinaId recebido é válido (tal disciplina existe?)
                 .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));
 
@@ -44,11 +59,13 @@ public class AulaServiceImpl implements AulaService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AulaResponseDTO> listarPorDisciplina(UUID disciplinaId) {
         return mapper.toDtoList(aulaRepository.findByDisciplinaId(disciplinaId));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AulaResponseDTO buscarPorId(UUID id) {
         Aula aula = aulaRepository.findById(id)
                 .orElseThrow(() -> new AulaNaoEncontradaException(id));
