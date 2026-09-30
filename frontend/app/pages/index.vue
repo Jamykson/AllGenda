@@ -123,6 +123,12 @@
 </template>
 
 <script setup lang="ts">
+
+definePageMeta({
+    layout:'auth'
+})
+
+</script>
 const email = ref('')
 const senha = ref('')
 const mostrarSenha = ref(false)

@@ -1,4 +1,5 @@
 package com.allgenda.controller;
+import com.allgenda.dto.request.AnotacaoUpdateDTO;
 
 import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;

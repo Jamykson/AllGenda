@@ -1,0 +1,33 @@
+export interface Disciplina {
+
+  id: string
+
+  nome: string
+
+  cor?: string
+
+  icone?: string
+
+  horarios?: Horario[]
+
+}
+
+
+
+export interface Horario {
+
+  id?: string
+
+  disciplinaId?: string
+
+  diasSemana: string[]
+
+  horaInicio: string
+
+  horaFim: string
+
+  dataInicio: string
+
+  dataFim: string
+
+}

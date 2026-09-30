@@ -1,1839 +1,1614 @@
-<template>
-  <div class="app">
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="brand">
-        <h1>All<span>Genda</span></h1>
-        <p>Organização acadêmica</p>
-      </div>
-
-      <nav class="menu">
-        <NuxtLink to="/agenda" class="menu-item ativo">
-          <span>▣</span>
-          Agenda
-        </NuxtLink>
-
-        <NuxtLink to="/disciplinas" class="menu-item">
-          <span>▤</span>
-          Disciplinas
-        </NuxtLink>
-      </nav>
-
-      <div class="sidebar-footer">
-        <button class="menu-item botao-sair" @click="sair">
-          <span>↪</span>
-          Sair
-        </button>
-      </div>
-    </aside>
-
-    <!-- CONTEÚDO PRINCIPAL -->
-    <main class="conteudo">
-      <!-- HEADER -->
-      <header class="topbar">
-        <div class="navegacao-data">
-          <button class="btn-hoje" @click="irParaHoje">
-            Hoje
-          </button>
-
-          <button class="btn-seta" @click="anterior">
-            ‹
-          </button>
-
-          <button class="btn-seta" @click="proximo">
-            ›
-          </button>
-
-          <h2>{{ tituloPeriodo }}</h2>
-        </div>
-
-        <div class="seletor">
-          <button
-            :class="{ selecionado: visualizacao === 'semana' }"
-            @click="visualizacao = 'semana'"
-          >
-            Semana
-          </button>
-
-          <button
-            :class="{ selecionado: visualizacao === 'mes' }"
-            @click="visualizacao = 'mes'"
-          >
-            Mês
-          </button>
-        </div>
-      </header>
-
-      <!-- ÁREA DO CALENDÁRIO -->
-      <section class="area-calendario">
-        <div v-if="carregando" class="mensagem">
-          Carregando agenda...
-        </div>
-
-        <div v-else-if="erro" class="erro">
-          {{ erro }}
-        </div>
-
-        <!-- CALENDÁRIO MENSAL -->
-        <div
-          v-else-if="visualizacao === 'mes'"
-          class="calendario"
-        >
-          <div class="cabecalho-dias">
-            <div
-              v-for="nome in nomesDias"
-              :key="nome"
-              class="nome-dia"
-            >
-              {{ nome }}
-            </div>
-          </div>
-
-          <div class="grade-mes">
-            <div
-              v-for="dia in diasCalendario"
-              :key="dia.chave"
-              class="celula-dia celula-clicavel"
-              :class="{
-                foraMes: !dia.mesAtual,
-                diaHoje: dia.hoje
-              }"
-            >
-              <div class="numero-dia">
-                <span :class="{ hoje: dia.hoje }">
-                  {{ dia.numero }}
-                </span>
-              </div>
-
-              <div class="eventos-dia">
-                <template
-                  v-for="aula in aulasDoDia(dia.chave)"
-                  :key="aula.id"
-                >
-                  <div
-                    v-if="aula.recorrente"
-                    class="evento evento-recorrente"
-                    :style="estiloCorAula(aula)"
-                    title="Horário recorrente da disciplina"
-                  >
-                    <strong>
-                      <span v-if="iconeAula(aula)" class="evento-icone">
-                        {{ iconeAula(aula) }}
-                      </span>
-                      {{ aula.disciplinaNome }}
-                    </strong>
-
-                    <small>
-                      {{ aula.horario }}
-                    </small>
-                  </div>
-
-                  <NuxtLink
-                    v-else
-                    :to="`/aulas/${aula.id}`"
-                    class="evento"
-                    :style="estiloCorAula(aula)"
-                  >
-                    <strong>
-                      <span v-if="iconeAula(aula)" class="evento-icone">
-                        {{ iconeAula(aula) }}
-                      </span>
-                      {{ aula.disciplinaNome }}
-                    </strong>
-
-                    <small>
-                      {{ aula.horario }}
-                    </small>
-                  </NuxtLink>
-                </template>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CALENDÁRIO SEMANAL -->
-        <div
-          v-else
-          class="calendario-semana"
-        >
-          <!-- CABEÇALHO DA SEMANA -->
-          <div class="semana-cabecalho">
-            <div class="coluna-horas"></div>
-
-            <div
-              v-for="dia in diasSemanaAtual"
-              :key="dia.chave"
-              class="semana-dia"
-            >
-              <span>{{ dia.nome }}</span>
-
-              <strong :class="{ hojeSemana: dia.hoje }">
-                {{ dia.numero }}
-              </strong>
-            </div>
-          </div>
-
-          <!-- GRADE DA SEMANA -->
-          <div
-            class="grade-semana"
-            :style="{ height: `${alturaSemana}px` }"
-          >
-            <!-- HORÁRIOS -->
-            <div class="horarios">
-              <div
-                v-for="hora in horas"
-                :key="hora"
-                class="hora"
-                :style="{
-                  top: `${(hora - horaInicial) * alturaHora + alturaHora / 2}px`
-                }"
-              >
-                {{ formatarHora(hora) }}
-              </div>
-            </div>
-
-            <!-- DIAS -->
-            <div
-              v-for="dia in diasSemanaAtual"
-              :key="dia.chave"
-              class="coluna-dia-semana"
-            >
-              <!-- LINHAS DE HORÁRIO -->
-              <div
-                v-for="hora in horas"
-                :key="hora"
-                class="linha-hora linha-hora-clicavel"
-                :style="{
-                  top: `${(hora - horaInicial) * alturaHora}px`
-                }"
-              ></div>
-
-              <!-- AULAS -->
-              <template
-                v-for="aula in aulasDoDia(dia.chave)"
-                :key="aula.id"
-              >
-                <div
-                  v-if="aula.recorrente"
-                  class="evento-semana evento-recorrente"
-                  :style="{
-                    ...estiloAulaSemana(aula),
-                    ...estiloCorAula(aula)
-                  }"
-                  title="Horário recorrente da disciplina"
-                >
-                  <strong>
-                    <span v-if="iconeAula(aula)" class="evento-icone">
-                      {{ iconeAula(aula) }}
-                    </span>
-                    {{ aula.disciplinaNome }}
-                  </strong>
-
-                  <small>
-                    {{ aula.horario }}
-                  </small>
-                </div>
-
-                <NuxtLink
-                  v-else
-                  :to="`/aulas/${aula.id}`"
-                  class="evento-semana"
-                  :style="{
-                    ...estiloAulaSemana(aula),
-                    ...estiloCorAula(aula)
-                  }"
-                >
-                  <strong>
-                    <span v-if="iconeAula(aula)" class="evento-icone">
-                      {{ iconeAula(aula) }}
-                    </span>
-                    {{ aula.disciplinaNome }}
-                  </strong>
-
-                  <small>
-                    {{ aula.horario }}
-                  </small>
-
-                  <span v-if="aula.topico">
-                    {{ aula.topico }}
-                  </span>
-                </NuxtLink>
-              </template>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-</template>
-
 <script setup lang="ts">
+
+definePageMeta({
+  layout:'default'
+})
+
+
 interface Disciplina {
-  id: string
-  nome: string
+  id:string
+  nome:string
 }
+
 
 interface HorarioRecorrente {
-  dias: number[]
-  horaInicio: string
-  horaFim: string
-  dataInicio: string
-  dataFim: string
+
+  dias:number[]
+
+  horaInicio:string
+
+  horaFim:string
+
+  dataInicio:string
+
+  dataFim:string
+
 }
+
 
 interface PersonalizacaoDisciplina {
-  nome?: string
-  icone: string
-  cor: string
+
+  nome?:string
+
+  icone:string
+
+  cor:string
+
 }
 
+
 interface Aula {
-  id: string
-  data: string
-  horario: string
-  topico?: string
-  disciplinaId: string
-  disciplinaNome: string
-  recorrente?: boolean
-  cor?: string
-  icone?: string
+
+  id:string
+
+  data:string
+
+  horario:string
+
+  topico?:string
+
+  disciplinaId:string
+
+  disciplinaNome:string
+
+  recorrente?:boolean
+
+  cor?:string
+
+  icone?:string
+
 }
+
+
 
 const { $api } = useNuxtApp()
 
-const visualizacao = ref<'mes' | 'semana'>('mes')
 
-const dataAtual = ref(new Date())
 
-const disciplinas = ref<Disciplina[]>([])
-const aulas = ref<Aula[]>([])
+const visualizacao =
+ref<'mes'|'semana'>('mes')
+
+
+
+const dataAtual =
+ref(new Date())
+
+
+
+const disciplinas =
+ref<Disciplina[]>([])
+
+
+
+const aulas =
+ref<Aula[]>([])
+
+
 
 const horariosRecorrentes =
-  ref<Record<string, HorarioRecorrente>>({})
+ref<Record<string,HorarioRecorrente>>({})
+
+
 
 const personalizacoes =
-  ref<Record<string, PersonalizacaoDisciplina>>({})
+ref<Record<string,PersonalizacaoDisciplina>>({})
+
+
+
+const carregando =
+ref(true)
+
+
+
+const erro =
+ref('')
+
+
 
 const CHAVE_HORARIOS =
-  'allgenda-horarios-recorrentes'
+'allgenda-horarios-recorrentes'
+
+
 
 const CHAVE_PERSONALIZACOES =
-  'allgenda-personalizacoes-disciplinas'
+'allgenda-personalizacoes-disciplinas'
 
-const carregando = ref(true)
-const erro = ref('')
+
 
 const nomesDias = [
-  'Dom',
-  'Seg',
-  'Ter',
-  'Qua',
-  'Qui',
-  'Sex',
-  'Sáb'
+
+'Dom',
+
+'Seg',
+
+'Ter',
+
+'Qua',
+
+'Qui',
+
+'Sex',
+
+'Sáb'
+
 ]
 
-/*
-  A semana vai de 07:00 até 00:00.
-  Cada hora ocupa 64px.
-*/
+
+
 const horaInicial = 7
+
 const horaFinal = 24
+
 const alturaHora = 64
 
-const horas = Array.from(
-  { length: horaFinal - horaInicial },
-  (_, i) => horaInicial + i
+
+
+const horas =
+Array.from(
+
+{
+length:
+horaFinal-horaInicial
+},
+
+(_,i)=>
+horaInicial+i
+
 )
+
+
 
 const alturaSemana =
-  (horaFinal - horaInicial) * alturaHora
+(horaFinal-horaInicial)*alturaHora
 
-function chaveData(data: Date) {
-  const ano = data.getFullYear()
 
-  const mes = String(
-    data.getMonth() + 1
-  ).padStart(2, '0')
 
-  const dia = String(
-    data.getDate()
-  ).padStart(2, '0')
 
-  return `${ano}-${mes}-${dia}`
+const tituloPeriodo =
+computed(()=>{
+
+
+if(
+visualizacao.value==='mes'
+){
+
+return new Intl.DateTimeFormat(
+
+'pt-BR',
+
+{
+
+month:'long',
+
+year:'numeric'
+
 }
 
-function mesmaData(a: Date, b: Date) {
-  return chaveData(a) === chaveData(b)
-}
-
-function inicioDaSemana(data: Date) {
-  const inicio = new Date(data)
-
-  inicio.setHours(0, 0, 0, 0)
-
-  inicio.setDate(
-    inicio.getDate() - inicio.getDay()
-  )
-
-  return inicio
-}
-
-const tituloPeriodo = computed(() => {
-  if (visualizacao.value === 'mes') {
-    return new Intl.DateTimeFormat(
-      'pt-BR',
-      {
-        month: 'long',
-        year: 'numeric'
-      }
-    ).format(dataAtual.value)
-  }
-
-  const inicio =
-    inicioDaSemana(dataAtual.value)
-
-  const fim =
-    new Date(inicio)
-
-  fim.setDate(
-    fim.getDate() + 6
-  )
-
-  return `${inicio.toLocaleDateString(
-    'pt-BR',
-    {
-      day: '2-digit',
-      month: 'short'
-    }
-  )} - ${fim.toLocaleDateString(
-    'pt-BR',
-    {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    }
-  )}`
-})
-
-const diasCalendario = computed(() => {
-  const ano =
-    dataAtual.value.getFullYear()
-
-  const mes =
-    dataAtual.value.getMonth()
-
-  const primeiroDia =
-    new Date(ano, mes, 1)
-
-  const inicio =
-    new Date(primeiroDia)
-
-  inicio.setDate(
-    primeiroDia.getDate() -
-      primeiroDia.getDay()
-  )
-
-  return Array.from(
-    { length: 42 },
-    (_, indice) => {
-      const data =
-        new Date(inicio)
-
-      data.setDate(
-        inicio.getDate() + indice
-      )
-
-      return {
-        chave: chaveData(data),
-
-        numero:
-          data.getDate(),
-
-        mesAtual:
-          data.getMonth() === mes,
-
-        hoje:
-          mesmaData(
-            data,
-            new Date()
-          )
-      }
-    }
-  )
-})
-
-const diasSemanaAtual = computed(() => {
-  const inicio =
-    inicioDaSemana(
-      dataAtual.value
-    )
-
-  return Array.from(
-    { length: 7 },
-    (_, indice) => {
-      const data =
-        new Date(inicio)
-
-      data.setDate(
-        inicio.getDate() + indice
-      )
-
-      return {
-        chave: chaveData(data),
-
-        numero:
-          data.getDate(),
-
-        nome:
-          nomesDias[indice],
-
-        hoje:
-          mesmaData(
-            data,
-            new Date()
-          )
-      }
-    }
-  )
-})
-
-function aulasDoDia(chave: string) {
-  return aulas.value
-    .filter(
-      aula =>
-        aula.data === chave
-    )
-    .sort(
-      (a, b) =>
-        a.horario.localeCompare(
-          b.horario
-        )
-    )
-}
-
-function carregarDadosLocais() {
-  if (!import.meta.client) {
-    return
-  }
-
-  try {
-    horariosRecorrentes.value =
-      JSON.parse(
-        localStorage.getItem(
-          CHAVE_HORARIOS
-        ) || '{}'
-      )
-  } catch {
-    horariosRecorrentes.value = {}
-  }
-
-  try {
-    personalizacoes.value =
-      JSON.parse(
-        localStorage.getItem(
-          CHAVE_PERSONALIZACOES
-        ) || '{}'
-      )
-  } catch {
-    personalizacoes.value = {}
-  }
-}
-
-function criarDataLocal(
-  texto: string
-) {
-  const [ano, mes, dia] =
-    texto
-      .split('-')
-      .map(Number)
-
-  return new Date(
-    ano,
-    mes - 1,
-    dia
-  )
-}
-
-function nomeDisciplina(
-  disciplina: Disciplina
-) {
-  return (
-    personalizacoes.value[
-      disciplina.id
-    ]?.nome?.trim() ||
-    disciplina.nome
-  )
-}
-
-function gerarAulasRecorrentes() {
-  const resultado: Aula[] = []
-
-  for (
-    const disciplina
-    of disciplinas.value
-  ) {
-    const horario =
-      horariosRecorrentes.value[
-        disciplina.id
-      ]
-
-    if (!horario) {
-      continue
-    }
-
-    const inicio =
-      criarDataLocal(
-        horario.dataInicio
-      )
-
-    const fim =
-      criarDataLocal(
-        horario.dataFim
-      )
-
-    if (
-      Number.isNaN(inicio.getTime()) ||
-      Number.isNaN(fim.getTime())
-    ) {
-      continue
-    }
-
-    const atual =
-      new Date(inicio)
-
-    while (
-      atual.getTime() <=
-      fim.getTime()
-    ) {
-      const diaSemana =
-        atual.getDay()
-
-      if (
-        horario.dias.includes(
-          diaSemana
-        )
-      ) {
-        const personalizacao =
-          personalizacoes.value[
-            disciplina.id
-          ]
-
-        const data =
-          chaveData(atual)
-
-        resultado.push({
-          id:
-            `recorrente-${disciplina.id}-${data}`,
-
-          data,
-
-          horario:
-            `${horario.horaInicio} - ${horario.horaFim}`,
-
-          topico: '',
-
-          disciplinaId:
-            disciplina.id,
-
-          disciplinaNome:
-            nomeDisciplina(disciplina),
-
-          recorrente:
-            true,
-
-          cor:
-            personalizacao?.cor ||
-            '#2563eb',
-
-          icone:
-            personalizacao?.icone ||
-            disciplina.nome
-              .trim()
-              .charAt(0)
-              .toUpperCase()
-        })
-      }
-
-      atual.setDate(
-        atual.getDate() + 1
-      )
-    }
-  }
-
-  return resultado
-}
-
-function corAula(
-  aula: Aula
-) {
-  return (
-    aula.cor ||
-    personalizacoes.value[
-      aula.disciplinaId
-    ]?.cor ||
-    '#2563eb'
-  )
-}
-
-function iconeAula(
-  aula: Aula
-) {
-  return (
-    aula.icone ||
-    personalizacoes.value[
-      aula.disciplinaId
-    ]?.icone ||
-    ''
-  )
-}
-
-function hexParaRgba(
-  hex: string,
-  alpha: number
-) {
-  const valor =
-    hex.replace('#', '')
-
-  if (valor.length !== 6) {
-    return `rgba(37, 99, 235, ${alpha})`
-  }
-
-  const r =
-    parseInt(
-      valor.substring(0, 2),
-      16
-    )
-
-  const g =
-    parseInt(
-      valor.substring(2, 4),
-      16
-    )
-
-  const b =
-    parseInt(
-      valor.substring(4, 6),
-      16
-    )
-
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-function estiloCorAula(
-  aula: Aula
-) {
-  const cor =
-    corAula(aula)
-
-  return {
-    borderColor: cor,
-    color: cor,
-    background:
-      hexParaRgba(
-        cor,
-        0.13
-      )
-  }
-}
-
-function minutosInicio(
-  horario: string
-) {
-  const inicio =
-    horario
-      .split('-')[0]
-      ?.trim() || ''
-
-  const [hora, minuto] =
-    inicio
-      .split(':')
-      .map(Number)
-
-  if (Number.isNaN(hora)) {
-    return horaInicial * 60
-  }
-
-  return (
-    hora * 60 +
-    (minuto || 0)
-  )
-}
-
-function minutosFim(
-  horario: string
-) {
-  const fim =
-    horario
-      .split('-')[1]
-      ?.trim()
-
-  if (!fim) {
-    return (
-      minutosInicio(horario) + 60
-    )
-  }
-
-  const [hora, minuto] =
-    fim
-      .split(':')
-      .map(Number)
-
-  if (Number.isNaN(hora)) {
-    return (
-      minutosInicio(horario) + 60
-    )
-  }
-
-  return (
-    hora * 60 +
-    (minuto || 0)
-  )
-}
-
-function estiloAulaSemana(
-  aula: Aula
-) {
-  const inicio =
-    minutosInicio(
-      aula.horario
-    )
-
-  const fim =
-    minutosFim(
-      aula.horario
-    )
-
-  const inicioGrade =
-    horaInicial * 60
-
-  const top =
-    ((inicio - inicioGrade) / 60) *
-    alturaHora
-
-  const height =
-    Math.max(
-      ((fim - inicio) / 60) *
-        alturaHora,
-      42
-    )
-
-  return {
-    top:
-      `${Math.max(top, 0)}px`,
-
-    height:
-      `${height}px`
-  }
-}
-
-function formatarHora(
-  hora: number
-) {
-  return `${String(hora).padStart(
-    2,
-    '0'
-  )}:00`
-}
-
-function anterior() {
-  const nova =
-    new Date(
-      dataAtual.value
-    )
-
-  if (
-    visualizacao.value ===
-    'mes'
-  ) {
-    nova.setMonth(
-      nova.getMonth() - 1
-    )
-  } else {
-    nova.setDate(
-      nova.getDate() - 7
-    )
-  }
-
-  dataAtual.value = nova
-}
-
-function proximo() {
-  const nova =
-    new Date(
-      dataAtual.value
-    )
-
-  if (
-    visualizacao.value ===
-    'mes'
-  ) {
-    nova.setMonth(
-      nova.getMonth() + 1
-    )
-  } else {
-    nova.setDate(
-      nova.getDate() + 7
-    )
-  }
-
-  dataAtual.value = nova
-}
-
-function irParaHoje() {
-  dataAtual.value =
-    new Date()
-}
-
-async function carregarAgenda() {
-  carregando.value = true
-  erro.value = ''
-
-  carregarDadosLocais()
-
-  try {
-    const resposta =
-      await $api.get(
-        '/api/disciplinas'
-      )
-
-    disciplinas.value =
-      resposta.data
-
-    const respostas =
-      await Promise.all(
-        disciplinas.value.map(
-          async disciplina => {
-            const resultado =
-              await $api.get(
-                '/api/aulas',
-                {
-                  params: {
-                    disciplinaId:
-                      disciplina.id
-                  }
-                }
-              )
-
-            const personalizacao =
-              personalizacoes.value[
-                disciplina.id
-              ]
-
-            return resultado.data.map(
-              (aula: any) => ({
-                ...aula,
-
-                disciplinaId:
-                  disciplina.id,
-
-                disciplinaNome:
-                  nomeDisciplina(disciplina),
-
-                cor:
-                  personalizacao?.cor ||
-                  '#2563eb',
-
-                icone:
-                  personalizacao?.icone ||
-                  ''
-              })
-            )
-          }
-        )
-      )
-
-    const aulasBackend: Aula[] =
-      respostas.flat()
-
-    const aulasRecorrentes =
-      gerarAulasRecorrentes()
-        .filter(
-          recorrente =>
-            !aulasBackend.some(
-              real =>
-                real.disciplinaId ===
-                  recorrente.disciplinaId &&
-                real.data ===
-                  recorrente.data
-            )
-        )
-
-    aulas.value = [
-      ...aulasBackend,
-      ...aulasRecorrentes
-    ]
-  } catch (e) {
-    console.error(
-      '[agenda] erro:',
-      e
-    )
-
-    erro.value =
-      'Não foi possível carregar a agenda.'
-  } finally {
-    carregando.value = false
-  }
-}
-
-async function sair() {
-  await navigateTo('/')
-}
-
-onMounted(
-  carregarAgenda
+).format(
+dataAtual.value
 )
-</script>
+
+}
+
+
+
+const inicio =
+inicioDaSemana(
+dataAtual.value
+)
+
+
+
+const fim =
+new Date(inicio)
+
+
+
+fim.setDate(
+fim.getDate()+6
+)
+
+
+
+return `${inicio.toLocaleDateString(
+'pt-BR'
+)}
+-
+${fim.toLocaleDateString(
+'pt-BR'
+)}`
+
+
+})
+
+
+
+
+
+function chaveData(data:Date){
+
+const ano =
+data.getFullYear()
+
+
+const mes =
+String(
+data.getMonth()+1
+).padStart(2,'0')
+
+
+const dia =
+String(
+data.getDate()
+).padStart(2,'0')
+
+
+return `${ano}-${mes}-${dia}`
+
+}
+
+
+
+
+
+function mesmaData(
+a:Date,
+b:Date
+){
+
+return chaveData(a)===chaveData(b)
+
+}
+
+
+
+
+
+function inicioDaSemana(
+data:Date
+){
+
+const inicio =
+new Date(data)
+
+
+inicio.setHours(
+0,0,0,0
+)
+
+
+inicio.setDate(
+inicio.getDate()-inicio.getDay()
+)
+
+
+return inicio
+
+}
+
+
+
+
+
+const diasCalendario =
+computed(()=>{
+
+
+const ano =
+dataAtual.value.getFullYear()
+
+
+const mes =
+dataAtual.value.getMonth()
+
+
+
+const primeiro =
+new Date(
+ano,
+mes,
+1
+)
+
+
+
+const inicio =
+new Date(primeiro)
+
+
+
+inicio.setDate(
+primeiro.getDate() -
+primeiro.getDay()
+)
+
+
+
+return Array.from(
+{
+length:42
+},
+
+(_,indice)=>{
+
+
+const data =
+new Date(inicio)
+
+
+
+data.setDate(
+inicio.getDate()+indice
+)
+
+
+
+return {
+
+chave:
+chaveData(data),
+
+numero:
+data.getDate(),
+
+mesAtual:
+data.getMonth()===mes,
+
+
+hoje:
+mesmaData(
+data,
+new Date()
+)
+
+}
+
+
+}
+
+)
+
+
+})
+
+
+
+
+const diasSemanaAtual =
+computed(()=>{
+
+
+const inicio =
+inicioDaSemana(
+dataAtual.value
+)
+
+
+
+return Array.from(
+{
+length:7
+},
+
+(_,indice)=>{
+
+
+const data =
+new Date(inicio)
+
+
+
+data.setDate(
+inicio.getDate()+indice
+)
+
+
+
+return {
+
+chave:
+chaveData(data),
+
+numero:
+data.getDate(),
+
+nome:
+nomesDias[indice],
+
+
+hoje:
+mesmaData(
+data,
+new Date()
+)
+
+}
+
+
+}
+
+)
+
+
+})
+
+
+
+
+
+function aulasDoDia(
+chave:string
+){
+
+return aulas.value.filter(
+
+aula=>
+aula.data===chave
+
+)
+
+}
+
+
+
+
+
+function anterior(){
+
+
+const nova =
+new Date(
+dataAtual.value
+)
+
+
+
+if(
+visualizacao.value==='mes'
+){
+
+nova.setMonth(
+nova.getMonth()-1
+)
+
+}else{
+
+nova.setDate(
+nova.getDate()-7
+)
+
+}
+
+
+dataAtual.value =
+nova
+
+}
+
+
+
+
+
+function proximo(){
+
+
+const nova =
+new Date(
+dataAtual.value
+)
+
+
+
+if(
+visualizacao.value==='mes'
+){
+
+nova.setMonth(
+nova.getMonth()+1
+)
+
+}else{
+
+nova.setDate(
+nova.getDate()+7
+)
+
+}
+
+
+dataAtual.value =
+nova
+
+}
+
+
+
+
+function irParaHoje(){
+
+dataAtual.value =
+new Date()
+
+}
+
+
+<template>
+
+<div class="agenda-container">
+
+
+<header class="agenda-header">
+
+
+<div class="controle-data">
+
+
+<button
+class="btn-hoje"
+@click="irParaHoje"
+>
+Hoje
+</button>
+
+
+<button
+class="btn-navegacao"
+@click="anterior"
+>
+‹
+</button>
+
+
+<button
+class="btn-navegacao"
+@click="proximo"
+>
+›
+</button>
+
+
+
+<h1>
+{{ tituloPeriodo }}
+</h1>
+
+
+</div>
+
+
+
+<div class="controle-visao">
+
+
+<button
+
+:class="[
+'btn-visao',
+{
+ativo:
+visualizacao==='semana'
+}
+]"
+
+@click="visualizacao='semana'"
+
+>
+Semana
+</button>
+
+
+
+<button
+
+:class="[
+'btn-visao',
+{
+ativo:
+visualizacao==='mes'
+}
+]"
+
+@click="visualizacao='mes'"
+
+>
+Mês
+</button>
+
+
+</div>
+
+
+</header>
+
+
+
+
+
+<!-- =========================
+        VISÃO MENSAL
+========================= -->
+
+
+<div
+
+v-if="
+visualizacao==='mes'
+"
+
+class="calendario-mes"
+
+
+
+>
+
+
+<div
+
+class="cabecalho-dias"
+
+>
+
+
+<div
+
+v-for="
+dia in nomesDias
+"
+
+:key="dia"
+
+class="nome-dia"
+
+>
+
+{{dia}}
+
+</div>
+
+
+</div>
+
+
+
+
+
+<div
+
+class="grade-mes"
+
+>
+
+
+<div
+
+v-for="
+dia in diasCalendario
+"
+
+:key="
+dia.chave
+"
+
+class="celula-dia"
+
+:class="{
+
+'fora-mes':
+!dia.mesAtual,
+
+'hoje':
+dia.hoje
+
+}"
+
+>
+
+
+<div
+
+class="numero-dia"
+
+>
+
+{{dia.numero}}
+
+</div>
+
+
+
+
+
+<div
+
+class="eventos-dia"
+
+>
+
+
+<div
+
+v-for="
+aula in aulasDoDia(dia.chave)
+"
+
+:key="
+aula.id
+"
+
+class="evento"
+
+:style="{
+
+background:
+aula.cor || '#2563eb'
+
+}"
+
+>
+
+
+<span>
+
+{{aula.disciplinaNome}}
+
+</span>
+
+
+
+<small>
+
+{{aula.horario}}
+
+</small>
+
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- =========================
+        VISÃO SEMANAL
+========================= -->
+
+
+<div
+
+v-else
+
+class="calendario-semana"
+
+>
+
+
+
+<div class="cabecalho-semana">
+
+
+<div
+
+class="coluna-hora"
+
+>
+
+</div>
+
+
+
+<div
+
+v-for="
+dia in diasSemanaAtual
+"
+
+:key="
+dia.chave
+"
+
+class="dia-semana"
+
+>
+
+
+<strong>
+
+{{dia.nome}}
+
+</strong>
+
+
+<span
+
+:class="{
+
+'bolinha-hoje':
+dia.hoje
+
+}"
+
+>
+
+{{dia.numero}}
+
+</span>
+
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<div
+
+class="corpo-semana"
+
+>
+
+
+<div
+
+class="coluna-horas"
+
+>
+
+
+<div
+
+v-for="
+hora in horas
+"
+
+:key="
+hora
+"
+
+class="hora"
+
+>
+
+
+{{hora}}:00
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+<div
+
+v-for="
+dia in diasSemanaAtual
+"
+
+:key="
+dia.chave
+"
+
+class="coluna-dia"
+
+>
+
+
+<div
+
+v-for="
+hora in horas
+"
+
+:key="
+hora
+"
+
+class="linha-hora"
+
+>
+
+
+</div>
+
+
+
+
+
+<div
+
+v-for="
+aula in aulasDoDia(dia.chave)
+"
+
+:key="
+aula.id
+"
+
+class="evento-semana"
+
+:style="{
+
+background:
+aula.cor || '#2563eb'
+
+}"
+
+>
+
+
+<strong>
+
+{{aula.disciplinaNome}}
+
+</strong>
+
+
+<span>
+
+{{aula.horario}}
+
+</span>
+
+
+<p
+
+v-if="
+aula.topico
+"
+
+>
+
+{{aula.topico}}
+
+</p>
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+<div
+
+v-if="
+carregando
+"
+
+class="loading"
+
+>
+
+Carregando agenda...
+
+</div>
+
+
+
+<div
+
+v-if="
+erro
+"
+
+class="erro"
+
+>
+
+{{erro}}
+
+</div>
+
+
+
+</div>
+
+
+</template>
 
 <style scoped>
-* {
-  box-sizing: border-box;
-}
+
 
-/* APP */
+.agenda-container{
 
-.app {
-  display: flex;
+width:100%;
 
-  width: 100%;
-  min-height: 100vh;
+height:100%;
 
-  background: #f8fafc;
-  color: #0f172a;
+padding:24px;
+
+background:#f8fafc;
+
 }
 
-/* SIDEBAR */
 
-.sidebar {
-  width: 230px;
-  min-width: 230px;
 
-  height: 100vh;
 
-  position: sticky;
-  top: 0;
 
-  display: flex;
-  flex-direction: column;
+/* =========================
+ HEADER
+========================= */
 
-  background: #0f172a;
-  color: white;
-}
 
-.brand {
-  padding: 26px 22px;
+.agenda-header{
 
-  border-bottom:
-    1px solid #1e293b;
-}
+display:flex;
 
-.brand h1 {
-  margin: 0;
+justify-content:space-between;
 
-  font-size: 25px;
-  font-weight: 700;
-}
+align-items:center;
+
+margin-bottom:24px;
 
-.brand h1 span {
-  color: #60a5fa;
 }
 
-.brand p {
-  margin-top: 4px;
-  margin-bottom: 0;
 
-  font-size: 12px;
 
-  color: #94a3b8;
-}
+.controle-data{
 
-/* MENU */
+display:flex;
 
-.menu {
-  flex: 1;
+align-items:center;
 
-  padding: 16px 12px;
-}
+gap:12px;
 
-.menu-item {
-  width: 100%;
+}
 
-  display: flex;
-  align-items: center;
 
-  gap: 12px;
 
-  padding: 12px 14px;
+.controle-data h1{
 
-  border-radius: 8px;
+font-size:24px;
 
-  color: #cbd5e1;
+font-weight:700;
 
-  font-size: 14px;
+text-transform:capitalize;
 
-  text-decoration: none;
+color:#111827;
 
-  transition: 0.2s;
-}
+margin-left:12px;
 
-.menu-item:hover {
-  background: #1e293b;
-  color: white;
 }
 
-.menu-item.ativo {
-  background: #2563eb;
-  color: white;
-}
 
-.sidebar-footer {
-  padding: 14px 12px;
 
-  border-top:
-    1px solid #1e293b;
-}
+.btn-hoje,
+.btn-navegacao{
 
-.botao-sair {
-  border: none;
+background:white;
 
-  background: transparent;
+border:1px solid #e5e7eb;
 
-  cursor: pointer;
+border-radius:10px;
 
-  text-align: left;
-}
+height:38px;
 
-/* CONTEÚDO */
+padding:0 16px;
 
-.conteudo {
-  flex: 1;
+cursor:pointer;
 
-  min-width: 0;
+font-size:14px;
 
-  height: 100vh;
+font-weight:600;
 
-  display: flex;
-  flex-direction: column;
+transition:.2s;
 
-  overflow: hidden;
 }
-
-/* HEADER */
 
-.topbar {
-  min-height: 72px;
 
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 
-  gap: 20px;
+.btn-navegacao{
 
-  padding: 14px 24px;
+width:40px;
 
-  flex-shrink: 0;
+padding:0;
 
-  background: white;
+font-size:22px;
 
-  border-bottom:
-    1px solid #e2e8f0;
 }
 
-.navegacao-data {
-  display: flex;
-  align-items: center;
 
-  gap: 8px;
 
-  min-width: 0;
+.btn-hoje:hover,
+.btn-navegacao:hover{
+
+background:#f1f5f9;
+
 }
 
-.navegacao-data h2 {
-  margin:
-    0 0 0 12px;
 
-  font-size: 20px;
 
-  font-weight: 600;
 
-  text-transform: capitalize;
 
-  white-space: nowrap;
-}
 
-.btn-hoje {
-  padding: 9px 16px;
+/* =========================
+ BOTÕES VISÃO
+========================= */
 
-  border:
-    1px solid #cbd5e1;
 
-  border-radius: 8px;
+.controle-visao{
 
-  background: white;
+background:#e5e7eb;
 
-  cursor: pointer;
+padding:4px;
 
-  font-weight: 500;
+border-radius:12px;
 
-  color: #0f172a;
-}
+display:flex;
 
-.btn-hoje:hover {
-  background: #f8fafc;
+gap:4px;
+
 }
 
-.btn-seta {
-  width: 38px;
-  height: 38px;
 
-  border: none;
 
-  border-radius: 50%;
+.btn-visao{
 
-  background: transparent;
+border:none;
 
-  cursor: pointer;
+background:transparent;
 
-  font-size: 25px;
+padding:8px 18px;
 
-  color: #475569;
-}
+border-radius:9px;
 
-.btn-seta:hover {
-  background: #f1f5f9;
+cursor:pointer;
+
+font-weight:600;
+
+color:#475569;
+
 }
 
-/* SELETOR MÊS / SEMANA */
 
-.linha-hora-clicavel {
-  height: 64px;
 
-  cursor: pointer;
+.btn-visao.ativo{
 
-  transition:
-    background-color 0.15s ease;
+background:white;
 
-  z-index: 1;
-}
+color:#2563eb;
 
-.linha-hora-clicavel:hover {
-  background: rgba(219, 234, 254, 0.45);
-}
+box-shadow:0 2px 5px rgba(0,0,0,.08);
 
-.seletor {
-  display: flex;
+}
 
-  padding: 3px;
 
-  border:
-    1px solid #cbd5e1;
 
-  border-radius: 9px;
 
-  background: #f1f5f9;
 
-  flex-shrink: 0;
-}
 
-.seletor button {
-  padding: 8px 16px;
+/* =========================
+ CALENDÁRIO MENSAL
+========================= */
 
-  border: none;
 
-  border-radius: 6px;
+.calendario-mes{
 
-  background: transparent;
+background:white;
 
-  cursor: pointer;
+border-radius:16px;
 
-  color: #475569;
-}
+overflow:hidden;
 
-.seletor button.selecionado {
-  background: #2563eb;
-  color: white;
+border:1px solid #e5e7eb;
 
-  box-shadow:
-    0 1px 3px
-    rgba(0, 0, 0, 0.15);
 }
 
-/* ÁREA DO CALENDÁRIO */
 
-.area-calendario {
-  flex: 1;
 
-  min-height: 0;
+.cabecalho-dias{
 
-  padding:
-    0 20px 32px 20px;
+display:grid;
 
-  overflow-x: auto;
-  overflow-y: auto;
+grid-template-columns:repeat(7,1fr);
 
-  scrollbar-gutter: stable;
+background:#f8fafc;
 
-  background: #f8fafc;
+border-bottom:1px solid #e5e7eb;
+
 }
 
-/* CALENDÁRIO MENSAL */
 
-.celula-clicavel {
-  cursor: pointer;
-  transition:
-    background-color 0.18s ease,
-    box-shadow 0.18s ease;
-}
 
-.celula-clicavel:hover {
-  background: #eff6ff;
-  box-shadow: inset 0 0 0 2px #bfdbfe;
-}
+.nome-dia{
 
-.celula-clicavel:hover .numero-dia span:not(.hoje) {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
+padding:14px;
 
-.coluna-dia-semana {
-  cursor: pointer;
+text-align:center;
 
-  transition:
-    background-color 0.18s ease;
-}
+font-size:13px;
 
-.coluna-dia-semana:hover {
-  background: #f8fbff;
+font-weight:700;
+
+color:#64748b;
+
 }
+
 
-.calendario {
-  width: 100%;
 
-  margin-top: 20px;
 
-  background: white;
 
-  border:
-    1px solid #e2e8f0;
+.grade-mes{
 
-  border-radius: 12px;
+display:grid;
 
-  overflow: hidden;
+grid-template-columns:repeat(7,1fr);
 
-  box-shadow:
-    0 1px 3px
-    rgba(15, 23, 42, 0.08);
 }
 
-/* CABEÇALHO DIAS */
 
-.cabecalho-dias {
-  display: grid;
 
-  grid-template-columns:
-    repeat(7, 1fr);
+.celula-dia{
 
-  background: #f8fafc;
+min-height:120px;
 
-  border-bottom:
-    1px solid #e2e8f0;
-}
+border-right:1px solid #e5e7eb;
 
-.nome-dia {
-  padding: 12px;
+border-bottom:1px solid #e5e7eb;
 
-  text-align: center;
+padding:10px;
 
-  font-size: 12px;
+background:white;
 
-  font-weight: 600;
+}
 
-  color: #64748b;
 
-  text-transform: uppercase;
-}
 
-/* GRADE MÊS */
+.celula-dia:nth-child(7n){
 
-.grade-mes {
-  display: grid;
+border-right:none;
 
-  grid-template-columns:
-    repeat(
-      7,
-      minmax(0, 1fr)
-    );
 }
 
-.celula-dia {
-  min-height: 135px;
 
-  padding: 8px;
 
-  border-right:
-    1px solid #e2e8f0;
+.celula-dia.fora-mes{
 
-  border-bottom:
-    1px solid #e2e8f0;
+background:#f8fafc;
 
-  background: white;
-}
+color:#94a3b8;
 
-.celula-dia:nth-child(7n) {
-  border-right: none;
 }
 
-.celula-dia.foraMes {
-  background: #f8fafc;
-}
 
-.celula-dia.diaHoje {
-  background: #eff6ff;
-}
 
-.numero-dia {
-  display: flex;
+.celula-dia.hoje{
 
-  justify-content: flex-end;
+background:#eff6ff;
 
-  margin-bottom: 6px;
 }
 
-.numero-dia span {
-  width: 28px;
-  height: 28px;
 
-  display: flex;
 
-  align-items: center;
-  justify-content: center;
+.numero-dia{
 
-  border-radius: 50%;
+font-size:14px;
 
-  font-size: 13px;
+font-weight:700;
 
-  color: #334155;
+margin-bottom:8px;
+
 }
 
-.numero-dia span.hoje {
-  background: #2563eb;
 
-  color: white;
 
-  font-weight: 600;
-}
+
+
+/* =========================
+ EVENTOS
+========================= */
+
 
-/* EVENTOS DO MÊS */
+.eventos-dia{
 
-.eventos-dia {
-  display: flex;
+display:flex;
 
-  flex-direction: column;
+flex-direction:column;
 
-  gap: 4px;
+gap:6px;
+
 }
 
-.evento {
-  display: block;
 
-  padding: 6px 7px;
 
-  border-left:
-    4px solid;
+.evento{
 
-  border-radius: 6px;
+color:white;
 
-  text-decoration: none;
+border-radius:8px;
 
-  font-size: 11px;
+padding:6px 8px;
 
-  overflow: hidden;
-}
+font-size:12px;
 
-.evento strong {
-  display: block;
+display:flex;
 
-  white-space: nowrap;
+flex-direction:column;
 
-  overflow: hidden;
+cursor:pointer;
 
-  text-overflow: ellipsis;
 }
 
-.evento small {
-  display: block;
 
-  margin-top: 2px;
-}
 
-.evento-icone {
-  margin-right: 4px;
-}
+.evento span{
 
-.evento-recorrente {
-  cursor: default;
+font-weight:700;
+
 }
+
 
-/* CORES DOS EVENTOS */
 
-.evento-azul {
-  background: #dbeafe;
+.evento small{
 
-  border-color: #2563eb;
+opacity:.9;
 
-  color: #1e3a8a;
 }
 
-.evento-ciano {
-  background: #cffafe;
 
-  border-color: #0891b2;
 
-  color: #164e63;
-}
 
-.evento-indigo {
-  background: #e0e7ff;
 
-  border-color: #4f46e5;
+/* =========================
+ SEMANA
+========================= */
 
-  color: #312e81;
-}
 
-.evento-royal {
-  background: #dbeafe;
+.calendario-semana{
 
-  border-color: #1d4ed8;
+background:white;
 
-  color: #172554;
-}
+border-radius:16px;
+
+overflow:hidden;
+
+border:1px solid #e5e7eb;
 
-/* CALENDÁRIO SEMANAL */
+}
 
-.calendario-semana {
-  width: 100%;
 
-  min-width: 900px;
 
-  margin-top: 0;
+.cabecalho-semana{
 
-  background: white;
+display:grid;
 
-  border:
-    1px solid #e2e8f0;
+grid-template-columns:70px repeat(7,1fr);
 
-  border-radius:
-    0 0 12px 12px;
+border-bottom:1px solid #e5e7eb;
 
-  overflow: visible;
 }
 
-/* CABEÇALHO DA SEMANA */
 
-.semana-cabecalho {
-  display: grid;
 
-  grid-template-columns:
-    70px repeat(
-      7,
-      minmax(
-        120px,
-        1fr
-      )
-    );
+.dia-semana{
 
-  position: sticky;
+padding:14px;
 
-  top: 0;
+text-align:center;
 
-  z-index: 20;
+border-left:1px solid #e5e7eb;
 
-  background: #f8fafc;
+display:flex;
 
-  border-bottom:
-    1px solid #e2e8f0;
+flex-direction:column;
 
-  box-shadow:
-    0 1px 0
-    rgba(15, 23, 42, 0.05);
-}
+gap:4px;
 
-.coluna-horas {
-  border-right:
-    1px solid #e2e8f0;
 }
 
-.semana-dia {
-  height: 72px;
 
-  display: flex;
 
-  flex-direction: column;
+.dia-semana strong{
 
-  align-items: center;
-  justify-content: center;
+font-size:13px;
 
-  border-right:
-    1px solid #e2e8f0;
-}
+color:#64748b;
 
-.semana-dia:last-child {
-  border-right: none;
 }
 
-.semana-dia span {
-  font-size: 11px;
 
-  font-weight: 600;
 
-  color: #64748b;
+.dia-semana span{
 
-  text-transform: uppercase;
+font-size:18px;
+
+font-weight:700;
+
 }
+
 
-.semana-dia strong {
-  width: 36px;
-  height: 36px;
 
-  margin-top: 4px;
 
-  display: flex;
 
-  align-items: center;
-  justify-content: center;
+.bolinha-hoje{
 
-  border-radius: 50%;
+color:#2563eb;
 
-  font-size: 18px;
 }
 
-.semana-dia strong.hojeSemana {
-  background: #2563eb;
 
-  color: white;
-}
 
-/* GRADE SEMANAL */
 
-.grade-semana {
-  display: grid;
 
-  grid-template-columns:
-    70px repeat(
-      7,
-      minmax(
-        120px,
-        1fr
-      )
-    );
+.corpo-semana{
 
-  position: relative;
-}
+display:grid;
 
-/* COLUNA DE HORÁRIOS */
+grid-template-columns:70px repeat(7,1fr);
 
-.horarios {
-  position: relative;
+height:calc(100vh - 250px);
 
-  border-right:
-    1px solid #e2e8f0;
+overflow:auto;
 
-  background: #ffffff;
 }
 
-.hora {
-  position: absolute;
 
-  right: 10px;
 
-  transform:
-    translateY(-50%);
 
-  font-size: 11px;
 
-  font-weight: 500;
+.coluna-horas{
 
-  color: #94a3b8;
+border-right:1px solid #e5e7eb;
 
-  white-space: nowrap;
 }
 
-/* COLUNAS DOS DIAS */
 
-.coluna-dia-semana {
-  position: relative;
 
-  border-right:
-    1px solid #e2e8f0;
+.hora{
 
-  background: white;
-}
+height:64px;
 
-.coluna-dia-semana:last-child {
-  border-right: none;
-}
+font-size:12px;
+
+color:#94a3b8;
 
-/* LINHAS DAS HORAS */
+padding:8px;
 
-.linha-hora {
-  position: absolute;
+text-align:right;
 
-  left: 0;
-  right: 0;
+border-bottom:1px solid #f1f5f9;
 
-  border-top:
-    1px solid #e2e8f0;
 }
 
-/* EVENTOS DA SEMANA */
 
-.evento-semana {
-  position: absolute;
 
-  left: 4px;
-  right: 4px;
 
-  z-index: 2;
 
-  padding: 7px;
+.coluna-dia{
 
-  border-left:
-    4px solid;
+position:relative;
 
-  border-radius: 7px;
+border-right:1px solid #e5e7eb;
 
-  overflow: hidden;
+}
+
+
 
-  text-decoration: none;
+.linha-hora{
 
-  font-size: 11px;
+height:64px;
 
-  transition:
-    filter 0.15s,
-    transform 0.15s;
+border-bottom:1px solid #f1f5f9;
+
 }
 
-.evento-semana:hover {
-  filter: brightness(0.96);
 
-  transform: translateY(-2px);
 
-  box-shadow:
-    0 4px 10px
-    rgba(15, 23, 42, 0.12);
 
-  cursor: pointer;
-}
 
-.evento {
-  cursor: pointer;
+.evento-semana{
 
-  transition:
-    transform 0.15s ease,
-    filter 0.15s ease,
-    box-shadow 0.15s ease;
-}
+position:absolute;
 
-.evento:hover {
-  transform: translateY(-1px);
+left:8px;
 
-  filter: brightness(0.97);
+right:8px;
 
-  box-shadow:
-    0 3px 8px
-    rgba(15, 23, 42, 0.12);
-}
+top:10px;
 
-.evento-semana strong {
-  display: block;
+border-radius:10px;
 
-  font-size: 11px;
-}
+padding:8px;
+
+color:white;
 
-.evento-semana small {
-  display: block;
+font-size:12px;
 
-  margin-top: 2px;
+z-index:2;
+
 }
 
-.evento-semana span {
-  display: block;
 
-  margin-top: 3px;
 
-  white-space: nowrap;
+.evento-semana strong{
 
-  overflow: hidden;
+display:block;
 
-  text-overflow: ellipsis;
 }
 
-/* ESTADOS */
 
-.mensagem {
-  margin-top: 20px;
 
-  padding: 50px;
+.evento-semana span{
 
-  text-align: center;
+font-size:11px;
 
-  background: white;
+}
 
-  border-radius: 12px;
 
-  color: #64748b;
-}
 
-.erro {
-  margin-top: 20px;
 
-  padding: 16px;
 
-  border:
-    1px solid #fecaca;
+/* =========================
+ ESTADOS
+========================= */
 
-  border-radius: 8px;
 
-  background: #fef2f2;
+.loading{
 
-  color: #dc2626;
+margin-top:20px;
+
+color:#64748b;
+
 }
 
-/* RESPONSIVIDADE */
 
-@media (max-width: 900px) {
-  .sidebar {
-    width: 180px;
-    min-width: 180px;
-  }
 
-  .topbar {
-    align-items:
-      flex-start;
+.erro{
 
-    flex-direction:
-      column;
-  }
+margin-top:20px;
 
-  .navegacao-data {
-    flex-wrap: wrap;
-  }
+padding:12px;
 
-  .navegacao-data h2 {
-    white-space: normal;
-  }
+background:#fee2e2;
 
-  .area-calendario {
-    overflow-x: auto;
-    overflow-y: auto;
-  }
+color:#991b1b;
 
-  .calendario {
-    min-width: 800px;
-  }
+border-radius:10px;
 
-  .calendario-semana {
-    min-width: 900px;
-  }
 }
+
+
+
+
 </style>

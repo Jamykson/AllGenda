@@ -1,4 +1,5 @@
 package com.allgenda.service.impl;
+import com.allgenda.dto.request.AnotacaoUpdateDTO;
 
 import com.allgenda.config.UsuarioPadraoInitializer;
 import com.allgenda.dto.request.AnotacaoRequestDTO;
