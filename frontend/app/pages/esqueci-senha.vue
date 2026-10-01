@@ -1,117 +1,469 @@
 <template>
-  <div
-    class="min-h-screen bg-[linear-gradient(180deg,#dbeafe_0%,#eff6ff_45%,#ffffff_100%)] flex items-center justify-center px-4"
-  >
-    <div class="w-full max-w-md rounded-2xl bg-white shadow-xl p-8 border border-blue-100">
-      <div class="text-center mb-6">
-        <h1 class="text-2xl font-semibold text-slate-900">
-          Redefinir senha
+
+<div class="auth-page">
+
+  <main class="auth-shell">
+
+    <section class="auth-content">
+
+
+      <div class="brand">
+
+        <div class="brand-mark">
+
+          <span class="mark-part mark-part-1"></span>
+          <span class="mark-part mark-part-2"></span>
+
+        </div>
+
+
+        <h1 class="brand-name">
+          AllGenda
         </h1>
 
-        <p class="text-sm text-slate-500 mt-2">
-          Informe seus dados para criar uma nova senha.
-        </p>
       </div>
 
-      <form class="space-y-4" @submit.prevent="salvarNovaSenha">
+
+
+      <div class="headline">
+
+        <h2>
+          Redefinir senha
+        </h2>
+
+
+        <p>
+          Informe seus dados para criar uma nova senha.
+        </p>
+
+      </div>
+
+
+
+
+      <form
+        class="form"
+        @submit.prevent="redefinir"
+      >
+
+
         <input
           v-model="email"
           type="email"
           placeholder="E-mail"
-          class="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          class="field"
         />
 
-        <div class="relative">
+
+
+        <div class="password-wrapper">
+
           <input
             v-model="novaSenha"
-            :type="mostrarSenha1 ? 'text' : 'password'"
+            :type="mostrarSenha ? 'text':'password'"
             placeholder="Nova senha"
-            class="w-full rounded-lg border border-slate-300 px-3 py-3 pr-20 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            class="field"
           />
+
 
           <button
             type="button"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600 hover:text-blue-700"
-            @click="mostrarSenha1 = !mostrarSenha1"
+            class="password-toggle"
+            @click="mostrarSenha=!mostrarSenha"
           >
-            {{ mostrarSenha1 ? 'Ocultar' : 'Ver' }}
+            Ver
           </button>
+
         </div>
 
-        <div class="relative">
+
+
+        <div class="password-wrapper">
+
           <input
             v-model="confirmarSenha"
-            :type="mostrarSenha2 ? 'text' : 'password'"
+            :type="mostrarConfirmar ? 'text':'password'"
             placeholder="Confirmar nova senha"
-            class="w-full rounded-lg border border-slate-300 px-3 py-3 pr-20 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            class="field"
           />
+
 
           <button
             type="button"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-blue-600 hover:text-blue-700"
-            @click="mostrarSenha2 = !mostrarSenha2"
+            class="password-toggle"
+            @click="mostrarConfirmar=!mostrarConfirmar"
           >
-            {{ mostrarSenha2 ? 'Ocultar' : 'Ver' }}
+            Ver
           </button>
+
         </div>
 
-        <p v-if="erro" class="text-sm text-red-500">
-          {{ erro }}
-        </p>
 
-        <p v-if="sucesso" class="text-sm text-green-600">
-          {{ sucesso }}
-        </p>
 
         <button
+          class="submit-button"
           type="submit"
-          class="w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
         >
+
           Salvar nova senha
+
         </button>
 
-        <div class="text-center">
-          <NuxtLink
-            to="/"
-            class="text-sm text-blue-600 hover:text-blue-700 hover:underline"
-          >
-            Voltar para login
-          </NuxtLink>
-        </div>
+
       </form>
-    </div>
-  </div>
+
+
+
+
+      <NuxtLink
+        to="/"
+        class="forgot-link"
+      >
+
+        Voltar para login
+
+      </NuxtLink>
+
+
+
+    </section>
+
+  </main>
+
+
+</div>
+
 </template>
 
+
+
 <script setup lang="ts">
+
+
+definePageMeta({
+  layout:'auth'
+})
+
+
 const email = ref('')
 const novaSenha = ref('')
 const confirmarSenha = ref('')
 
-const mostrarSenha1 = ref(false)
-const mostrarSenha2 = ref(false)
 
-const erro = ref('')
-const sucesso = ref('')
+const mostrarSenha = ref(false)
 
-function salvarNovaSenha() {
-  erro.value = ''
-  sucesso.value = ''
+const mostrarConfirmar = ref(false)
 
-  if (
-    !email.value.trim() ||
-    !novaSenha.value.trim() ||
-    !confirmarSenha.value.trim()
-  ) {
-    erro.value = 'Preencha todos os campos.'
-    return
-  }
 
-  if (novaSenha.value !== confirmarSenha.value) {
-    erro.value = 'As senhas não coincidem.'
-    return
-  }
 
-  sucesso.value = 'Senha alterada com sucesso.'
+async function redefinir(){
+
+  await navigateTo('/')
+
 }
+
+
 </script>
+
+
+
+<style scoped>
+
+
+.auth-page{
+
+width:100vw;
+
+min-height:100vh;
+
+background:
+
+radial-gradient(
+circle at 15% 0%,
+rgba(147,197,253,.45),
+transparent 45%
+),
+
+radial-gradient(
+circle at 85% 0%,
+rgba(96,165,250,.35),
+transparent 45%
+),
+
+linear-gradient(
+180deg,
+#eff6ff,
+#ffffff
+);
+
+color:#0f172a;
+
+}
+
+
+
+.auth-shell{
+
+min-height:100vh;
+
+display:flex;
+
+justify-content:center;
+
+align-items:flex-start;
+
+padding:70px 24px;
+
+}
+
+
+
+.auth-content{
+
+width:100%;
+
+max-width:400px;
+
+}
+
+
+
+.brand{
+
+text-align:center;
+
+margin-bottom:18px;
+
+}
+
+
+
+.brand-mark{
+
+width:46px;
+
+height:34px;
+
+margin:auto;
+
+position:relative;
+
+}
+
+
+
+.mark-part{
+
+position:absolute;
+
+width:30px;
+
+height:11px;
+
+border-radius:999px;
+
+}
+
+
+
+.mark-part-1{
+
+left:2px;
+
+top:7px;
+
+transform:rotate(40deg);
+
+background:
+linear-gradient(
+90deg,
+#38bdf8,
+#2563eb
+);
+
+}
+
+
+
+.mark-part-2{
+
+right:2px;
+
+top:7px;
+
+transform:rotate(-40deg);
+
+background:
+linear-gradient(
+90deg,
+#2563eb,
+#1d4ed8
+);
+
+}
+
+
+
+.brand-name{
+
+font-size:22px;
+
+font-weight:800;
+
+}
+
+
+
+.headline{
+
+text-align:center;
+
+margin-bottom:25px;
+
+}
+
+
+
+.headline h2{
+
+font-size:22px;
+
+font-weight:800;
+
+margin:0;
+
+}
+
+
+
+.headline p{
+
+font-size:13px;
+
+color:#64748b;
+
+}
+
+
+
+.form{
+
+display:flex;
+
+flex-direction:column;
+
+gap:14px;
+
+}
+
+
+
+.field{
+
+height:46px;
+
+width:100%;
+
+border:1px solid #cbd5e1;
+
+border-radius:9px;
+
+padding:0 14px;
+
+font-size:14px;
+
+outline:none;
+
+background:white;
+
+}
+
+
+
+.field:focus{
+
+border-color:#2563eb;
+
+}
+
+
+
+.password-wrapper{
+
+position:relative;
+
+}
+
+
+
+.password-toggle{
+
+position:absolute;
+
+right:14px;
+
+top:50%;
+
+transform:translateY(-50%);
+
+border:none;
+
+background:none;
+
+color:#2563eb;
+
+cursor:pointer;
+
+}
+
+
+
+.submit-button{
+
+height:46px;
+
+border:none;
+
+border-radius:9px;
+
+background:#2563eb;
+
+color:white;
+
+font-weight:700;
+
+font-size:14px;
+
+cursor:pointer;
+
+}
+
+
+
+.submit-button:hover{
+
+background:#1d4ed8;
+
+}
+
+
+
+.forgot-link{
+
+display:block;
+
+text-align:center;
+
+margin-top:18px;
+
+font-size:13px;
+
+color:#2563eb;
+
+text-decoration:none;
+
+}
+
+
+
+</style>

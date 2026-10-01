@@ -10,4 +10,5 @@ public interface DisciplinaService {
     DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto);
     List<DisciplinaResponseDTO> listarTodas();
     DisciplinaResponseDTO buscarPorId(UUID id);
+    void excluir(UUID id);
 }

@@ -35,4 +35,10 @@ public class DisciplinaController {
     public DisciplinaResponseDTO buscarPorId(@PathVariable UUID id) { // @PathVariable extrai o id da URL e já converte pro tipo UUID.
         return service.buscarPorId(id); // busca por ID assume que o cliente já obteve o id de algum jeito antes.
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable UUID id) {
+        service.excluir(id);
+        return ResponseEntity.noContent().build();
+    }
 }

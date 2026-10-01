@@ -12,7 +12,8 @@ public class DisciplinaMapper {
     public DisciplinaResponseDTO toDto(Disciplina disciplina){
         return new DisciplinaResponseDTO(
             disciplina.getId(),
-            disciplina.getNome()
+            disciplina.getNome(),
+            disciplina.getDescricao()
         );
     }
 

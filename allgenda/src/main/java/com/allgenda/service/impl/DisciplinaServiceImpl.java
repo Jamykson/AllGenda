@@ -31,8 +31,16 @@ public class DisciplinaServiceImpl implements DisciplinaService {
             throw new RequisicaoInvalidaException("O nome da disciplina é obrigatório.");
         }
 
+        String nome = dto.nome().trim();
+        String descricao = dto.descricao() == null ? null : dto.descricao().trim();
+
+        if (descricao != null && descricao.length() > 500) {
+            throw new RequisicaoInvalidaException("A descrição deve ter no máximo 500 caracteres.");
+        }
+
         Disciplina disciplina = new Disciplina();
-        disciplina.setNome(dto.nome());
+        disciplina.setNome(nome);
+        disciplina.setDescricao(descricao == null || descricao.isBlank() ? null : descricao);
 
         Disciplina salva = repository.save(disciplina);
         return mapper.toDto(salva); // mapeia a disciplina salva para um DisciplinaResponseDTO, para assim retornar ao controller o objeto adequado.
@@ -50,5 +58,13 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         Disciplina disciplina = repository.findById(id)
             .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));
         return mapper.toDto(disciplina);
+    }
+
+    @Override
+    @Transactional
+    public void excluir(UUID id) {
+        Disciplina disciplina = repository.findById(id)
+            .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));
+        repository.delete(disciplina);
     }
 }

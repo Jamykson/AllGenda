@@ -27,6 +27,9 @@ public class Disciplina implements Serializable {
     @Column(name = "nome")
     private String nome;
 
+    @Column(name = "descricao", length = 500)
+    private String descricao;
+
     @OneToMany(mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Aula> aulas = new ArrayList<>();
 
@@ -44,6 +47,14 @@ public class Disciplina implements Serializable {
 
     public void setNome(String nome) {
         this.nome = nome;
+    }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
     }
 
     public List<Aula> getAulas() {

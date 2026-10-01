@@ -4,19 +4,21 @@
 
 
 <div class="logo">
-  AllGenda
+    <strong>AllGenda</strong>
+    <span>Organização acadêmica</span>
 </div>
-
 
 
 <nav>
 
 <NuxtLink to="/agenda">
+    <span class="nav-icon" aria-hidden="true">▣</span>
   Agenda
 </NuxtLink>
 
 
 <NuxtLink to="/disciplinas">
+    <span class="nav-icon" aria-hidden="true">▤</span>
   Disciplinas
 </NuxtLink>
 
@@ -26,12 +28,12 @@
 
 
 <div class="rodape">
+    <span class="nav-icon" aria-hidden="true">↪</span>
   Sair
 </div>
 
 
 </aside>
-
 
 </template>
 
@@ -39,22 +41,25 @@
 
 <style scoped>
 
-
 .sidebar {
 
-width:260px;
+    width:180px;
 
-height:100vh;
+    min-width:180px;
 
-background:#ffffff;
+    flex-shrink:0;
 
-border-right:1px solid #e5e7eb;
+    height:100vh;
 
-display:flex;
+    background:#0f172a;
 
-flex-direction:column;
+    border-right:1px solid #1e293b;
 
-padding:24px;
+    display:flex;
+
+    flex-direction:column;
+
+    padding:14px 6px 12px;
 
 }
 
@@ -62,13 +67,35 @@ padding:24px;
 
 .logo {
 
-font-size:24px;
+    display:flex;
 
-font-weight:800;
+    flex-direction:column;
 
-margin-bottom:40px;
+    gap:6px;
 
-color:#2563eb;
+    font-size:22px;
+
+    font-weight:800;
+
+    margin:0 -6px 12px;
+
+    padding:0 14px 18px;
+
+    color:#ffffff;
+
+    border-bottom:1px solid #1e293b;
+
+    letter-spacing:0;
+
+}
+
+.logo span {
+
+    color:#94a3b8;
+
+    font-size:11px;
+
+    font-weight:400;
 
 }
 
@@ -76,11 +103,11 @@ color:#2563eb;
 
 nav {
 
-display:flex;
+    display:flex;
 
-flex-direction:column;
+    flex-direction:column;
 
-gap:8px;
+    gap:6px;
 
 }
 
@@ -88,15 +115,33 @@ gap:8px;
 
 nav a {
 
-padding:12px 14px;
+    display:flex;
 
-border-radius:10px;
+    align-items:center;
 
-text-decoration:none;
+    gap:10px;
 
-color:#475569;
+    padding:10px 12px;
 
-font-weight:600;
+    border-radius:6px;
+
+    text-decoration:none;
+
+    color:#94a3b8;
+
+    font-size:15px;
+
+    font-weight:600;
+
+    transition:.2s;
+
+}
+
+
+
+nav a:hover {
+
+    background:#1e293b;
 
 }
 
@@ -104,9 +149,21 @@ font-weight:600;
 
 nav a.router-link-active {
 
-background:#eff6ff;
+    background:#2563eb;
 
-color:#2563eb;
+    color:#ffffff;
+
+}
+
+.nav-icon {
+
+    width:12px;
+
+    flex:0 0 12px;
+
+    font-size:12px;
+
+    text-align:center;
 
 }
 
@@ -114,14 +171,76 @@ color:#2563eb;
 
 .rodape {
 
-margin-top:auto;
+    margin-top:auto;
 
-color:#64748b;
+    margin-right:-6px;
 
-cursor:pointer;
+    margin-left:-6px;
+
+    padding:22px 12px 10px;
+
+    color:#94a3b8;
+
+    border-top:1px solid #1e293b;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    font-size:15px;
+
+    cursor:pointer;
 
 }
 
+
+
+@media(max-width:768px){
+
+
+.sidebar {
+
+    width:100%;
+
+    min-width:100%;
+
+    height:auto;
+
+    flex-direction:row;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    padding:12px 16px;
+
+}
+
+
+.logo {
+
+    margin-bottom:0;
+
+}
+
+
+nav {
+
+    flex-direction:row;
+
+}
+
+
+.rodape {
+
+    margin-top:0;
+
+}
+
+
+}
 
 
 </style>

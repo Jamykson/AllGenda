@@ -1,3 +1,10 @@
+const apiBase = process.env.NUXT_PUBLIC_API_BASE
+  || (
+    process.env.CODESPACE_NAME && process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN
+      ? `https://${process.env.CODESPACE_NAME}-8080.${process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}`
+      : 'http://localhost:8080'
+  )
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
 
@@ -14,7 +21,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: 'https://organic-broccoli-4px7vpwpx6p24xr-8080.app.github.dev'
+      apiBase
     }
   }
 })

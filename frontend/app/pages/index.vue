@@ -1,144 +1,158 @@
 <template>
-  <div
-    class="min-h-screen bg-[linear-gradient(180deg,#dbeafe_0%,#eff6ff_45%,#ffffff_100%)] flex items-center justify-center px-4"
-  >
-    <div
-      class="w-full max-w-md rounded-2xl bg-white shadow-xl p-8 border border-blue-100"
-    >
-      <div class="text-center mb-6">
-        <h1 class="text-2xl font-semibold text-slate-900">
-          Bem-vindo de volta!
-        </h1>
+  <div class="auth-page">
 
-        <p class="text-sm text-slate-500 mt-2">
-          Não tem uma conta?
+    <main class="auth-shell">
+      <section class="auth-content">
+        <div class="brand">
+          <div class="brand-mark">
+            <span class="mark-part mark-part-1"></span>
+            <span class="mark-part mark-part-2"></span>
+          </div>
 
-          <NuxtLink
-            to="/cadastro"
-            class="text-blue-600 hover:text-blue-700 hover:underline"
-          >
-            Criar uma conta
-          </NuxtLink>
-        </p>
-      </div>
-
-      <form class="space-y-4" @submit.prevent="entrar">
-        <input
-          v-model="email"
-          type="email"
-          placeholder="E-mail"
-          class="w-full rounded-lg border px-3 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          :class="erro ? 'border-red-400' : 'border-slate-300'"
-        />
-
-        <div class="relative">
-          <input
-            v-model="senha"
-            :type="mostrarSenha ? 'text' : 'password'"
-            placeholder="Senha"
-            class="w-full rounded-lg border border-slate-300 px-3 py-3 pr-12 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-          />
-
-          <button
-            type="button"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-blue-600"
-            :aria-label="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"
-            @click="mostrarSenha = !mostrarSenha"
-          >
-            <svg
-              v-if="!mostrarSenha"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="h-5 w-5"
-            >
-              <path
-                d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12"
-              ></path>
-
-              <circle
-                cx="12"
-                cy="12"
-                r="3"
-              ></circle>
-            </svg>
-
-            <svg
-              v-else
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="h-5 w-5"
-            >
-              <path d="M3 3l18 18"></path>
-
-              <path
-                d="M10.6 10.6a2 2 0 0 0 2.8 2.8"
-              ></path>
-
-              <path
-                d="M9.9 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.4 18.4 0 0 1-3 4"
-              ></path>
-
-              <path
-                d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a10.6 10.6 0 0 0 4.1-.8"
-              ></path>
-            </svg>
-          </button>
+          <h1 class="brand-name">AllGenda</h1>
         </div>
 
-        <p
-          v-if="erro"
-          class="text-sm text-red-500"
-        >
-          {{ erro }}
-        </p>
+        <div class="headline">
+          <h2>Bem-vindo de volta!</h2>
 
-        <button
-          type="submit"
-          class="w-full rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
-        >
-          Entrar
-        </button>
+          <p>
+            Não tem uma conta?
+            <NuxtLink to="/cadastro">
+              Criar uma conta
+            </NuxtLink>
+          </p>
+        </div>
 
-        <div class="text-center">
+        <form
+          class="form"
+          @submit.prevent="entrar"
+        >
+          <div class="field-group">
+            <input
+              v-model="email"
+              type="email"
+              placeholder="E-mail"
+              class="field"
+              :class="{ 'field-error': erroEmail }"
+              @input="erroEmail = ''"
+            />
+
+            <p
+              v-if="erroEmail"
+              class="field-message"
+            >
+              {{ erroEmail }}
+            </p>
+          </div>
+
+          <div class="password-wrapper">
+            <input
+              v-model="senha"
+              :type="mostrarSenha ? 'text' : 'password'"
+              placeholder="Senha"
+              class="field field-password"
+            />
+
+            <button
+              type="button"
+              class="password-toggle"
+              @click="mostrarSenha = !mostrarSenha"
+            >
+              <svg
+                v-if="!mostrarSenha"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 3l18 18" />
+                <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                <path d="M9.9 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a18.4 18.4 0 0 1-3 4" />
+                <path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a10.6 10.6 0 0 0 4.1-.8" />
+              </svg>
+            </button>
+          </div>
+
+          <p
+            v-if="erroLogin"
+            class="login-message"
+          >
+            {{ erroLogin }}
+          </p>
+
+          <button
+            type="submit"
+            class="submit-button"
+            :disabled="!formValido"
+          >
+            Entre
+          </button>
+
           <NuxtLink
             to="/esqueci-senha"
-            class="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+            class="forgot-link"
           >
             Esqueceu a senha?
           </NuxtLink>
-        </div>
-      </form>
-    </div>
+        </form>
+      </section>
+    </main>
+
+    <footer class="auth-footer">
+      Precisa de ajuda?
+    </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-
 definePageMeta({
-    layout:'auth'
+  layout: 'auth'
 })
 
-</script>
 const email = ref('')
 const senha = ref('')
 const mostrarSenha = ref(false)
-const erro = ref('')
+
+const erroEmail = ref('')
+const erroLogin = ref('')
+
+const formValido = computed(() =>
+  email.value.trim() !== '' &&
+  senha.value.trim() !== ''
+)
 
 async function entrar() {
-  erro.value = ''
+  erroEmail.value = ''
+  erroLogin.value = ''
 
-  if (!email.value.trim() || !senha.value.trim()) {
-    erro.value = 'Preencha e-mail e senha.'
+  if (!email.value.trim()) {
+    erroEmail.value = 'E-mail obrigatório'
+    return
+  }
+
+  if (!senha.value.trim()) {
+    erroLogin.value = 'Informe sua senha.'
     return
   }
 
@@ -150,6 +164,378 @@ async function entrar() {
     return
   }
 
-  erro.value = 'E-mail ou senha inválidos.'
+  erroLogin.value = 'E-mail ou senha inválidos.'
 }
 </script>
+
+<style scoped>
+
+.auth-page {
+
+  position:relative;
+
+  width:100vw;
+
+  min-height:100vh;
+
+  overflow:hidden;
+
+  background:
+    radial-gradient(
+      circle at 15% 0%,
+      rgba(147,197,253,.45),
+      transparent 45%
+    ),
+
+    radial-gradient(
+      circle at 85% 0%,
+      rgba(96,165,250,.35),
+      transparent 45%
+    ),
+
+    linear-gradient(
+      180deg,
+      #eff6ff 0%,
+      #ffffff 45%
+    );
+
+  color:#0f172a;
+
+}
+
+
+
+.auth-shell {
+
+  min-height:calc(100vh - 48px);
+
+  display:flex;
+
+  justify-content:center;
+
+  align-items:flex-start;
+
+  padding:68px 24px 20px;
+
+}
+
+
+
+.auth-content {
+
+  width:100%;
+
+  max-width:400px;
+
+}
+
+
+
+.brand {
+
+  text-align:center;
+
+  margin-bottom:14px;
+
+}
+
+
+
+.brand-mark {
+
+  width:46px;
+
+  height:34px;
+
+  margin:auto;
+
+  position:relative;
+
+}
+
+
+
+.mark-part {
+
+  position:absolute;
+
+  width:30px;
+
+  height:11px;
+
+  border-radius:999px;
+
+}
+
+
+
+.mark-part-1 {
+
+  left:2px;
+
+  top:7px;
+
+  transform:rotate(40deg);
+
+  background:
+    linear-gradient(
+      90deg,
+      #38bdf8,
+      #2563eb
+    );
+
+}
+
+
+
+.mark-part-2 {
+
+  right:2px;
+
+  top:7px;
+
+  transform:rotate(-40deg);
+
+  background:
+    linear-gradient(
+      90deg,
+      #2563eb,
+      #1d4ed8
+    );
+
+}
+
+
+
+.brand-name {
+
+  margin-top:6px;
+
+  font-size:22px;
+
+  font-weight:800;
+
+}
+
+
+
+.headline {
+
+  text-align:center;
+
+  margin-bottom:18px;
+
+}
+
+
+
+.headline h2 {
+
+  margin:0;
+
+  font-size:18px;
+
+  font-weight:800;
+
+}
+
+
+
+.headline p {
+
+  margin-top:5px;
+
+  font-size:12px;
+
+  color:#64748b;
+
+}
+
+
+
+.headline a,
+.forgot-link {
+
+  color:#2563eb;
+
+  text-decoration:none;
+
+}
+
+
+
+.social-card,
+.sso-button,
+.field,
+.submit-button {
+
+  width:100%;
+
+  border-radius:8px;
+
+}
+
+.divider span {
+
+  height:1px;
+
+  background:#dbe2ea;
+
+}
+
+
+
+.divider small {
+
+  color:#94a3b8;
+
+}
+
+
+
+.form {
+
+  display:flex;
+
+  flex-direction:column;
+
+}
+
+
+
+.field-group {
+
+  margin-bottom:10px;
+
+}
+
+
+
+.field {
+
+  height:38px;
+
+  border:1px solid #cbd5e1;
+
+  padding:0 12px;
+
+  font-size:12px;
+
+  outline:none;
+
+}
+
+
+
+.field:focus {
+
+  border-color:#2563eb;
+
+}
+
+
+
+.password-wrapper {
+
+  position:relative;
+
+}
+
+
+
+.field-password {
+
+  padding-right:35px;
+
+}
+
+
+
+.password-toggle {
+
+  position:absolute;
+
+  right:10px;
+
+  top:50%;
+
+  transform:translateY(-50%);
+
+  border:none;
+
+  background:none;
+
+  color:#64748b;
+
+}
+
+
+
+.login-message,
+.field-message {
+
+  font-size:11px;
+
+  color:#dc2626;
+
+}
+
+
+
+.submit-button {
+
+  height:38px;
+
+  margin-top:10px;
+
+  background:#2563eb;
+
+  border:none;
+
+  color:white;
+
+  font-size:12px;
+
+  font-weight:700;
+
+}
+
+
+
+.submit-button:disabled {
+
+  background:#cbd5e1;
+
+}
+
+
+
+.forgot-link {
+
+  display:block;
+
+  text-align:center;
+
+  margin-top:12px;
+
+  font-size:12px;
+
+}
+
+
+
+.auth-footer {
+
+  text-align:center;
+
+  padding:20px;
+
+  color:#64748b;
+
+  font-size:11px;
+
+}
+
+
+
+</style>
