@@ -3,7 +3,7 @@ interface Aula {
   id: string
   data: string
   horario: string
-  topico: string | null
+  topico?: string | null
   recorrente?: boolean
 }
 
@@ -33,6 +33,8 @@ const videos = ref<string[]>([])
 const tagsSelecionadas = ref<string[]>([])
 const novaTag = ref('')
 const mostrarEditorTags = ref(false)
+const anotacaoEditandoId = ref<string | null>(null)
+const campoAnotacao = ref<HTMLTextAreaElement | null>(null)
 const tagsDisponiveis = ref<string[]>([
   'Prova',
   'Resumo',
@@ -67,6 +69,7 @@ function resetarEditor() {
   imagens.value = []
   videos.value = []
   tagsSelecionadas.value = []
+  anotacaoEditandoId.value = null
 }
 
 function normalizarAnotacao(item: Partial<AnotacaoAula> | null | undefined): AnotacaoAula {
@@ -152,23 +155,66 @@ function salvarAnotacoes() {
 
 function confirmarAnotacaoAtual() {
   const textoAtual = texto.value.trim()
+  const anotacaoEditando = anotacaoEditandoId.value
 
   if (!textoAtual && !imagens.value.length && !videos.value.length && !tagsSelecionadas.value.length) {
     return
   }
 
-  anotacoes.value = [
-    ...anotacoes.value,
-    {
-      id: gerarId(),
-      texto: textoAtual,
-      imagens: [...imagens.value],
-      videos: [...videos.value],
-      tags: [...tagsSelecionadas.value]
-    }
-  ]
+  if (anotacaoEditando) {
+    anotacoes.value = anotacoes.value.map((anotacao) =>
+      anotacao.id === anotacaoEditando
+        ? {
+            ...anotacao,
+            texto: textoAtual,
+            imagens: [...imagens.value],
+            videos: [...videos.value],
+            tags: [...tagsSelecionadas.value]
+          }
+        : anotacao
+    )
+  }
+  else {
+    anotacoes.value = [
+      ...anotacoes.value,
+      {
+        id: gerarId(),
+        texto: textoAtual,
+        imagens: [...imagens.value],
+        videos: [...videos.value],
+        tags: [...tagsSelecionadas.value]
+      }
+    ]
+  }
 
   salvarAnotacoes()
+  resetarEditor()
+}
+
+async function editarAnotacao(anotacao: AnotacaoAula) {
+  anotacaoEditandoId.value = anotacao.id
+  texto.value = anotacao.texto
+  imagens.value = [...anotacao.imagens]
+  videos.value = [...anotacao.videos]
+  tagsSelecionadas.value = [...anotacao.tags]
+
+  await nextTick()
+  campoAnotacao.value?.focus()
+}
+
+function excluirAnotacao(id: string) {
+  if (!window.confirm('Deseja excluir esta anotação?')) return
+
+  anotacoes.value = anotacoes.value.filter((anotacao) => anotacao.id !== id)
+
+  if (anotacaoEditandoId.value === id) {
+    resetarEditor()
+  }
+
+  salvarAnotacoes()
+}
+
+function cancelarEdicaoAnotacao() {
   resetarEditor()
 }
 
@@ -291,37 +337,35 @@ onMounted(() => {
           </button>
         </div>
 
-        <div v-if="mostrarEditorTags" class="secao-tags">
-          <div class="input-tag-row">
-            <input
-              v-model="novaTag"
-              type="text"
-              placeholder="Digite uma tag e pressione Enter"
-              @keydown.enter.prevent="adicionarTag"
-            />
-            <button type="button" class="btn-tag" @click="adicionarTag">Adicionar</button>
-          </div>
-
-          <div v-if="tagsDisponiveis.length" class="tags-disponiveis">
-            <button
-              v-for="tag in tagsDisponiveis"
-              :key="tag"
-              type="button"
-              class="chip"
-              :class="{ 'chip-selecionado': tagsSelecionadas.some(item => item.toLowerCase() === tag.toLowerCase()) }"
-              @click="selecionarTag(tag)"
-            >
-              {{ tag }}
-            </button>
-          </div>
-        </div>
-
         <div v-if="anotacoes.length" class="lista-anotacoes">
           <article v-for="anotacao in anotacoes" :key="anotacao.id" class="anotacao-card">
-            <div v-if="anotacao.tags.length" class="chips">
-              <span v-for="tag in anotacao.tags" :key="`${anotacao.id}-${tag}`" class="chip chip-selecionado">
-                {{ tag }}
-              </span>
+            <div class="anotacao-cabecalho">
+              <div v-if="anotacao.tags.length" class="chips">
+                <span v-for="tag in anotacao.tags" :key="`${anotacao.id}-${tag}`" class="chip chip-selecionado">
+                  {{ tag }}
+                </span>
+              </div>
+
+              <div class="acoes-anotacao">
+                <button
+                  type="button"
+                  class="acao-anotacao"
+                  aria-label="Editar anotação"
+                  title="Editar anotação"
+                  @click="editarAnotacao(anotacao)"
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  class="acao-anotacao acao-excluir"
+                  aria-label="Excluir anotação"
+                  title="Excluir anotação"
+                  @click="excluirAnotacao(anotacao.id)"
+                >
+                  Excluir
+                </button>
+              </div>
             </div>
 
             <p v-if="anotacao.texto" class="texto-anotacao">{{ anotacao.texto }}</p>
@@ -340,10 +384,16 @@ onMounted(() => {
 
         <textarea
           id="anotacoes-aula"
+          ref="campoAnotacao"
           v-model="texto"
-          placeholder="Escreva suas anotações, ideias, lembretes e observações..."
+          :placeholder="anotacaoEditandoId ? 'Edite sua anotação...' : 'Escreva suas anotações, ideias, lembretes e observações...'"
           @keydown.enter.prevent="confirmarAnotacaoAtual"
         />
+
+        <div v-if="anotacaoEditandoId" class="estado-edicao">
+          <span>Editando anotação</span>
+          <button type="button" @click="cancelarEdicaoAnotacao">Cancelar edição</button>
+        </div>
 
         <div class="secao-midia">
           <div class="upload-row">
@@ -355,9 +405,41 @@ onMounted(() => {
               <input type="file" accept="video/*" multiple @change="adicionarArquivos" />
               + Vídeo
             </label>
-            <button type="button" class="btn-editar-tags" @click="mostrarEditorTags = !mostrarEditorTags">
-              Editar tags
+            <button
+              type="button"
+              class="btn-editar-tags"
+              :aria-expanded="mostrarEditorTags"
+              aria-controls="seletor-tags-aula"
+              @click="mostrarEditorTags = !mostrarEditorTags"
+            >
+              Adicionar tag
             </button>
+          </div>
+
+          <div v-if="mostrarEditorTags" id="seletor-tags-aula" class="secao-tags">
+            <div class="input-tag-row">
+              <input
+                v-model="novaTag"
+                type="text"
+                placeholder="Digite uma tag e pressione Enter"
+                aria-label="Nova tag"
+                @keydown.enter.prevent="adicionarTag"
+              />
+              <button type="button" class="btn-tag" @click="adicionarTag">Adicionar</button>
+            </div>
+
+            <div v-if="tagsDisponiveis.length" class="tags-disponiveis">
+              <button
+                v-for="tag in tagsDisponiveis"
+                :key="tag"
+                type="button"
+                class="chip"
+                :class="{ 'chip-selecionado': tagsSelecionadas.some(item => item.toLowerCase() === tag.toLowerCase()) }"
+                @click="selecionarTag(tag)"
+              >
+                {{ tag }}
+              </button>
+            </div>
           </div>
 
           <div v-if="imagens.length || videos.length" class="previews">
@@ -422,7 +504,10 @@ onMounted(() => {
 .secao-tags {
   display: grid;
   gap: 8px;
-  padding: 10px 0 0;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .chips {
@@ -458,12 +543,75 @@ onMounted(() => {
 }
 
 .anotacao-card {
+  position: relative;
   border: 1px solid #dbeafe;
   border-radius: 12px;
   background: #f8fafc;
   padding: 12px;
   display: grid;
   gap: 10px;
+}
+
+.anotacao-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.acoes-anotacao {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.anotacao-card:hover .acoes-anotacao,
+.anotacao-card:focus-within .acoes-anotacao {
+  opacity: 1;
+}
+
+.acao-anotacao {
+  border: 0;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #334155;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.acao-anotacao:hover {
+  background: #cbd5e1;
+}
+
+.acao-excluir {
+  color: #b91c1c;
+}
+
+.acao-excluir:hover {
+  background: #fee2e2;
+}
+
+.estado-edicao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #475569;
+  font-size: 12px;
+}
+
+.estado-edicao button {
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .texto-anotacao {

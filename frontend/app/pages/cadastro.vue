@@ -5,11 +5,6 @@
       <section class="auth-content">
 
         <div class="brand">
-          <div class="brand-mark">
-            <span class="mark-part mark-part-1"></span>
-            <span class="mark-part mark-part-2"></span>
-          </div>
-
           <h1 class="brand-name">
             AllGenda
           </h1>
@@ -209,52 +204,6 @@ async function cadastrar() {
 .brand {
   text-align: center;
   margin-bottom: 14px;
-}
-
-.brand-mark {
-  width: 46px;
-  height: 34px;
-
-  margin: 0 auto 5px;
-
-  position: relative;
-}
-
-.mark-part {
-  position: absolute;
-
-  width: 30px;
-  height: 11px;
-
-  border-radius: 999px;
-
-  transform: rotate(40deg);
-}
-
-.mark-part-1 {
-  left: 2px;
-  top: 7px;
-
-  background:
-    linear-gradient(
-      90deg,
-      #38bdf8,
-      #2563eb
-    );
-}
-
-.mark-part-2 {
-  right: 2px;
-  top: 7px;
-
-  transform: rotate(-40deg);
-
-  background:
-    linear-gradient(
-      90deg,
-      #2563eb,
-      #1d4ed8
-    );
 }
 
 .brand-name {

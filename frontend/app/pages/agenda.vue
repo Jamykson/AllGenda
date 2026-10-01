@@ -87,6 +87,9 @@ ref<Disciplina[]>([])
 const aulas =
 ref<Aula[]>([])
 
+const aulaSelecionada =
+ref<Aula | null>(null)
+
 
 
 const horariosRecorrentes =
@@ -752,6 +755,11 @@ onMounted(() => {
 <template>
 
 <div class="agenda-container">
+<AulaModal
+  v-if="aulaSelecionada"
+  :aula="aulaSelecionada"
+  @fechar="aulaSelecionada = null"
+/>
 
 
 <header class="agenda-header">
@@ -953,6 +961,12 @@ aula.id
 "
 
 class="evento"
+role="button"
+tabindex="0"
+:aria-label="'Abrir anotações de ' + aula.disciplinaNome"
+@click="aulaSelecionada = aula"
+@keydown.enter.prevent="aulaSelecionada = aula"
+@keydown.space.prevent="aulaSelecionada = aula"
 
 :style="{
 
@@ -1085,6 +1099,12 @@ corTextoParaFundo(aula.cor || '#2563eb')
         v-for="aula in aulasDoDia(dia.chave)"
         :key="aula.id"
         class="evento-semana"
+        role="button"
+        tabindex="0"
+        :aria-label="'Abrir anotações de ' + aula.disciplinaNome"
+        @click="aulaSelecionada = aula"
+        @keydown.enter.prevent="aulaSelecionada = aula"
+        @keydown.space.prevent="aulaSelecionada = aula"
         :style="{
           ...estiloEventoSemana(aula)
         }"
@@ -1325,6 +1345,17 @@ class="erro"
   padding: 6px 8px;
   color: white;
   font-size: 12px;
+  cursor: pointer;
+}
+
+.evento:hover {
+  filter: brightness(0.92);
+}
+
+.evento:focus-visible,
+.evento-semana:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
 }
 
 /* SEMANA - TEMA CLARO */
@@ -1478,6 +1509,11 @@ class="erro"
   color: #1e3a8a;
   box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
   overflow: hidden;
+  cursor: pointer;
+}
+
+.evento-semana:hover {
+  filter: brightness(0.96);
 }
 
 .evento-semana strong {
