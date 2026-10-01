@@ -32,7 +32,7 @@ public class AnotacaoController {
     @GetMapping
     public List<AnotacaoResponseDTO> listar(@RequestParam(required = false) UUID aulaId,
                                             @RequestParam(required = false) UUID disciplinaId,
-                                            @RequestParam(required = false) String tag) {
+                                            @RequestParam(required = false) String tag) {1
         if (aulaId != null) {
             if (disciplinaId != null || tag != null) {
                 throw new RequisicaoInvalidaException("O filtro por aula não pode ser combinado com outros filtros.");
