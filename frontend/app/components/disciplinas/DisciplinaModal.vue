@@ -67,7 +67,7 @@ const emit = defineEmits([
 	box-sizing: border-box;
 	overflow-y: auto;
 	padding: 16px;
-	background: rgb(15 23 42 / 45%);
+	background: rgb(15 23 42 / 40%);
 }
 
 .modal-painel {
@@ -75,11 +75,11 @@ const emit = defineEmits([
 	max-height: calc(100dvh - 32px);
 	box-sizing: border-box;
 	overflow-y: auto;
-	padding: 24px;
+	padding: 20px;
 	border: 1px solid #e2e8f0;
-	border-radius: 10px;
+	border-radius: 12px;
 	background: #fff;
-	box-shadow: 0 20px 60px rgb(15 23 42 / 20%);
+	box-shadow: 0 14px 40px rgb(15 23 42 / 14%);
 }
 
 .modal-header {
@@ -93,7 +93,7 @@ const emit = defineEmits([
 	min-width: 0;
 	overflow-wrap: anywhere;
 	color: #0f172a;
-	font-size: 20px;
+	font-size: 18px;
 	font-weight: 700;
 }
 
@@ -116,11 +116,16 @@ const emit = defineEmits([
 	color: #0f172a;
 }
 
+.botao-fechar:focus-visible {
+	outline: 2px solid #2563eb;
+	outline-offset: 2px;
+}
+
 .personalizacao-toolbar {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	margin-top: 20px;
+	margin-top: 14px;
 }
 
 .personalizacao-area h3 {

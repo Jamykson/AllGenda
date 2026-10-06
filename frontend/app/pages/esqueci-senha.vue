@@ -42,6 +42,8 @@
         <input
           v-model="email"
           type="email"
+          aria-label="E-mail"
+          autocomplete="email"
           placeholder="E-mail"
           class="field"
         />
@@ -53,8 +55,10 @@
           <input
             v-model="novaSenha"
             :type="mostrarSenha ? 'text':'password'"
+            aria-label="Nova senha"
+            autocomplete="new-password"
             placeholder="Nova senha"
-            class="field"
+            class="field field-password"
           />
 
 
@@ -107,8 +111,10 @@
           <input
             v-model="confirmarSenha"
             :type="mostrarConfirmar ? 'text':'password'"
+            aria-label="Confirmar nova senha"
+            autocomplete="new-password"
             placeholder="Confirmar nova senha"
-            class="field"
+            class="field field-password"
           />
 
 
@@ -228,7 +234,7 @@ async function redefinir(){
 
 .auth-page{
 
-width:100vw;
+width:100%;
 
 min-height:100vh;
 

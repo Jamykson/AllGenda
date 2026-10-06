@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Image as ImageIcon, PencilLine, Tag as TagIcon, Trash2, Video as VideoIcon } from '@lucide/vue'
+
 interface Aula {
   id: string
   data: string
@@ -35,6 +37,9 @@ const novaTag = ref('')
 const mostrarEditorTags = ref(false)
 const anotacaoEditandoId = ref<string | null>(null)
 const campoAnotacao = ref<HTMLTextAreaElement | null>(null)
+const tagButtonRef = ref<HTMLButtonElement | null>(null)
+const tagPopoverRef = ref<HTMLDivElement | null>(null)
+const tagPopoverPosition = ref<Record<string, string>>({ visibility: 'hidden' })
 const tagsDisponiveis = ref<string[]>([
   'Prova',
   'Resumo',
@@ -290,6 +295,73 @@ function selecionarTag(tag: string) {
   }
 }
 
+function atualizarPosicaoPopover() {
+  const botao = tagButtonRef.value
+  const popover = tagPopoverRef.value
+  if (!botao || !popover) return
+
+  const ancora = botao.getBoundingClientRect()
+  const margem = 8
+  const espacamento = 6
+  const largura = Math.min(popover.offsetWidth || 320, window.innerWidth - margem * 2)
+  const altura = Math.min(popover.offsetHeight || 280, window.innerHeight - margem * 2)
+  const cabeAbaixo = ancora.bottom + espacamento + altura <= window.innerHeight - margem
+  const top = cabeAbaixo
+    ? ancora.bottom + espacamento
+    : Math.max(margem, ancora.top - espacamento - altura)
+  const left = Math.max(margem, Math.min(ancora.left, window.innerWidth - largura - margem))
+
+  tagPopoverPosition.value = {
+    top: `${top}px`,
+    left: `${left}px`,
+    visibility: 'visible'
+  }
+}
+
+function removerListenersPopover() {
+  window.removeEventListener('resize', atualizarPosicaoPopover)
+  window.removeEventListener('scroll', atualizarPosicaoPopover, true)
+  document.removeEventListener('pointerdown', aoClicarForaPopover)
+  document.removeEventListener('keydown', aoPressionarTeclaPopover)
+}
+
+function fecharPopoverTags() {
+  mostrarEditorTags.value = false
+  removerListenersPopover()
+}
+
+function aoClicarForaPopover(evento: PointerEvent) {
+  const alvo = evento.target
+  if (
+    alvo instanceof Node
+    && !tagPopoverRef.value?.contains(alvo)
+    && !tagButtonRef.value?.contains(alvo)
+  ) {
+    fecharPopoverTags()
+  }
+}
+
+function aoPressionarTeclaPopover(evento: KeyboardEvent) {
+  if (evento.key === 'Escape') fecharPopoverTags()
+}
+
+async function alternarPopoverTags() {
+  if (mostrarEditorTags.value) {
+    fecharPopoverTags()
+    return
+  }
+
+  mostrarEditorTags.value = true
+  tagPopoverPosition.value = { visibility: 'hidden' }
+  await nextTick()
+  atualizarPosicaoPopover()
+
+  window.addEventListener('resize', atualizarPosicaoPopover)
+  window.addEventListener('scroll', atualizarPosicaoPopover, true)
+  document.addEventListener('pointerdown', aoClicarForaPopover)
+  document.addEventListener('keydown', aoPressionarTeclaPopover)
+}
+
 function formatarData(data: string) {
   const [ano, mes, dia] = data.split('-').map(Number)
   if (!ano || !mes || !dia) return data
@@ -305,6 +377,8 @@ function formatarData(data: string) {
 onMounted(() => {
   carregarTagsGlobais()
 })
+
+onBeforeUnmount(removerListenersPopover)
 </script>
 
 <template>
@@ -325,52 +399,50 @@ onMounted(() => {
           <label class="label-visivel">Anotações</label>
         </div>
 
-        <div v-if="tagsSelecionadas.length" class="chips chips-selecionadas">
-          <button
-            v-for="tag in tagsSelecionadas"
-            :key="tag"
-            type="button"
-            class="chip chip-selecionado"
-            @click="removerTag(tag)"
-          >
-            {{ tag }} ×
-          </button>
-        </div>
-
         <div v-if="anotacoes.length" class="lista-anotacoes">
           <article v-for="anotacao in anotacoes" :key="anotacao.id" class="anotacao-card">
-            <div class="anotacao-cabecalho">
-              <div v-if="anotacao.tags.length" class="chips">
+            <div v-if="anotacao.tags.length" class="anotacao-cabecalho">
+              <div class="chips">
                 <span v-for="tag in anotacao.tags" :key="`${anotacao.id}-${tag}`" class="chip chip-selecionado">
                   {{ tag }}
                 </span>
               </div>
-
-              <div class="acoes-anotacao">
-                <button
-                  type="button"
-                  class="acao-anotacao"
-                  aria-label="Editar anotação"
-                  title="Editar anotação"
-                  @click="editarAnotacao(anotacao)"
-                >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  class="acao-anotacao acao-excluir"
-                  aria-label="Excluir anotação"
-                  title="Excluir anotação"
-                  @click="excluirAnotacao(anotacao.id)"
-                >
-                  Excluir
-                </button>
-              </div>
             </div>
 
-            <p v-if="anotacao.texto" class="texto-anotacao">{{ anotacao.texto }}</p>
+            <div class="acoes-anotacao">
+              <button
+                type="button"
+                class="acao-anotacao"
+                aria-label="Editar anotação"
+                title="Editar anotação"
+                @click="editarAnotacao(anotacao)"
+              >
+                <PencilLine :size="15" :stroke-width="1.8" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                class="acao-anotacao acao-excluir"
+                aria-label="Excluir anotação"
+                title="Excluir anotação"
+                @click="excluirAnotacao(anotacao.id)"
+              >
+                <Trash2 :size="15" :stroke-width="1.8" aria-hidden="true" />
+              </button>
+            </div>
 
-            <div v-if="anotacao.imagens.length || anotacao.videos.length" class="previews">
+            <p
+              v-if="anotacao.texto"
+              class="texto-anotacao"
+              :class="{ 'texto-sem-tags': !anotacao.tags.length }"
+            >
+              {{ anotacao.texto }}
+            </p>
+
+            <div
+              v-if="anotacao.imagens.length || anotacao.videos.length"
+              class="previews"
+              :class="{ 'previews-sem-tags-sem-texto': !anotacao.tags.length && !anotacao.texto }"
+            >
               <div v-for="(imagem, index) in anotacao.imagens" :key="`img-${anotacao.id}-${index}`" class="item-midia imagem-item">
                 <img :src="imagem" :alt="`Imagem ${index + 1}`" />
               </div>
@@ -390,54 +462,48 @@ onMounted(() => {
           @keydown.enter.prevent="confirmarAnotacaoAtual"
         />
 
+        <div
+          v-if="tagsSelecionadas.length"
+          class="chips chips-anotacao-atual"
+          role="group"
+          aria-label="Tags da anotação atual"
+        >
+          <span
+            v-for="tag in tagsSelecionadas"
+            :key="tag"
+            class="chip chip-selecionado"
+          >
+            {{ tag }}
+          </span>
+        </div>
+
         <div v-if="anotacaoEditandoId" class="estado-edicao">
           <span>Editando anotação</span>
           <button type="button" @click="cancelarEdicaoAnotacao">Cancelar edição</button>
         </div>
 
         <div class="secao-midia">
-          <div class="upload-row">
-            <label class="upload-btn">
-              <input type="file" accept="image/*" multiple @change="adicionarArquivos" />
-              + Imagem
-            </label>
-            <label class="upload-btn">
-              <input type="file" accept="video/*" multiple @change="adicionarArquivos" />
-              + Vídeo
-            </label>
-            <button
-              type="button"
-              class="btn-editar-tags"
-              :aria-expanded="mostrarEditorTags"
-              aria-controls="seletor-tags-aula"
-              @click="mostrarEditorTags = !mostrarEditorTags"
-            >
-              Adicionar tag
-            </button>
-          </div>
-
-          <div v-if="mostrarEditorTags" id="seletor-tags-aula" class="secao-tags">
-            <div class="input-tag-row">
-              <input
-                v-model="novaTag"
-                type="text"
-                placeholder="Digite uma tag e pressione Enter"
-                aria-label="Nova tag"
-                @keydown.enter.prevent="adicionarTag"
-              />
-              <button type="button" class="btn-tag" @click="adicionarTag">Adicionar</button>
-            </div>
-
-            <div v-if="tagsDisponiveis.length" class="tags-disponiveis">
+          <div class="acoes-contextuais">
+            <div class="upload-row">
+              <label class="upload-btn" title="Adicionar imagem">
+                <input type="file" accept="image/*" multiple aria-label="Adicionar imagem" @change="adicionarArquivos" />
+                <ImageIcon :size="15" :stroke-width="1.8" aria-hidden="true" />
+              </label>
+              <label class="upload-btn" title="Adicionar vídeo">
+                <input type="file" accept="video/*" multiple aria-label="Adicionar vídeo" @change="adicionarArquivos" />
+                <VideoIcon :size="15" :stroke-width="1.8" aria-hidden="true" />
+              </label>
               <button
-                v-for="tag in tagsDisponiveis"
-                :key="tag"
+                ref="tagButtonRef"
                 type="button"
-                class="chip"
-                :class="{ 'chip-selecionado': tagsSelecionadas.some(item => item.toLowerCase() === tag.toLowerCase()) }"
-                @click="selecionarTag(tag)"
+                class="btn-editar-tags"
+                :aria-expanded="mostrarEditorTags"
+                aria-controls="seletor-tags-aula"
+                aria-label="Adicionar tag"
+                title="Adicionar tag"
+                @click="alternarPopoverTags"
               >
-                {{ tag }}
+                <TagIcon :size="15" :stroke-width="1.8" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -457,6 +523,61 @@ onMounted(() => {
       </div>
     </section>
   </div>
+
+  <Teleport to="body">
+    <div
+      v-if="mostrarEditorTags"
+      id="seletor-tags-aula"
+      ref="tagPopoverRef"
+      class="secao-tags"
+      :style="tagPopoverPosition"
+      @click.stop
+    >
+      <div class="input-tag-row">
+        <div class="campo-tag">
+          <TagIcon :size="14" :stroke-width="1.8" aria-hidden="true" />
+          <input
+            v-model="novaTag"
+            type="text"
+            placeholder="Digite uma tag e pressione Enter"
+            aria-label="Nova tag"
+            @keydown.enter.prevent="adicionarTag"
+          />
+        </div>
+        <button type="button" class="btn-tag" @click="adicionarTag">Adicionar</button>
+      </div>
+
+      <div v-if="tagsSelecionadas.length" class="chips chips-selecionadas" aria-label="Tags selecionadas">
+        <button
+          v-for="tag in tagsSelecionadas"
+          :key="tag"
+          type="button"
+          class="chip chip-selecionado"
+          :aria-label="`Remover tag ${tag}`"
+          @click="removerTag(tag)"
+        >
+          {{ tag }} <span aria-hidden="true">×</span>
+        </button>
+      </div>
+
+      <div v-if="tagsDisponiveis.length" class="opcoes-tags">
+        <p class="rotulo-opcoes">Selecione uma opção</p>
+        <div class="tags-disponiveis">
+          <button
+            v-for="tag in tagsDisponiveis"
+            :key="tag"
+            type="button"
+            class="chip"
+            :class="{ 'chip-selecionado': tagsSelecionadas.some(item => item.toLowerCase() === tag.toLowerCase()) }"
+            :aria-pressed="tagsSelecionadas.some(item => item.toLowerCase() === tag.toLowerCase())"
+            @click="selecionarTag(tag)"
+          >
+            {{ tag }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -490,50 +611,87 @@ onMounted(() => {
 }
 
 .btn-editar-tags {
-  border: 0;
-  border-radius: 10px;
-  background: #111827;
-  color: #fff;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid #dfe3e8;
+  border-radius: 7px;
+  background: #fff;
+  color: #344054;
   font-size: 13px;
-  padding: 8px 12px;
+  font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgb(15 23 42 / 12%);
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.btn-editar-tags:hover,
+.upload-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #1f2937;
 }
 
 .secao-tags {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  width: min(320px, 100%);
+  max-height: min(340px, calc(100dvh - 96px));
+  overflow-y: auto;
   display: grid;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #f8fafc;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgb(15 23 42 / 10%);
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .chips-selecionadas {
-  margin-top: 4px;
+  margin: 0;
+}
+
+.chips-anotacao-atual .chip {
+  min-height: 24px;
+  padding: 2px 7px;
+  cursor: default;
 }
 
 .chip {
-  border: 1px solid #cbd5e1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  border: 1px solid #e5e7eb;
   border-radius: 999px;
   background: #f8fafc;
-  color: #334155;
-  padding: 6px 10px;
+  color: #475467;
+  padding: 3px 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.chip:hover {
+  border-color: #d0d5dd;
+  background: #f2f4f7;
 }
 
 .chip-selecionado {
-  background: #dbeafe;
-  border-color: #93c5fd;
+  background: #eff6ff;
+  border-color: #dbeafe;
   color: #1d4ed8;
 }
 
@@ -553,47 +711,52 @@ onMounted(() => {
 }
 
 .anotacao-cabecalho {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  min-width: 0;
+  padding-right: 72px;
 }
 
 .acoes-anotacao {
   display: flex;
-  flex-shrink: 0;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
   gap: 4px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.anotacao-card:hover .acoes-anotacao,
-.anotacao-card:focus-within .acoes-anotacao {
-  opacity: 1;
 }
 
 .acao-anotacao {
-  border: 0;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: 6px;
-  background: #e2e8f0;
-  color: #334155;
-  padding: 5px 8px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
 }
 
 .acao-anotacao:hover {
-  background: #cbd5e1;
+  border-color: #e5e7eb;
+  background: #f1f5f9;
+  color: #2563eb;
 }
 
 .acao-excluir {
-  color: #b91c1c;
+  color: #64748b;
 }
 
 .acao-excluir:hover {
-  background: #fee2e2;
+  border-color: #fee2e2;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.acao-anotacao:focus-visible {
+  outline: 2px solid rgb(37 99 235 / 55%);
+  outline-offset: 2px;
 }
 
 .estado-edicao {
@@ -621,36 +784,91 @@ onMounted(() => {
   line-height: 1.5;
 }
 
+.texto-sem-tags {
+  padding-right: 72px;
+}
+
 .input-tag-row {
   display: flex;
-  gap: 8px;
+  gap: 7px;
+  align-items: center;
+}
+
+.campo-tag {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #98a2b3;
+}
+
+.campo-tag:focus-within {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgb(37 99 235 / 10%);
+}
+
+.campo-tag > svg {
+  flex: 0 0 auto;
 }
 
 .input-tag-row input {
   flex: 1;
   min-width: 0;
-  height: 36px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 0 10px;
+  height: 30px;
+  border: 0;
+  outline: none;
+  padding: 0;
   font: inherit;
+  font-size: 13px;
+  background: transparent;
+  color: #344054;
+}
+
+.input-tag-row input::placeholder {
+  color: #98a2b3;
+  opacity: 1;
 }
 
 .btn-tag {
-  height: 36px;
-  border: 1px solid #2563eb;
-  border-radius: 8px;
-  background: #2563eb;
-  color: white;
-  font-weight: 600;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid #dfe3e8;
+  border-radius: 6px;
+  background: #fff;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.btn-tag:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.opcoes-tags {
+  display: grid;
+  gap: 7px;
+}
+
+.rotulo-opcoes {
+  margin: 0;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .tags-disponiveis {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .cabecalho-modal {
@@ -721,8 +939,14 @@ textarea:focus {
 
 .upload-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.acoes-contextuais {
+  position: relative;
+  width: 100%;
 }
 
 .upload-btn {
@@ -730,14 +954,19 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid #dfe3e8;
+  border-radius: 7px;
   background: #fff;
-  color: #334155;
-  font-weight: 600;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .upload-btn input {
@@ -747,10 +976,22 @@ textarea:focus {
   cursor: pointer;
 }
 
+.upload-btn:focus-within,
+.btn-editar-tags:focus-visible,
+.btn-tag:focus-visible,
+.chip:focus-visible {
+  outline: 2px solid rgb(37 99 235 / 55%);
+  outline-offset: 2px;
+}
+
 .previews {
   display: grid;
   gap: 12px;
   margin-top: 6px;
+}
+
+.previews-sem-tags-sem-texto {
+  padding-right: 72px;
 }
 
 .item-midia {

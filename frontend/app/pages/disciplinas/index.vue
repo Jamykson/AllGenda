@@ -1,6 +1,7 @@
 <script setup lang="ts">
 
 import type { Disciplina, NovaDisciplina } from '~/types/disciplina'
+import { Plus } from '@lucide/vue'
 
 const { listar, criar, excluir } = useDisciplinas()
 
@@ -13,6 +14,7 @@ const carregando = ref(true)
 const erroLista = ref('')
 const erroCriacao = ref('')
 const erroExclusao = ref('')
+const versaoCards = ref(0)
 
 onMounted(async () => {
   try {
@@ -70,6 +72,11 @@ async function excluirDisciplina(disciplina: Disciplina) {
   }
 }
 
+function fecharDetalhes() {
+  selecionada.value = null
+  versaoCards.value += 1
+}
+
 </script>
 
 
@@ -78,17 +85,14 @@ async function excluirDisciplina(disciplina: Disciplina) {
 <div class="pagina-disciplinas">
 
   <div class="header-pagina">
-    <div>
-      <h1>Disciplinas</h1>
-      <p>Gerencie suas disciplinas cadastradas</p>
-    </div>
+    <h1>Disciplinas</h1>
 
     <button
       type="button"
       class="btn-nova"
       @click="criando = true; erroCriacao = ''"
     >
-      <span aria-hidden="true">+</span>
+      <Plus :size="16" :stroke-width="2" aria-hidden="true" />
       Nova disciplina
     </button>
   </div>
@@ -105,10 +109,10 @@ async function excluirDisciplina(disciplina: Disciplina) {
     Carregando disciplinas...
   </p>
 
-  <div v-else-if="disciplinas.length" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+  <div v-else-if="disciplinas.length" class="grade-disciplinas">
     <DisciplinaCard
       v-for="disciplina in disciplinas"
-      :key="disciplina.id"
+      :key="`${disciplina.id}-${versaoCards}`"
       :disciplina="disciplina"
       @abrir="disciplinaComAulas = disciplina"
       @editar="selecionada = disciplina"
@@ -120,8 +124,8 @@ async function excluirDisciplina(disciplina: Disciplina) {
     <h2>Nenhuma disciplina cadastrada</h2>
     <p>Crie sua primeira disciplina para organizar suas aulas.</p>
     <button type="button" class="btn-nova" @click="criando = true">
-      <span aria-hidden="true">+</span>
-      Criar disciplina
+      <Plus :size="16" :stroke-width="2" aria-hidden="true" />
+      Nova disciplina
     </button>
   </div>
 
@@ -136,7 +140,7 @@ async function excluirDisciplina(disciplina: Disciplina) {
   <DisciplinaModal
     v-if="selecionada"
     :disciplina="selecionada"
-    @fechar="selecionada = null"
+    @fechar="fecharDetalhes"
   />
 
   <AulasDisciplinaModal
@@ -163,54 +167,49 @@ async function excluirDisciplina(disciplina: Disciplina) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 
 .header-pagina h1 {
 
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
-
-}
-
-
-.header-pagina p {
-  color: #64748b;
+  color: #1f2937;
 }
 
 .btn-nova {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 7px;
   min-height: 40px;
-  padding: 0 16px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   background: #2563eb;
   color: #fff;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms ease;
+  transition: background-color 150ms ease;
 }
 
 .btn-nova:hover {
   background: #1d4ed8;
-  transform: translateY(-1px);
 }
 
-.btn-nova span {
-  font-size: 20px;
-  line-height: 1;
+.grade-disciplinas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+  gap: 10px;
 }
 
 .estado-vazio {
   display: grid;
   justify-items: center;
   gap: 10px;
-  padding: 56px 20px;
+  padding: 36px 20px;
   border: 1px dashed #cbd5e1;
   border-radius: 8px;
   color: #64748b;
@@ -229,7 +228,7 @@ async function excluirDisciplina(disciplina: Disciplina) {
 
 .estado-lista,
 .mensagem-erro {
-  padding: 16px 0;
+  padding: 12px 0;
   color: #64748b;
 }
 
@@ -239,8 +238,11 @@ async function excluirDisciplina(disciplina: Disciplina) {
 
 @media (max-width: 600px) {
   .header-pagina {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn-nova {
+    min-height: 36px;
   }
 }
 

@@ -12,31 +12,48 @@ const emit = defineEmits<{
   excluir: []
 }>()
 
-const textoCard = computed(() => {
-  const hex = props.disciplina.cor || '#f8fafc'
-  const correspondencia = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex)
+interface HorarioRecorrente {
+  dias: number[]
+  horaInicio: string
+  horaFim: string
+  dataInicio: string
+  dataFim: string
+}
 
-  if (!correspondencia) return '#0f172a'
+const CHAVE_HORARIOS = 'allgenda-horarios-recorrentes'
+const nomesDias = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
+const horario = ref<HorarioRecorrente | null>(null)
 
-  const canais = correspondencia.slice(1).map(canal => {
-    const valor = Number.parseInt(canal, 16) / 255
-    return valor <= 0.04045 ? valor / 12.92 : ((valor + 0.055) / 1.055) ** 2.4
-  })
-  const luminancia = 0.2126 * (canais[0] ?? 0)
-    + 0.7152 * (canais[1] ?? 0)
-    + 0.0722 * (canais[2] ?? 0)
-
-  return luminancia > 0.42 ? '#0f172a' : '#ffffff'
+const diasHorario = computed(() => {
+  const diasSalvos = horario.value?.dias || []
+  return nomesDias.filter((_, indice) => diasSalvos.includes(indice))
 })
+
+const horarioCompleto = computed(() =>
+  Boolean(horario.value?.horaInicio && horario.value.horaFim)
+)
+
+function carregarHorario() {
+  if (import.meta.server) return
+
+  try {
+    const dados = JSON.parse(localStorage.getItem(CHAVE_HORARIOS) || '{}') as Record<string, HorarioRecorrente>
+    const salvo = dados[props.disciplina.id]
+    horario.value = salvo && Array.isArray(salvo.dias) ? salvo : null
+  }
+  catch {
+    horario.value = null
+  }
+}
+
+onMounted(carregarHorario)
+watch(() => props.disciplina.id, carregarHorario)
 </script>
 
 <template>
   <article
     class="disciplina-card"
-    :style="{
-      backgroundColor: disciplina.cor || '#f8fafc',
-      color: textoCard
-    }"
+    :style="{ '--cor-disciplina': disciplina.cor || '#94a3b8' }"
   >
     <div
       class="conteudo-card"
@@ -47,13 +64,25 @@ const textoCard = computed(() => {
       @keydown.enter.prevent="emit('abrir')"
       @keydown.space.prevent="emit('abrir')"
     >
-      <div class="icone-disciplina" aria-hidden="true">
-        {{ disciplina.icone || disciplina.nome[0] }}
+      <div class="identidade-card">
+        <span class="indicador-cor" aria-hidden="true" />
+        <span class="icone-disciplina" aria-hidden="true">
+          {{ disciplina.icone || disciplina.nome[0] }}
+        </span>
+        <h3>{{ disciplina.nome }}</h3>
       </div>
 
-      <div class="texto-disciplina">
-        <h3>{{ disciplina.nome }}</h3>
-        <p v-if="disciplina.descricao">{{ disciplina.descricao }}</p>
+      <p v-if="disciplina.descricao" class="descricao-disciplina">
+        {{ disciplina.descricao }}
+      </p>
+
+      <div v-if="diasHorario.length || horarioCompleto" class="dados-horario">
+        <span v-if="diasHorario.length" class="dias-horario">
+          {{ diasHorario.join(' · ') }}
+        </span>
+        <span v-if="horarioCompleto" class="horas-horario">
+          {{ horario?.horaInicio }} – {{ horario?.horaFim }}
+        </span>
       </div>
     </div>
 
@@ -82,30 +111,30 @@ const textoCard = computed(() => {
 
 <style scoped>
 .disciplina-card {
-  position: relative;
   display: flex;
-  min-height: 90px;
-  align-items: center;
+  min-height: 92px;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  overflow: hidden;
-  padding: 18px 20px;
-  border: 1px solid rgb(15 23 42 / 12%);
-  border-radius: 12px;
-  transition: box-shadow 150ms ease, transform 150ms ease;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  transition: border-color 150ms ease, background-color 150ms ease;
 }
 
 .disciplina-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 5px 14px rgb(15 23 42 / 12%);
+  border-color: #cbd5e1;
+  background: #fbfdff;
 }
 
 .conteudo-card {
   display: flex;
   flex: 1;
   min-width: 0;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
   cursor: pointer;
 }
 
@@ -115,62 +144,86 @@ const textoCard = computed(() => {
   outline-offset: 4px;
 }
 
+.identidade-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.indicador-cor {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: var(--cor-disciplina);
+}
+
 .icone-disciplina {
   display: grid;
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   place-items: center;
-  border-radius: 12px;
-  background: rgb(255 255 255 / 20%);
-  font-size: 22px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-size: 16px;
 }
 
-.texto-disciplina {
+.identidade-card h3 {
   min-width: 0;
-}
-
-.texto-disciplina h3 {
   overflow-wrap: anywhere;
-  font-weight: 700;
-}
-
-.texto-disciplina p {
-  margin-top: 2px;
-  color: currentColor;
-  opacity: 0.78;
+  color: #1f2937;
   font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.descricao-disciplina {
+  padding-left: 45px;
+  color: #64748b;
+  font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.dados-horario {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding-left: 45px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.dias-horario {
+  color: #475569;
+  font-weight: 650;
 }
 
 .acoes-card {
   display: flex;
   flex: 0 0 auto;
-  gap: 6px;
-  opacity: 0;
-  transition: opacity 140ms ease;
-}
-
-.disciplina-card:hover .acoes-card,
-.disciplina-card:focus-within .acoes-card {
-  opacity: 1;
+  gap: 4px;
 }
 
 .botao-acao {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   place-items: center;
-  border: 1px solid rgb(15 23 42 / 18%);
+  border: 1px solid transparent;
   border-radius: 6px;
-  background: rgb(255 255 255 / 82%);
-  color: #334155;
+  background: transparent;
+  color: #64748b;
   cursor: pointer;
 }
 
 .botao-acao:hover {
-  background: #fff;
-  color: #0f172a;
+  border-color: #e5e7eb;
+  background: #f8fafc;
+  color: #334155;
 }
 
 .botao-excluir:hover {
@@ -183,14 +236,11 @@ const textoCard = computed(() => {
 }
 
 @media (hover: none) {
-  .acoes-card {
-    opacity: 1;
-  }
+  .acoes-card { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .disciplina-card,
-  .acoes-card {
+  .disciplina-card {
     transition: none;
   }
 }

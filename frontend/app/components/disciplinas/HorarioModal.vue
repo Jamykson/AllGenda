@@ -418,7 +418,7 @@ onMounted(() => {
 
 <style scoped>
 .horarios {
-  margin-top: 24px;
+  margin-top: 20px;
 }
 
 .cabecalho {
@@ -430,7 +430,7 @@ onMounted(() => {
 
 .cabecalho h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #0f172a;
 }
@@ -443,8 +443,9 @@ onMounted(() => {
 
 .sem-horario {
   margin-top: 16px;
-  padding: 16px;
-  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   background: #f8fafc;
   color: #64748b;
   font-size: 14px;
@@ -452,9 +453,9 @@ onMounted(() => {
 
 .horario-salvo {
   margin-top: 16px;
-  padding: 16px;
+  padding: 12px;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -475,6 +476,7 @@ onMounted(() => {
 }
 
 .acoes button {
+  min-height: 30px;
   border: 1px solid #e2e8f0;
   background: white;
   border-radius: 7px;
@@ -506,10 +508,14 @@ onMounted(() => {
 }
 
 .dia {
+  min-height: 32px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 6px;
   background: white;
-  padding: 8px 11px;
+  padding: 0 10px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -528,9 +534,10 @@ onMounted(() => {
 
 input {
   width: 100%;
+  min-height: 36px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 9px 10px;
+  border-radius: 6px;
+  padding: 7px 9px;
   outline: none;
 }
 
@@ -547,8 +554,9 @@ input:focus {
 
 .cancelar,
 .salvar {
-  border-radius: 8px;
-  padding: 9px 14px;
+  min-height: 34px;
+  border-radius: 6px;
+  padding: 0 12px;
   cursor: pointer;
   font-weight: 600;
 }
@@ -556,12 +564,30 @@ input:focus {
 .cancelar {
   border: 1px solid #cbd5e1;
   background: white;
+  color: #334155;
 }
 
 .salvar {
-  border: none;
+  border: 1px solid #2563eb;
   background: #2563eb;
   color: white;
+}
+
+.cancelar:hover {
+  background: #f8fafc;
+}
+
+.salvar:hover {
+  background: #1d4ed8;
+}
+
+.dia:focus-visible,
+.acoes button:focus-visible,
+.cancelar:focus-visible,
+.salvar:focus-visible,
+input:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .erro {

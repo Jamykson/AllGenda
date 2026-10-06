@@ -20,6 +20,7 @@ const CHAVE_HORARIOS = 'allgenda-horarios-recorrentes'
 const props = defineProps<{
   disciplinaId: string
   cor?: string
+  disciplinaNome?: string
 }>()
 
 const { $api } = useNuxtApp()
@@ -47,12 +48,17 @@ function formatarData(data: string) {
   const [ano, mes, dia] = data.split('-').map(Number)
   if (!ano || !mes || !dia) return data
 
-  return new Intl.DateTimeFormat('pt-BR', {
+  const partes = new Intl.DateTimeFormat('pt-BR', {
     weekday: 'short',
-    day: '2-digit',
-    month: 'short',
+    day: 'numeric',
+    month: 'long',
     year: 'numeric'
-  }).format(new Date(ano, mes - 1, dia))
+  }).formatToParts(new Date(ano, mes - 1, dia))
+
+  return partes.map((parte) => {
+    if (parte.type !== 'weekday') return parte.value
+    return `${parte.value.charAt(0).toUpperCase()}${parte.value.slice(1)}`
+  }).join('')
 }
 
 function corMaisClara(cor: string) {
@@ -75,6 +81,11 @@ function aulaJaOcorrida(data: string) {
   hoje.setHours(0, 0, 0, 0)
 
   return dataAula < hoje
+}
+
+function horaInicio(horario: string) {
+  const correspondencia = /^(\d{1,2}:\d{2})/.exec(horario)
+  return correspondencia ? correspondencia[1] : horario
 }
 
 function estiloAula(aula: Aula) {
@@ -194,11 +205,16 @@ onMounted(carregarAulas)
 </script>
 
 <template>
-  <section class="lista-aulas" aria-labelledby="titulo-aulas-disciplina">
+  <section
+    class="lista-aulas"
+    :class="{ 'com-nome-disciplina': props.disciplinaNome }"
+    aria-labelledby="titulo-aulas-disciplina"
+  >
     <header class="cabecalho-aulas">
       <div>
-        <h3 id="titulo-aulas-disciplina">Aulas</h3>
+        <h3 v-if="!props.disciplinaNome" id="titulo-aulas-disciplina">Aulas</h3>
         <p v-if="!carregando && !erro">
+          <template v-if="props.disciplinaNome">{{ props.disciplinaNome }} • </template>
           {{ aulas.length }} {{ aulas.length === 1 ? 'aula cadastrada' : 'aulas cadastradas' }}
         </p>
       </div>
@@ -228,12 +244,14 @@ onMounted(carregarAulas)
         @keydown.enter.prevent="aulaSelecionada = aula"
         @keydown.space.prevent="aulaSelecionada = aula"
       >
-        <time class="data-aula" :datetime="aula.data">
-          {{ formatarData(aula.data) }}
-        </time>
+        <div class="bloco-data">
+          <span class="hora-inicio">{{ horaInicio(aula.horario) }}</span>
+          <time class="data-aula" :datetime="aula.data">
+            {{ formatarData(aula.data) }}
+          </time>
+        </div>
         <div class="detalhes-aula">
           <strong>{{ aula.topico || 'Aula recorrente' }}</strong>
-          <span>{{ aula.horario }}</span>
         </div>
       </li>
     </ol>
@@ -275,51 +293,89 @@ onMounted(carregarAulas)
   gap: 8px;
   max-height: 280px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
   padding: 0;
   list-style: none;
 }
 
+.itens-aulas::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.itens-aulas::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.itens-aulas::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+
+.itens-aulas::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .item-aula {
   display: grid;
-  grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 170px) minmax(0, 1fr);
   align-items: center;
-  gap: 14px;
-  padding: 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  background: #fff;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.item-aula:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 }
 
 .item-aula:focus-visible {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid rgba(37, 99, 235, 0.7);
   outline-offset: 2px;
 }
 
+.bloco-data {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-height: 32px;
+}
+
+.hora-inicio {
+  color: rgba(15, 23, 42, 0.95);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
 .data-aula {
-  color: #475569;
-  font-size: 12px;
-  text-transform: capitalize;
+  color: rgba(15, 23, 42, 0.72);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .detalhes-aula {
   display: flex;
   min-width: 0;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .detalhes-aula strong {
   overflow-wrap: anywhere;
   color: #0f172a;
-  font-size: 13px;
-}
-
-.detalhes-aula span {
-  flex: 0 0 auto;
-  color: #64748b;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .estado-erro {
@@ -343,13 +399,20 @@ onMounted(carregarAulas)
 @media (max-width: 520px) {
   .item-aula {
     grid-template-columns: minmax(0, 1fr);
-    gap: 6px;
+    gap: 8px;
+    padding: 12px 12px 10px;
+  }
+
+  .bloco-data {
+    min-height: auto;
   }
 
   .detalhes-aula {
     align-items: flex-start;
-    flex-direction: column;
-    gap: 3px;
+  }
+
+  .detalhes-aula strong {
+    font-size: 13px;
   }
 }
 </style>

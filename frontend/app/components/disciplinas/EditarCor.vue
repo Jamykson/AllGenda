@@ -29,6 +29,10 @@ let onColorChange: ((color: ColorValue) => void) | null = null
 watch(cor, (value) => {
   hex.value = value.toUpperCase()
   props.disciplina.cor = value
+
+  if (colorPicker && colorPicker.color && colorPicker.color.hexString !== value) {
+    colorPicker.color.hexString = value
+  }
 })
 
 function salvarCor(value: string) {
@@ -137,6 +141,10 @@ onBeforeUnmount(() => {
       :style="posicao"
       @click.stop
     >
+      <div class="cabecalho-cor">
+        <span>Cor</span>
+      </div>
+
       <div class="cores-rapidas" aria-label="Cores sugeridas">
         <button
           v-for="opcao in cores"
@@ -207,34 +215,51 @@ onBeforeUnmount(() => {
 .popover-cor {
   position: fixed;
   z-index: 1000;
-  width: min(276px, calc(100vw - 24px));
+  width: min(300px, calc(100vw - 24px));
   max-height: calc(100vh - 24px);
   overflow-y: auto;
-  padding: 12px;
+  padding: 12px 12px 10px;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fff;
-  box-shadow: 0 12px 28px rgb(15 23 42 / 18%);
+  box-shadow: 0 18px 38px rgb(15 23 42 / 16%);
+}
+
+.cabecalho-cor {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .cores-rapidas {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 2px 4px 12px;
+  padding: 10px 4px 12px;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .amostra-cor {
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   place-items: center;
   border: 1px solid rgb(15 23 42 / 10%);
   border-radius: 50%;
   color: #fff;
   font-size: 12px;
   cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.amostra-cor:hover {
+  transform: translateY(-1px);
 }
 
 .amostra-cor.selecionada {
@@ -244,21 +269,25 @@ onBeforeUnmount(() => {
 .seletor-espectro {
   display: flex;
   justify-content: center;
-  padding: 10px 0 4px;
+  padding: 12px 0 8px;
 }
 
 .linha-hex {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 2px;
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .previa-hex {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-  border: 1px solid #cbd5e1;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
   border-radius: 50%;
 }
 
@@ -271,16 +300,23 @@ onBeforeUnmount(() => {
 .linha-hex input {
   width: 100%;
   min-width: 0;
-  height: 32px;
+  height: 30px;
   padding: 0 8px;
-  border: 1px solid #e2e8f0;
+  border: 0;
   border-radius: 6px;
+  background: transparent;
   color: #334155;
   font-family: monospace;
   font-size: 12px;
+  outline: none;
+}
+
+.linha-hex input:focus {
+  background: #fff;
 }
 
 .seletor-espectro :deep(svg) {
   max-width: 100%;
+  border-radius: 10px;
 }
 </style>

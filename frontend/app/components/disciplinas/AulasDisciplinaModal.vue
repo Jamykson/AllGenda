@@ -21,7 +21,6 @@ const emit = defineEmits<{
       <header class="modal-header">
         <div>
           <h2 id="titulo-aulas-disciplina">Aulas</h2>
-          <p>{{ disciplina.nome }}</p>
         </div>
         <button
           type="button"
@@ -33,7 +32,11 @@ const emit = defineEmits<{
         </button>
       </header>
 
-      <ListaAulasDisciplina :disciplina-id="disciplina.id" />
+      <ListaAulasDisciplina
+        :disciplina-id="disciplina.id"
+        :cor="disciplina.cor || '#2563eb'"
+        :disciplina-nome="disciplina.nome"
+      />
     </section>
   </div>
 </template>
@@ -49,7 +52,7 @@ const emit = defineEmits<{
   box-sizing: border-box;
   overflow-y: auto;
   padding: 16px;
-  background: rgb(15 23 42 / 45%);
+  background: rgb(15 23 42 / 40%);
 }
 
 .modal-painel {
@@ -57,11 +60,11 @@ const emit = defineEmits<{
   max-height: calc(100dvh - 32px);
   box-sizing: border-box;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fff;
-  box-shadow: 0 20px 60px rgb(15 23 42 / 20%);
+  box-shadow: 0 14px 40px rgb(15 23 42 / 14%);
 }
 
 .modal-header {
@@ -69,12 +72,12 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .modal-header h2 {
   color: #0f172a;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -82,6 +85,12 @@ const emit = defineEmits<{
   margin-top: 4px;
   color: #64748b;
   font-size: 14px;
+}
+
+:deep(.lista-aulas.com-nome-disciplina) {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .botao-fechar {
@@ -101,6 +110,11 @@ const emit = defineEmits<{
 .botao-fechar:hover {
   background: #f1f5f9;
   color: #0f172a;
+}
+
+.botao-fechar:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 @media (max-width: 520px) {

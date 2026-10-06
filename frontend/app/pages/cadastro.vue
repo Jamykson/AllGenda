@@ -31,6 +31,8 @@
           <input
             v-model="nome"
             type="text"
+            aria-label="Nome completo"
+            autocomplete="name"
             placeholder="Nome completo"
             class="field"
           />
@@ -38,6 +40,8 @@
           <input
             v-model="email"
             type="email"
+            aria-label="E-mail"
+            autocomplete="email"
             placeholder="E-mail"
             class="field"
           />
@@ -46,6 +50,8 @@
             <input
               v-model="senha"
               :type="mostrarSenha ? 'text' : 'password'"
+              aria-label="Senha"
+              autocomplete="new-password"
               placeholder="Senha"
               class="field field-password"
             />
@@ -53,6 +59,7 @@
             <button
               type="button"
               class="password-toggle"
+              :aria-label="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"
               @click="mostrarSenha = !mostrarSenha"
             >
               <svg
@@ -154,10 +161,8 @@ async function cadastrar() {
 .auth-page {
   position: relative;
 
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
-
-  overflow-x: hidden;
 
   background:
     radial-gradient(

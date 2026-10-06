@@ -534,7 +534,7 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgb(15 23 42 / 55%);
+  background: rgb(15 23 42 / 40%);
   animation: aparecer 160ms ease-out;
 }
 
@@ -542,11 +542,11 @@ onBeforeUnmount(() => {
   width: min(100%, 560px);
   max-height: min(92vh, 760px);
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fff;
-  box-shadow: 0 24px 70px rgb(15 23 42 / 24%);
+  box-shadow: 0 14px 40px rgb(15 23 42 / 14%);
   animation: subir 180ms ease-out;
 }
 
@@ -555,29 +555,32 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .modal-header h2 {
   color: #0f172a;
-  font-size: 21px;
+  font-size: 19px;
   font-weight: 700;
 }
 
 .modal-header p {
   margin-top: 4px;
   color: #64748b;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .botao-fechar {
-  width: 34px;
-  height: 34px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
   border: 0;
   border-radius: 6px;
   background: transparent;
   color: #64748b;
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
 }
@@ -585,6 +588,14 @@ onBeforeUnmount(() => {
 .botao-fechar:hover {
   background: #f1f5f9;
   color: #0f172a;
+}
+
+.botao-fechar:focus-visible,
+.confirmar-seletor:focus-visible,
+.botao-cancelar:focus-visible,
+.botao-salvar:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .campo-label {
@@ -618,10 +629,10 @@ onBeforeUnmount(() => {
 
 .botao-dia {
   min-width: 48px;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 10px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 6px;
   background: white;
   color: #475569;
   font-size: 12px;
@@ -661,7 +672,7 @@ onBeforeUnmount(() => {
 
 .campo-horario input {
   width: 100%;
-  min-height: 40px;
+  min-height: 36px;
   padding: 9px 10px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -711,7 +722,7 @@ onBeforeUnmount(() => {
 
 .grupo-campo {
   min-width: 0;
-  margin-top: 20px;
+  margin-top: 16px;
   border: 0;
   padding: 0;
 }
@@ -785,7 +796,7 @@ onBeforeUnmount(() => {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 12px 28px rgb(15 23 42 / 18%);
+  box-shadow: 0 10px 26px rgb(15 23 42 / 12%);
   max-height: calc(100vh - 24px);
   overflow-y: auto;
 }
@@ -874,7 +885,7 @@ onBeforeUnmount(() => {
   margin-top: 10px;
   border: 0;
   border-radius: 6px;
-  background: #0f172a;
+  background: #2563eb;
   color: white;
   font-size: 12px;
   font-weight: 600;
@@ -882,7 +893,7 @@ onBeforeUnmount(() => {
 }
 
 .confirmar-seletor:hover {
-  background: #1e293b;
+  background: #1d4ed8;
 }
 
 .popover-emoji {

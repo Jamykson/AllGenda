@@ -26,6 +26,8 @@
             <input
               v-model="email"
               type="email"
+              aria-label="E-mail"
+              autocomplete="email"
               placeholder="E-mail"
               class="field"
               :class="{ 'field-error': erroEmail }"
@@ -44,6 +46,8 @@
             <input
               v-model="senha"
               :type="mostrarSenha ? 'text' : 'password'"
+              aria-label="Senha"
+              autocomplete="current-password"
               placeholder="Senha"
               class="field field-password"
             />
@@ -51,6 +55,7 @@
             <button
               type="button"
               class="password-toggle"
+              :aria-label="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"
               @click="mostrarSenha = !mostrarSenha"
             >
               <svg
@@ -101,7 +106,7 @@
             class="submit-button"
             :disabled="!formValido"
           >
-            Entre
+            Entrar
           </button>
 
           <NuxtLink
@@ -169,11 +174,9 @@ async function entrar() {
 
   position:relative;
 
-  width:100vw;
+  width:100%;
 
   min-height:100vh;
-
-  overflow:hidden;
 
   background:
     radial-gradient(
@@ -415,7 +418,7 @@ async function entrar() {
 
   height:38px;
 
-  margin-top:10px;
+  margin-top:0;
 
   background:#2563eb;
 
