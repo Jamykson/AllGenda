@@ -3,7 +3,7 @@ import axios from 'axios'
 /**
  * Cliente HTTP (axios) apontando para a API do back-end.
  * A baseURL vem de runtimeConfig.public.apiBase (nuxt.config.ts),
- * configurável via NUXT_PUBLIC_API_BASE no .env.
+ * configurável via NUXT_PUBLIC_API_BASE (ex.: [env] no mise.local.toml).
  *
  * Uso em qualquer componente/página:
  *   const { $api } = useNuxtApp()

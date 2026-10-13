@@ -1,0 +1,106 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+# Ferramentas, variáveis de ambiente e tarefas do AllGenda.
+# Uso: `mise install` e depois `mise run setup` / `mise run dev`.
+# Overrides locais (não versionados) vão em `mise.local.toml`, por exemplo:
+#   [env]
+#   NUXT_PUBLIC_API_BASE = "http://localhost:8080"
+
+[tools]
+java = "temurin-25"
+node = "24"
+
+[env]
+# Banco de dados (lido pelo compose.yaml e pelo application.properties)
+DB_HOST = "localhost"
+DB_PORT = "5433"
+DB_NAME = "allgenda"
+DB_USER = "allgenda_user"
+DB_PASSWORD = "alljgc"
+# Esconde as barras de progresso de download do Maven (poluem a saída das tarefas)
+MAVEN_ARGS = "--no-transfer-progress"
+
+# ---------- Banco de dados ----------
+
+[tasks."db:up"]
+description = "Sobe o PostgreSQL (Docker) e espera ficar pronto"
+run = "docker compose up -d --wait postgres"
+
+[tasks."db:down"]
+description = "Para o PostgreSQL"
+run = "docker compose down"
+
+[tasks."db:reset"]
+description = "Para o PostgreSQL e apaga todos os dados"
+confirm = "Apagar todos os dados do banco local?"
+run = "docker compose down -v"
+
+[tasks."db:logs"]
+description = "Acompanha os logs do PostgreSQL"
+run = "docker compose logs -f postgres"
+
+[tasks."db:psql"]
+description = "Abre um psql no banco da aplicação"
+run = 'docker compose exec postgres psql -U "$DB_USER" -d "$DB_NAME"'
+
+# ---------- Backend ----------
+
+[tasks."backend:compile"]
+description = "Compila o backend"
+dir = "allgenda"
+run = "./mvnw compile"
+
+[tasks."backend:dev"]
+description = "Inicia o backend (Spring Boot)"
+dir = "allgenda"
+depends = ["db:up"]
+run = "./mvnw spring-boot:run"
+
+[tasks."backend:test"]
+description = "Roda os testes do backend"
+dir = "allgenda"
+depends = ["db:up"]
+run = "./mvnw test"
+
+[tasks."backend:build"]
+description = "Gera o jar do backend (sem testes)"
+dir = "allgenda"
+run = "./mvnw package -DskipTests"
+
+# ---------- Frontend ----------
+
+[tasks."frontend:install"]
+description = "Instala as dependências do frontend"
+dir = "frontend"
+sources = ["package.json", "package-lock.json"]
+outputs = ["node_modules/.package-lock.json"]
+run = "npm ci"
+
+[tasks."frontend:dev"]
+description = "Inicia o frontend (Nuxt)"
+dir = "frontend"
+depends = ["frontend:install"]
+run = "npm run dev"
+
+[tasks."frontend:build"]
+description = "Gera o build do frontend"
+dir = "frontend"
+depends = ["frontend:install"]
+run = "npm run build"
+
+# ---------- Atalhos ----------
+
+[tasks.setup]
+description = "Prepara o ambiente: banco, dependências e compilação"
+depends = ["db:up", "frontend:install", "backend:compile"]
+
+[tasks.dev]
+description = "Inicia banco, backend e frontend"
+depends = ["backend:dev", "frontend:dev"]
+
+[tasks.test]
+description = "Roda todos os testes"
+depends = ["backend:test"]
+
+[tasks.build]
+description = "Gera o build do backend e do frontend"
+depends = ["backend:build", "frontend:build"]
