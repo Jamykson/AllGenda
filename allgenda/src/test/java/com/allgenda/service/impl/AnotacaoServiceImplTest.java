@@ -1,6 +1,8 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.config.UsuarioPadraoInitializer;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.junit.jupiter.api.AfterEach;
 import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
@@ -56,6 +58,7 @@ class AnotacaoServiceImplTest {
 
     private final UUID aulaId = UUID.randomUUID();
     private Aula aula;
+    private final UUID usuarioId = UUID.randomUUID();
     private Usuario usuarioPadrao;
 
     @BeforeEach
@@ -68,9 +71,14 @@ class AnotacaoServiceImplTest {
         aula.setTopico("Padrões de projeto");
         aula.setDisciplina(disciplina);
 
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(usuarioId.toString(), null, List.of()));
         usuarioPadrao = new Usuario();
-        usuarioPadrao.setNome(UsuarioPadraoInitializer.NOME_USUARIO_PADRAO);
+        usuarioPadrao.setNome("Maria");
     }
+
+    @AfterEach
+    void limparContexto() { SecurityContextHolder.clearContext(); }
 
     private static Tag tag(String nome) {
         Tag tag = new Tag();
@@ -90,16 +98,16 @@ class AnotacaoServiceImplTest {
     }
 
     @Test
-    void cadastraAnotacaoEmAulaExistenteComUsuarioPadraoETags() {
+    void cadastraAnotacaoComUsuarioAutenticadoETags() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
-        when(usuarioRepository.findByNome(UsuarioPadraoInitializer.NOME_USUARIO_PADRAO)).thenReturn(Optional.of(usuarioPadrao));
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
         when(tagService.buscarOuCriar(List.of("java", "poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("java"), tag("poo"))));
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Strategy e Observer", List.of("java", "poo")));
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Strategy e Observer", List.of("java", "poo")));
 
         assertThat(resposta.conteudo()).isEqualTo("Strategy e Observer");
-        assertThat(resposta.autorNome()).isEqualTo(UsuarioPadraoInitializer.NOME_USUARIO_PADRAO);
+        assertThat(resposta.autorNome()).isEqualTo("Maria");
         assertThat(resposta.aulaTopico()).isEqualTo("Padrões de projeto");
         assertThat(resposta.disciplinaNome()).isEqualTo("PDS");
         assertThat(resposta.tags()).containsExactlyInAnyOrder("java", "poo");
@@ -108,18 +116,18 @@ class AnotacaoServiceImplTest {
     @Test
     void cadastraAnotacaoSemTags() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
-        when(usuarioRepository.findByNome(UsuarioPadraoInitializer.NOME_USUARIO_PADRAO)).thenReturn(Optional.of(usuarioPadrao));
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
         when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Sem tags", null));
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Sem tags", null));
 
         assertThat(resposta.tags()).isEmpty();
     }
 
     @Test
-    void usaAutorInformadoQuandoExiste() {
-        UUID autorId = UUID.randomUUID();
+    void usaAutorAutenticadoQuandoExiste() {
+        UUID autorId = usuarioId;
         Usuario autor = new Usuario();
         autor.setNome("Maria");
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
@@ -127,18 +135,18 @@ class AnotacaoServiceImplTest {
         when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, autorId, "Texto", null));
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Texto", null));
 
         assertThat(resposta.autorNome()).isEqualTo("Maria");
     }
 
     @Test
     void autorInexistenteLancaErroTratado() {
-        UUID autorId = UUID.randomUUID();
+        UUID autorId = usuarioId;
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(autorId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, autorId, "Texto", null)))
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "Texto", null)))
                 .isInstanceOf(UsuarioNaoEncontradoException.class);
         verify(anotacaoRepository, never()).save(any());
     }
@@ -147,21 +155,21 @@ class AnotacaoServiceImplTest {
     void aulaInexistenteLancaErroTratado() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Texto", null)))
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "Texto", null)))
                 .isInstanceOf(AulaNaoEncontradaException.class);
         verify(anotacaoRepository, never()).save(any());
     }
 
     @Test
     void conteudoVazioLancaRequisicaoInvalida() {
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "   ", null)))
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "   ", null)))
                 .isInstanceOf(RequisicaoInvalidaException.class);
         verify(anotacaoRepository, never()).save(any());
     }
 
     @Test
     void aulaIdNuloLancaRequisicaoInvalida() {
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(null, null, "Texto", null)))
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(null, "Texto", null)))
                 .isInstanceOf(RequisicaoInvalidaException.class);
     }
 

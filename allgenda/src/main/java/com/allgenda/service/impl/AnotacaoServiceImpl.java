@@ -1,7 +1,8 @@
 package com.allgenda.service.impl;
 import com.allgenda.dto.request.AnotacaoUpdateDTO;
 
-import com.allgenda.config.UsuarioPadraoInitializer;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
@@ -67,7 +68,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         anotacao.setConteudo(dto.conteudo());
         anotacao.setDataCriacao(LocalDateTime.now());
         anotacao.setAula(aula);
-        anotacao.setAutor(buscarAutor(dto.autorId()));
+        anotacao.setAutor(buscarAutor());
         tagService.buscarOuCriar(dto.tags()).forEach(anotacao::addTag); // tags são opcionais
 
         Anotacao salva = anotacaoRepository.save(anotacao);
@@ -123,14 +124,14 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         return mapper.toDtoList(anotacaoRepository.findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(tag.trim()));
     }
 
-    // autorId é temporário até a sprint 3; sem ele, a anotação fica no nome do usuário padrão
-    private Usuario buscarAutor(UUID autorId) {
-        if (autorId != null) {
-            return usuarioRepository.findById(autorId)
-                    .orElseThrow(() -> new UsuarioNaoEncontradoException(autorId));
+    private Usuario buscarAutor() {
+        var autenticacao = SecurityContextHolder.getContext().getAuthentication();
+        if (autenticacao == null || !autenticacao.isAuthenticated()) {
+            throw new AuthenticationCredentialsNotFoundException("Autenticação obrigatória.");
         }
-        return usuarioRepository.findByNome(UsuarioPadraoInitializer.NOME_USUARIO_PADRAO)
-                .orElseThrow(() -> new IllegalStateException("Usuário padrão não foi criado na inicialização."));
+        UUID usuarioId = UUID.fromString(autenticacao.getName());
+        return usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UsuarioNaoEncontradoException(usuarioId));
     }
 
     @Override
