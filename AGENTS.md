@@ -7,19 +7,24 @@
 - The frontend API client is configured in `frontend/app/plugins/axios.ts`.
 - Backend endpoints are in `allgenda/src/main/java/com/allgenda/controller/`; business logic, persistence, DTOs, and models live in their correspondingly named packages.
 
+## Tooling
+
+The root `mise.toml` sets up the dev environment with [mise](https://mise.jdx.dev): it pins tool versions (Java 25, Node 24), defines env vars (`DB_*`), and declares tasks. Run `mise trust && mise install` once, or run `./iniciar-allgenda.sh`, which also installs mise and runs `mise run setup`. Put local overrides, such as `NUXT_PUBLIC_API_BASE`, in a gitignored `mise.local.toml`.
+
 ## Common commands
 
-Run frontend commands from `frontend/`:
+Run these from anywhere in the repo (`mise tasks` lists them all):
 
-- `npm run dev` starts the Nuxt development server.
-- `npm run build` builds the frontend.
+- `mise run setup` starts the database, installs frontend dependencies, and compiles the backend.
+- `mise run dev` starts the database, the backend, and the frontend together.
+- `mise run backend:dev` / `mise run frontend:dev` start one side only.
+- `mise run test` runs backend tests. It starts the database first.
+- `mise run build` builds the backend jar and the frontend.
+- `mise run db:up`, `db:down`, `db:psql`, `db:logs`, and `db:reset` manage the local database.
 
-Run backend commands from `allgenda/`:
+The underlying commands still work directly, as long as mise's tools and env are active: `npm run dev` / `npm run build` from `frontend/`, and `./mvnw spring-boot:run` / `./mvnw test` from `allgenda/`.
 
-- `./mvnw spring-boot:run` starts the backend.
-- `./mvnw test` runs backend tests.
-
-The backend's local datasource configuration expects PostgreSQL at `localhost:5433` with a database named `allgenda`. Backend tests that load the application context may require that database to be available.
+PostgreSQL runs in Docker via `compose.yaml` at `localhost:5433`, with a database named `allgenda`. `application.properties` reads the connection from the `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` env vars set in `mise.toml`, falling back to the same values. Backend tests that load the application context need that database to be running.
 
 ## Change guidance
 
