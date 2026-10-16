@@ -18,13 +18,13 @@ Run these from anywhere in the repo (`mise tasks` lists them all):
 - `mise run setup` starts the database, installs frontend dependencies, and compiles the backend.
 - `mise run dev` starts the database, the backend, and the frontend together.
 - `mise run backend:dev` / `mise run frontend:dev` start one side only.
-- `mise run test` runs backend tests. It starts the database first.
+- `mise run test` runs backend tests. They use an in-memory H2 database, so no PostgreSQL is needed.
 - `mise run build` builds the backend jar and the frontend.
 - `mise run db:up`, `db:down`, `db:psql`, `db:logs`, and `db:reset` manage the local database.
 
 The underlying commands still work directly, as long as mise's tools and env are active: `npm run dev` / `npm run build` from `frontend/`, and `./mvnw spring-boot:run` / `./mvnw test` from `allgenda/`.
 
-PostgreSQL runs in Docker via `compose.yaml` at `localhost:5433`, with a database named `allgenda`. `application.properties` reads the connection from the `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` env vars set in `mise.toml`, falling back to the same values. Backend tests that load the application context need that database to be running.
+PostgreSQL runs in Docker via `compose.yaml` at `localhost:5433`, with a database named `allgenda`. `application.properties` reads the connection from the `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` env vars set in `mise.toml`, falling back to the same values. Backend tests run against an in-memory H2 database with their own JWT secret (`allgenda/src/test/resources/application.properties`), so they do not need PostgreSQL. The backend requires `JWT_SECRET` (at least 32 bytes); `mise.toml` sets a development-only value, which can be overridden in `mise.local.toml` or the environment.
 
 ## Change guidance
 
