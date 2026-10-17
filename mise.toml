@@ -46,6 +46,7 @@ run = "docker compose logs -f postgres"
 [tasks."db:psql"]
 description = "Abre um psql no banco da aplicação"
 run = 'docker compose exec postgres psql -U "$DB_USER" -d "$DB_NAME"'
+run_windows = 'docker compose exec postgres psql -U %DB_USER% -d %DB_NAME%'
 
 # ---------- Backend ----------
 
@@ -53,22 +54,26 @@ run = 'docker compose exec postgres psql -U "$DB_USER" -d "$DB_NAME"'
 description = "Compila o backend"
 dir = "allgenda"
 run = "./mvnw compile"
+run_windows = "mvnw.cmd compile"
 
 [tasks."backend:dev"]
 description = "Inicia o backend (Spring Boot)"
 dir = "allgenda"
 depends = ["db:up"]
 run = "./mvnw spring-boot:run"
+run_windows = "mvnw.cmd spring-boot:run"
 
 [tasks."backend:test"]
 description = "Roda os testes do backend"
 dir = "allgenda"
 run = "./mvnw test"
+run_windows = "mvnw.cmd test"
 
 [tasks."backend:build"]
 description = "Gera o jar do backend (sem testes)"
 dir = "allgenda"
 run = "./mvnw package -DskipTests"
+run_windows = "mvnw.cmd package -DskipTests"
 
 # ---------- Frontend ----------
 
