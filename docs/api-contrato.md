@@ -143,7 +143,7 @@ O contrato está pronto para revisão e mocks. A confirmação de entendimento p
 
 ## Execução e verificação — A-BE2 / A-BE3
 
-Backend requer Java 25, PostgreSQL configurado em `application.properties` e `JWT_SECRET` com pelo menos 32 bytes. Use um segredo aleatório persistente e compartilhado pelas instâncias; não o versione. Execute `./mvnw spring-boot:run` dentro de `allgenda/`. Hibernate cria/atualiza `participacoes`, com FKs obrigatórias e unicidade de `(usuario_id, disciplina_id)`. Não existem cascatas de persistência/remoção nessa associação.
+Veja o `README.md` na raiz para subir o ambiente (`mise run dev`). Em desenvolvimento o `JWT_SECRET` (mínimo de 32 bytes) vem do `mise.toml`; em qualquer outro ambiente use um segredo aleatório próprio, fora do Git. Hibernate cria/atualiza `participacoes`, com FKs obrigatórias e unicidade de `(usuario_id, disciplina_id)`. Não existem cascatas de persistência/remoção nessa associação.
 
 Para conferir um insert manual no PostgreSQL, use IDs existentes de usuário e disciplina:
 ```sql
