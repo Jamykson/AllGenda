@@ -5,7 +5,7 @@ Todos os endpoints exigem `Authorization: Bearer <token>`, exceto os POSTs de lo
 
 ## Estado da implementação
 
-Login, cadastro e endpoints de anotações abaixo estão implementados. Convites e a leitura exclusiva de anotações de colegas são um contrato **planejado para mocks**, sem controllers nesta entrega. As permissões de participação descritas nessas operações também são planejadas. Os endpoints atuais de anotações exigem autenticação, mas ainda não restringem acesso por participação nem edição por autor.
+Login, cadastro e endpoints de anotações abaixo estão implementados. Convites e a leitura exclusiva de anotações de colegas são um contrato **planejado para mocks**, sem controllers nesta entrega. As permissões de participação descritas nessas operações também são planejadas. Os endpoints atuais de anotações exigem autenticação, mas ainda não restringem acesso por participação nem edição por autor; a exceção é anexar e remover imagens, que já exigem ser o autor da anotação.
 
 ## Cadastro e login
 
@@ -88,15 +88,15 @@ Corpo (o autor vem exclusivamente do JWT; não enviar `autorId`):
 ```
 Sucesso `201`:
 ```json
-{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto"}
+{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}
 ```
-Tags são opcionais; sua ordem não é garantida. Erros: `400` aulaId/conteúdo ausente ou JSON inválido; `401` token ausente, inválido ou expirado; `404` aula ou usuário do token não existe.
+Tags são opcionais; sua ordem não é garantida. `imagens` lista as imagens anexadas (ver [Imagens de anotação](#imagens-de-anotação)); vem vazia numa anotação nova. Erros: `400` aulaId/conteúdo ausente ou JSON inválido; `401` token ausente, inválido ou expirado; `404` aula ou usuário do token não existe.
 
 ### GET /anotacoes?aulaId={id} — implementado
 
 Sem corpo. Alternativas: `?disciplinaId={id}` com `&tag=java` opcional, ou `?tag=java`. Filtro por aula não pode ser combinado. Sucesso `200`:
 ```json
-[{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto"}]
+[{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}]
 ```
 Pode retornar `[]`. Inclui anotações próprias e de outros usuários. Erros: `400` filtro ausente/incompatível, tag vazia ou UUID inválido; `401` sem token válido; `404` aula/disciplina inexistente.
 
@@ -115,6 +115,32 @@ Corpo:
 ["java","spring"]
 ```
 Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplicação. Erros: `400` lista sem tags válidas/JSON inválido; `401` sem token válido; `404` anotação inexistente.
+
+## Imagens de anotação
+
+Implementado (B-BE1, #54). Aceita PNG, JPEG e WebP de até 5 MB, com no máximo 10 imagens por anotação. O tipo é detectado pelo conteúdo do arquivo: o `Content-Type` e a extensão enviados são ignorados. Os arquivos ficam no diretório `UPLOADS_DIR` (padrão `allgenda/uploads/`, ignorado pelo Git).
+
+### POST /anotacoes/{id}/imagens — implementado
+
+Corpo `multipart/form-data` com o arquivo no campo `arquivo`:
+```bash
+curl -F arquivo=@quadro.png -H "Authorization: Bearer $TOKEN" localhost:8080/api/anotacoes/66666666-6666-4666-8666-666666666666/imagens
+```
+Sucesso `201`, com `Location` apontando para a imagem:
+```json
+{"id":"88888888-8888-4888-8888-888888888888","nome":"quadro.png","contentType":"image/png","tamanho":48213,"url":"/api/anotacoes/66666666-6666-4666-8666-666666666666/imagens/88888888-8888-4888-8888-888888888888"}
+```
+`nome` é o nome enviado, sem o caminho; serve só para exibição. Erros: `400` campo `arquivo` ausente, arquivo vazio, formato não suportado ou limite de imagens atingido; `401` sem token válido; `403` solicitante não é o autor da anotação; `404` anotação inexistente; `413` arquivo acima de 5 MB.
+
+### GET /anotacoes/{id}/imagens/{imagemId} — implementado
+
+Sem corpo. Sucesso `200` com os bytes da imagem, `Content-Type` do formato detectado e `Content-Disposition: inline`. Qualquer usuário autenticado pode baixar; a restrição por participação virá com a A-BE6 (#40). Erros: `401` sem token válido; `404` imagem inexistente ou de outra anotação.
+
+Como `<img src>` não envia o header `Authorization`, o front deve baixar a imagem com axios (`responseType: 'blob'`) e exibi-la com `URL.createObjectURL`, liberando a URL com `URL.revokeObjectURL` quando não precisar mais dela.
+
+### DELETE /anotacoes/{id}/imagens/{imagemId} — implementado
+
+Sem corpo. Sucesso `204`; o arquivo é apagado do disco depois que a remoção é confirmada no banco. Erros: `401` sem token válido; `403` solicitante não é o autor da anotação; `404` anotação ou imagem inexistente.
 
 ## Erros e exemplos para mocks
 

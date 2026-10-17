@@ -14,8 +14,13 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.JoinTable;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.ArrayList;
 
 
 @Entity
@@ -46,6 +51,11 @@ public class Anotacao implements Serializable {
     @JoinTable(name = "anotacao_tag", 
         joinColumns = @JoinColumn(name = "anotacao_id"), inverseJoinColumns = @JoinColumn(name = "tag_id"))
     private Set<Tag> tags = new HashSet<>();
+
+    // tirar uma imagem desta lista apaga o registro dela (orphanRemoval); o arquivo é apagado pelo service
+    @OneToMany(mappedBy = "anotacao", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("dataCriacao ASC")
+    private List<ImagemAnotacao> imagens = new ArrayList<>();
 
     public static long getSerialversionuid() {
         return serialVersionUID;
@@ -97,5 +107,18 @@ public class Anotacao implements Serializable {
 
     public void removeTag(Tag tag) {
         this.tags.remove(tag);
+    }
+
+    public List<ImagemAnotacao> getImagens() {
+        return imagens;
+    }
+
+    public void addImagem(ImagemAnotacao imagem) {
+        imagem.setAnotacao(this);
+        this.imagens.add(imagem);
+    }
+
+    public void removeImagem(ImagemAnotacao imagem) {
+        this.imagens.remove(imagem);
     }
 }

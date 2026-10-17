@@ -14,5 +14,6 @@ public record AnotacaoResponseDTO(
     String disciplinaNome,
     UUID aulaId,
     LocalDate aulaData,
-    String aulaTopico
+    String aulaTopico,
+    List<ImagemAnotacaoResponseDTO> imagens
 ) {}
