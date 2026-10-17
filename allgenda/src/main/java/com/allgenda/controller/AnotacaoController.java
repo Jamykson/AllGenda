@@ -57,4 +57,10 @@ public class AnotacaoController {
     public AnotacaoResponseDTO editar(@PathVariable UUID id, @RequestBody AnotacaoUpdateDTO dto) {
         return service.editar(id, dto);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable UUID id) {
+        service.excluir(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -5,6 +5,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
+import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.AulaNaoEncontradaException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
@@ -13,12 +14,14 @@ import com.allgenda.exception.UsuarioNaoEncontradoException;
 import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
+import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.AnotacaoService;
+import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +38,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     private final DisciplinaRepository disciplinaRepository;
     private final UsuarioRepository usuarioRepository;
     private final TagService tagService;
+    private final RemocaoArquivos remocaoArquivos;
     private final AnotacaoMapper mapper;
 
     public AnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
@@ -42,12 +46,14 @@ public class AnotacaoServiceImpl implements AnotacaoService {
                                 DisciplinaRepository disciplinaRepository,
                                 UsuarioRepository usuarioRepository,
                                 TagService tagService,
+                                RemocaoArquivos remocaoArquivos,
                                 AnotacaoMapper mapper) {
         this.anotacaoRepository = anotacaoRepository;
         this.aulaRepository = aulaRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.usuarioRepository = usuarioRepository;
         this.tagService = tagService;
+        this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
     }
 
@@ -125,13 +131,23 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     }
 
     private Usuario buscarAutor() {
+        UUID usuarioId = usuarioAutenticadoId();
+        return usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new UsuarioNaoEncontradoException(usuarioId));
+    }
+
+    private void exigirAutor(Anotacao anotacao) {
+        if (!usuarioAutenticadoId().equals(anotacao.getAutor().getId())) {
+            throw new AcessoNegadoException("Somente o autor pode excluir a anotação.");
+        }
+    }
+
+    private UUID usuarioAutenticadoId() {
         var autenticacao = SecurityContextHolder.getContext().getAuthentication();
         if (autenticacao == null || !autenticacao.isAuthenticated()) {
             throw new AuthenticationCredentialsNotFoundException("Autenticação obrigatória.");
         }
-        UUID usuarioId = UUID.fromString(autenticacao.getName());
-        return usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new UsuarioNaoEncontradoException(usuarioId));
+        return UUID.fromString(autenticacao.getName());
     }
 
     @Override
@@ -148,5 +164,22 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
         Anotacao salva = anotacaoRepository.save(anotacao);
         return mapper.toDto(salva);
+    }
+
+    @Override
+    @Transactional
+    public void excluir(UUID id) {
+        Anotacao anotacao = anotacaoRepository.findById(id)
+                .orElseThrow(() -> new AnotacaoNaoEncontradaException(id));
+        exigirAutor(anotacao);
+
+        // as chaves são lidas antes, porque a cascata apaga os registros das imagens junto com a anotação
+        List<String> chavesDasImagens = anotacao.getImagens().stream()
+                .map(ImagemAnotacao::getChaveArmazenamento)
+                .toList();
+
+        // os vínculos em anotacao_tag saem junto, pois a anotação é dona da relação; as tags continuam existindo
+        anotacaoRepository.delete(anotacao);
+        remocaoArquivos.removerAoConfirmar(chavesDasImagens);
     }
 }

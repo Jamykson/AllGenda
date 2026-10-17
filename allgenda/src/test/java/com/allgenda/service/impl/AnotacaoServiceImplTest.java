@@ -5,6 +5,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.junit.jupiter.api.AfterEach;
 import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
+import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.AulaNaoEncontradaException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
@@ -14,18 +15,22 @@ import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
 import com.allgenda.model.Disciplina;
+import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.model.Tag;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.UsuarioRepository;
+import com.allgenda.service.ArmazenamentoService;
+import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -53,6 +58,8 @@ class AnotacaoServiceImplTest {
     private UsuarioRepository usuarioRepository;
     @Mock
     private TagService tagService;
+    @Mock
+    private ArmazenamentoService armazenamento;
 
     private AnotacaoServiceImpl service;
 
@@ -63,7 +70,8 @@ class AnotacaoServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, disciplinaRepository, usuarioRepository, tagService, new AnotacaoMapper());
+        service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, disciplinaRepository, usuarioRepository, tagService,
+                new RemocaoArquivos(armazenamento), new AnotacaoMapper());
 
         Disciplina disciplina = new Disciplina();
         disciplina.setNome("PDS");
@@ -75,6 +83,7 @@ class AnotacaoServiceImplTest {
                 new UsernamePasswordAuthenticationToken(usuarioId.toString(), null, List.of()));
         usuarioPadrao = new Usuario();
         usuarioPadrao.setNome("Maria");
+        ReflectionTestUtils.setField(usuarioPadrao, "id", usuarioId);
     }
 
     @AfterEach
@@ -281,5 +290,63 @@ class AnotacaoServiceImplTest {
     void listarPorTagEmBrancoLancaRequisicaoInvalida() {
         assertThatThrownBy(() -> service.listarPorTag("   "))
                 .isInstanceOf(RequisicaoInvalidaException.class);
+    }
+
+    private static ImagemAnotacao imagem(String chave) {
+        ImagemAnotacao imagem = new ImagemAnotacao();
+        imagem.setChaveArmazenamento(chave);
+        return imagem;
+    }
+
+    @Test
+    void autorExcluiAnotacaoEOsArquivosDasImagens() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto", tag("java"));
+        anotacao.addImagem(imagem("a.png"));
+        anotacao.addImagem(imagem("b.jpg"));
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+
+        service.excluir(anotacaoId);
+
+        verify(anotacaoRepository).delete(anotacao);
+        verify(armazenamento).remover("a.png");
+        verify(armazenamento).remover("b.jpg");
+    }
+
+    @Test
+    void excluirAnotacaoSemImagensNaoMexeNoArmazenamento() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto");
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+
+        service.excluir(anotacaoId);
+
+        verify(anotacaoRepository).delete(anotacao);
+        verify(armazenamento, never()).remover(any());
+    }
+
+    @Test
+    void quemNaoEhAutorNaoExcluiAnotacao() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto");
+        anotacao.addImagem(imagem("a.png"));
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of()));
+
+        assertThatThrownBy(() -> service.excluir(anotacaoId))
+                .isInstanceOf(AcessoNegadoException.class);
+        verify(anotacaoRepository, never()).delete(any());
+        verify(armazenamento, never()).remover(any());
+    }
+
+    @Test
+    void excluirAnotacaoInexistenteLancaErroTratado() {
+        UUID anotacaoId = UUID.randomUUID();
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.excluir(anotacaoId))
+                .isInstanceOf(AnotacaoNaoEncontradaException.class);
+        verify(anotacaoRepository, never()).delete(any());
     }
 }
