@@ -7,46 +7,55 @@ cd "$(dirname "$0")"
 
 echo "🚀 Preparando AllGenda..."
 
-# Verifica se o mise já está instalado
+# 1. mise: instala no Linux/macOS; no Windows orienta a instalação.
 if ! command -v mise >/dev/null 2>&1; then
-    
-    # Detecta o Sistema Operacional
-    OS_TYPE="$(uname -s)"
-    
-    if [[ "$OS_TYPE" == *"MINGW"* || "$OS_TYPE" == *"MSYS"* || "$OS_TYPE" == *"CYGWIN"* ]]; then
-        echo "📦 Ambiente Windows (MinGW/MSYS) detectado. Instalando mise nativo..."
-        mkdir -p "$HOME/.local/bin"
-        
-        # Baixa o binário usando a URL estável do GitHub e seguindo os redirecionamentos (-L)
-        curl -fsSL "https://github.com" -o "$HOME/.local/bin/mise.zip"
-        
-        # Se falhar pelo número da versão, usamos o fallback do binário direto pré-compilado:
-        if [ ! -s "$HOME/.local/bin/mise.zip" ] || grep -q "<html" "$HOME/.local/bin/mise.zip" 2>/dev/null; then
-             # Alternativa direta: Baixa o executável exe direto sem precisar descompactar
-             echo "🔄 Tentando link alternativo direto..."
-             curl -fsSL "https://github.com" -o "$HOME/.local/bin/mise.exe"
-             chmod +x "$HOME/.local/bin/mise.exe"
-        else
-             # Descompacta se o zip veio correto
-             unzip -o "$HOME/.local/bin/mise.zip" -d "$HOME/.local/bin"
-             rm "$HOME/.local/bin/mise.zip"
-        fi
-    else
-        echo "📦 Ambiente Unix (Linux/macOS) detectado. Instalando via script oficial..."
-        curl -fsSL https://mise.run | sh
-    fi
-    
-    # Garante que o diretório de binários locais esteja no PATH desta sessão
+    # O instalador do mise pode ter deixado o binário aqui sem alterar o PATH desta sessão.
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
+if ! command -v mise >/dev/null 2>&1; then
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*)
+            echo "📦 Windows detectado. O mise precisa ser instalado pelo winget (ou scoop)."
+            if command -v winget >/dev/null 2>&1; then
+                winget install --id jdx.mise -e \
+                    --accept-package-agreements --accept-source-agreements
+                echo ""
+                echo "✅ mise instalado. FECHE e REABRA este terminal (Git Bash) e rode"
+                echo "   ./iniciar-allgenda.sh de novo, para o PATH ser atualizado."
+            else
+                echo "❌ winget não encontrado. Instale o mise manualmente:"
+                echo "   winget install jdx.mise   (ou: scoop install mise)"
+                echo "   Depois reabra o terminal e rode ./iniciar-allgenda.sh de novo."
+            fi
+            exit 0
+            ;;
+        *)
+            echo "📦 Instalando mise..."
+            curl -fsSL https://mise.run | sh
+            export PATH="$HOME/.local/bin:$PATH"
+            ;;
+    esac
+fi
+
+# 2. Ferramentas (Java, Node) e preparação do projeto.
+# Não precisa de "mise activate": 'mise run' já carrega as ferramentas e o ambiente.
 mise trust
 mise install
-mise run setup
+
+if docker info >/dev/null 2>&1; then
+    mise run setup
+else
+    echo "⚠️  Docker não está disponível: pulando o banco (db:up)."
+    echo "    Use um PostgreSQL próprio na porta 5433 (veja o README)."
+    mise run frontend:install
+    mise run backend:compile
+fi
 
 echo "✅ Tudo preparado!"
 echo ""
 echo "Agora rode:"
-echo "mise run dev"
+echo "mise run dev        (com Docker)"
+echo "Sem Docker: veja a seção 'Sem Docker' do README."
 echo ""
 echo "Dica: rode 'mise tasks' para ver todas as tarefas disponíveis."
