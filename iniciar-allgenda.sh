@@ -17,12 +17,20 @@ if ! command -v mise >/dev/null 2>&1; then
         echo "📦 Ambiente Windows (MinGW/MSYS) detectado. Instalando mise nativo..."
         mkdir -p "$HOME/.local/bin"
         
-        # Baixa o binário oficial zipado do Windows
-        curl -fsSL https://github.com -o "$HOME/.local/bin/mise.zip"
+        # Baixa o binário usando a URL estável do GitHub e seguindo os redirecionamentos (-L)
+        curl -fsSL "https://github.com" -o "$HOME/.local/bin/mise.zip"
         
-        # Descompacta e remove o lixo
-        unzip -o "$HOME/.local/bin/mise.zip" -d "$HOME/.local/bin"
-        rm "$HOME/.local/bin/mise.zip"
+        # Se falhar pelo número da versão, usamos o fallback do binário direto pré-compilado:
+        if [ ! -s "$HOME/.local/bin/mise.zip" ] || grep -q "<html" "$HOME/.local/bin/mise.zip" 2>/dev/null; then
+             # Alternativa direta: Baixa o executável exe direto sem precisar descompactar
+             echo "🔄 Tentando link alternativo direto..."
+             curl -fsSL "https://github.com" -o "$HOME/.local/bin/mise.exe"
+             chmod +x "$HOME/.local/bin/mise.exe"
+        else
+             # Descompacta se o zip veio correto
+             unzip -o "$HOME/.local/bin/mise.zip" -d "$HOME/.local/bin"
+             rm "$HOME/.local/bin/mise.zip"
+        fi
     else
         echo "📦 Ambiente Unix (Linux/macOS) detectado. Instalando via script oficial..."
         curl -fsSL https://mise.run | sh
