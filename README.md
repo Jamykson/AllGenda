@@ -102,5 +102,7 @@ PostgreSQL nem de Docker.
   máquina). Pare-o antes de `mise run db:up`, ou mude `DB_PORT` no `mise.local.toml`.
 - **Dados antigos do banco**: o banco do Docker começa vazio; os dados de um PostgreSQL
   anterior não são migrados.
-- **Windows**: as tarefas do mise usam comandos de shell Unix (`./mvnw`, `$DB_USER`). Use o
-  WSL ou o Git Bash. Não foi testado no Windows puro.
+
+## Notas:
+
+- Testado no Windows com mise e Docker. As tarefas já têm run_windows para o Maven.
