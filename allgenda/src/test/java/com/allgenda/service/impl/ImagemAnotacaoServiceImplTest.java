@@ -14,6 +14,7 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemAnotacaoService.ImagemArquivo;
+import com.allgenda.service.RemocaoArquivos;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,7 +81,7 @@ class ImagemAnotacaoServiceImplTest {
 
     private ImagemAnotacaoServiceImpl criarService(DataSize tamanhoMaximo, int maximoPorAnotacao) {
         return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository, armazenamento,
-                new AnotacaoMapper(), tamanhoMaximo, maximoPorAnotacao);
+                new RemocaoArquivos(armazenamento), new AnotacaoMapper(), tamanhoMaximo, maximoPorAnotacao);
     }
 
     private static void autenticar(UUID usuarioId) {

@@ -14,4 +14,5 @@ public interface AnotacaoService {
     List<AnotacaoResponseDTO> listarPorDisciplina(UUID disciplinaId, String tag); // tag opcional: null = todas
     List<AnotacaoResponseDTO> listarPorTag(String tag);
     AnotacaoResponseDTO editar(UUID anotacaoId, AnotacaoUpdateDTO dto);
+    void excluir(UUID anotacaoId); // apaga também as imagens (registros e arquivos); só o autor pode excluir
 }

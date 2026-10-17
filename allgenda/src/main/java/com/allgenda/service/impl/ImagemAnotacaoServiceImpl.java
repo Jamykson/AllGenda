@@ -13,34 +13,32 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemAnotacaoService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.allgenda.service.RemocaoArquivos;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
 
-    private static final Logger log = LoggerFactory.getLogger(ImagemAnotacaoServiceImpl.class);
     private static final String NOME_PADRAO = "imagem";
     private static final int TAMANHO_MAXIMO_NOME = 255;
 
     private final AnotacaoRepository anotacaoRepository;
     private final ImagemAnotacaoRepository imagemRepository;
     private final ArmazenamentoService armazenamento;
+    private final RemocaoArquivos remocaoArquivos;
     private final AnotacaoMapper mapper;
     private final DataSize tamanhoMaximo;
     private final int maximoPorAnotacao;
@@ -48,12 +46,14 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     public ImagemAnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
                                      ImagemAnotacaoRepository imagemRepository,
                                      ArmazenamentoService armazenamento,
+                                     RemocaoArquivos remocaoArquivos,
                                      AnotacaoMapper mapper,
                                      @Value("${app.uploads.tamanho-maximo}") DataSize tamanhoMaximo,
                                      @Value("${app.uploads.maximo-por-anotacao}") int maximoPorAnotacao) {
         this.anotacaoRepository = anotacaoRepository;
         this.imagemRepository = imagemRepository;
         this.armazenamento = armazenamento;
+        this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
         this.tamanhoMaximo = tamanhoMaximo;
         this.maximoPorAnotacao = maximoPorAnotacao;
@@ -81,7 +81,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
                 .orElseThrow(() -> new RequisicaoInvalidaException("Formato não suportado. Envie uma imagem PNG, JPEG ou WebP."));
 
         String chave = armazenamento.salvar(conteudo, tipo.extensao);
-        removerArquivoSeNaoConfirmar(chave);
+        remocaoArquivos.removerSeDesfeita(chave);
 
         ImagemAnotacao imagem = new ImagemAnotacao();
         imagem.setNomeOriginal(nomeSeguro(arquivo.getOriginalFilename()));
@@ -111,7 +111,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
         ImagemAnotacao imagem = buscarImagem(anotacaoId, imagemId);
 
         anotacao.removeImagem(imagem);
-        removerArquivoAposConfirmar(imagem.getChaveArmazenamento());
+        remocaoArquivos.removerAoConfirmar(List.of(imagem.getChaveArmazenamento()));
     }
 
     private Anotacao buscarAnotacao(UUID anotacaoId) {
@@ -154,44 +154,6 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
             return NOME_PADRAO;
         }
         return nome.length() > TAMANHO_MAXIMO_NOME ? nome.substring(0, TAMANHO_MAXIMO_NOME) : nome;
-    }
-
-    // se a transação falhar depois de o arquivo ser gravado, o arquivo é apagado para não ficar órfão no disco
-    private void removerArquivoSeNaoConfirmar(String chave) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status != STATUS_COMMITTED) {
-                    removerArquivo(chave);
-                }
-            }
-        });
-    }
-
-    // o arquivo só é apagado depois que a remoção do registro foi confirmada no banco
-    private void removerArquivoAposConfirmar(String chave) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            removerArquivo(chave);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                removerArquivo(chave);
-            }
-        });
-    }
-
-    // falhar ao apagar o arquivo não deve desfazer nem quebrar uma operação já confirmada no banco
-    private void removerArquivo(String chave) {
-        try {
-            armazenamento.remover(chave);
-        } catch (RuntimeException e) {
-            log.warn("Não foi possível remover o arquivo {} do armazenamento.", chave, e);
-        }
     }
 
     private enum TipoImagem {
