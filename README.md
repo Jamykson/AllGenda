@@ -66,6 +66,8 @@ As variáveis ficam em `[env]` no `mise.toml`:
 | `DB_HOST`, `DB_PORT`, `DB_NAME` | `localhost`, `5433`, `allgenda` | Conexão com o banco |
 | `DB_USER`, `DB_PASSWORD` | `allgenda_user`, `alljgc` | Credenciais **somente de desenvolvimento** |
 | `JWT_SECRET` | valor de desenvolvimento no `mise.toml` | Chave de assinatura dos tokens (mínimo de 32 bytes) |
+| `DEV_USUARIO_NOME`, `DEV_USUARIO_EMAIL`, `DEV_USUARIO_SENHA` | `Aluno Teste`, `aluno@allgenda.test`, `senha-de-teste-123` | Usuário de teste, **somente de desenvolvimento** (veja "Autenticação") |
+| `LOGIN_AUTOMATICO` | `false` | `true` faz o front entrar sozinho com o usuário de teste (só no `nuxt dev`) |
 
 O `JWT_SECRET` do `mise.toml` serve **apenas para desenvolvimento**. O back-end não tem valor
 padrão para ele e não sobe sem uma chave definida, então um ambiente real precisa de uma chave
@@ -86,6 +88,31 @@ Para gerar um valor aleatório: `openssl rand -base64 48`.
 Quase todos os endpoints exigem um token. Cadastre-se em `POST /api/usuarios`, entre em
 `POST /api/auth/login` e envie `Authorization: Bearer <token>` nas demais requisições
 (o token vale por 1 hora). Os detalhes estão em `docs/api-contrato.md`.
+
+### Usuário de teste e login automático
+
+Ao iniciar, o back-end cria um usuário de teste, se ele ainda não existir. Assim, todo banco
+de desenvolvimento novo já tem com quem entrar, inclusive depois de `mise run db:reset`:
+
+- e-mail: `aluno@allgenda.test`
+- senha: `senha-de-teste-123`
+
+As credenciais vêm das variáveis `DEV_USUARIO_*` do `mise.toml`. Sem elas, o usuário não é
+criado; os testes e qualquer outro ambiente não o recebem.
+
+O front também pode entrar sozinho com esse usuário, sem passar pela tela de login. Isso fica
+**desligado por padrão**; para ligar só na sua máquina, coloque no `mise.local.toml` e reinicie
+o front:
+
+```toml
+[env]
+LOGIN_AUTOMATICO = "true"
+```
+
+O login automático só funciona com o front rodando em modo de desenvolvimento (`mise run dev`,
+`mise run frontend:dev` ou `npm run dev`); ele não existe no build de produção. Quando ligado,
+a senha de teste fica visível no navegador, por isso esse usuário nunca deve existir fora do
+banco de desenvolvimento.
 
 ## Testes
 
