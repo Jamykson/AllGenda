@@ -101,13 +101,30 @@ As credenciais vêm das variáveis `DEV_USUARIO_*` do `mise.toml`. Sem elas, o u
 criado; os testes e qualquer outro ambiente não o recebem.
 
 O front também pode entrar sozinho com esse usuário, sem passar pela tela de login. Isso fica
-**desligado por padrão**; para ligar só na sua máquina, coloque no `mise.local.toml` e reinicie
-o front:
+**desligado por padrão**.
+
+**Para ligar** só na sua máquina, rode `mise set -E local LOGIN_AUTOMATICO=true`, ou coloque no
+`mise.local.toml`:
 
 ```toml
 [env]
 LOGIN_AUTOMATICO = "true"
 ```
+
+Depois, reinicie o front (`mise run dev`).
+
+**Para desligar**, rode `mise unset --file mise.local.toml LOGIN_AUTOMATICO` e reinicie o front.
+Assim vale de novo o `false` do `mise.toml`. Não esqueça o `--file`: sem ele, o `mise unset`
+apaga a variável do `mise.toml` compartilhado.
+
+**Como usar:** o login automático acontece na primeira chamada à API, mas a tela de login
+(`http://localhost:3000/`) não chama a API e continua aparecendo normalmente. Então:
+
+- entre direto em http://localhost:3000/disciplinas ou http://localhost:3000/agenda; ou
+- use o login simulado (`admin@gmail.com` / `123`), que leva à agenda.
+
+Daí em diante, o login automático cuida do token: entra com o usuário de teste quando não há
+token e entra de novo quando ele expira (1 hora).
 
 O login automático só funciona com o front rodando em modo de desenvolvimento (`mise run dev`,
 `mise run frontend:dev` ou `npm run dev`); ele não existe no build de produção. Quando ligado,
