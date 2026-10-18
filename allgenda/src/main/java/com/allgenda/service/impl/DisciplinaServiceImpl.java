@@ -6,7 +6,9 @@ import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.mapper.DisciplinaMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.DisciplinaService;
+import com.allgenda.service.RemocaoArquivos;
 import org.springframework.stereotype.Service;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +20,17 @@ import java.util.UUID;
 public class DisciplinaServiceImpl implements DisciplinaService {
 
     private final DisciplinaRepository repository;
+    private final ImagemAnotacaoRepository imagemRepository;
+    private final RemocaoArquivos remocaoArquivos;
     private final DisciplinaMapper mapper;
 
-    public DisciplinaServiceImpl(DisciplinaRepository repository, DisciplinaMapper mapper){
+    public DisciplinaServiceImpl(DisciplinaRepository repository,
+                                 ImagemAnotacaoRepository imagemRepository,
+                                 RemocaoArquivos remocaoArquivos,
+                                 DisciplinaMapper mapper){
         this.repository = repository;
+        this.imagemRepository = imagemRepository;
+        this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
     }
 
@@ -65,6 +74,11 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public void excluir(UUID id) {
         Disciplina disciplina = repository.findById(id)
             .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));
+
+        // a cascata disciplina -> aulas -> anotações -> imagens apaga os registros, mas não os arquivos;
+        // as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada
+        List<String> chavesDasImagens = imagemRepository.findChavesArmazenamentoByDisciplinaId(id);
         repository.delete(disciplina);
+        remocaoArquivos.removerAoConfirmar(chavesDasImagens);
     }
 }
