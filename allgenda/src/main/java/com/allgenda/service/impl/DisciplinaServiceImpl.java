@@ -1,20 +1,25 @@
 package com.allgenda.service.impl;
 
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.allgenda.dto.request.DisciplinaRequestDTO;
 import com.allgenda.dto.response.DisciplinaResponseDTO;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.mapper.DisciplinaMapper;
 import com.allgenda.model.Disciplina;
+import com.allgenda.model.PapelParticipacao;
+import com.allgenda.model.Participacao;
+import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.DisciplinaService;
 import com.allgenda.service.RemocaoArquivos;
-import org.springframework.stereotype.Service;
-import com.allgenda.exception.RequisicaoInvalidaException;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.UUID;
+import com.allgenda.service.UsuarioAutenticado;
 
 @Service
 public class DisciplinaServiceImpl implements DisciplinaService {
@@ -23,18 +28,22 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     private final ImagemAnotacaoRepository imagemRepository;
     private final RemocaoArquivos remocaoArquivos;
     private final DisciplinaMapper mapper;
+    private final UsuarioAutenticado usuarioAutenticado;
 
     public DisciplinaServiceImpl(DisciplinaRepository repository,
                                  ImagemAnotacaoRepository imagemRepository,
                                  RemocaoArquivos remocaoArquivos,
-                                 DisciplinaMapper mapper){
+                                 DisciplinaMapper mapper,
+                                 UsuarioAutenticado usuarioAutenticado){
         this.repository = repository;
         this.imagemRepository = imagemRepository;
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
+        this.usuarioAutenticado = usuarioAutenticado;
     }
 
     @Override
+    @Transactional
     public DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto) {
         if(dto.nome() == null || dto.nome().isBlank()){
             throw new RequisicaoInvalidaException("O nome da disciplina é obrigatório.");
@@ -50,6 +59,13 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         Disciplina disciplina = new Disciplina();
         disciplina.setNome(nome);
         disciplina.setDescricao(descricao == null || descricao.isBlank() ? null : descricao);
+
+        // quem cria a disciplina vira o dono, com a participação já aceita.
+        Participacao participacao = new Participacao();
+        participacao.setUsuario(usuarioAutenticado.obter());
+        participacao.setPapel(PapelParticipacao.DONO);
+        participacao.setStatus(StatusParticipacao.ACEITO);
+        disciplina.addParticipacao(participacao);
 
         Disciplina salva = repository.save(disciplina);
         return mapper.toDto(salva); // mapeia a disciplina salva para um DisciplinaResponseDTO, para assim retornar ao controller o objeto adequado.
