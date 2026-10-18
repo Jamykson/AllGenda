@@ -5,7 +5,7 @@ Todos os endpoints exigem `Authorization: Bearer <token>`, exceto os POSTs de lo
 
 ## Estado da implementação
 
-Login, cadastro e endpoints de anotações abaixo estão implementados. Convites e a leitura exclusiva de anotações de colegas são um contrato **planejado para mocks**, sem controllers nesta entrega. As permissões de participação descritas nessas operações também são planejadas. Os endpoints atuais de anotações exigem autenticação, mas ainda não restringem acesso por participação nem edição por autor; a exceção é anexar e remover imagens, que já exigem ser o autor da anotação.
+Login, cadastro e endpoints de anotações abaixo estão implementados. Convites e a leitura exclusiva de anotações de colegas são um contrato **planejado para mocks**, sem controllers nesta entrega. As permissões de participação descritas nessas operações também são planejadas. Os endpoints atuais de anotações exigem autenticação, mas ainda não restringem acesso por participação nem edição por autor; as exceções são excluir a anotação e anexar ou remover imagens, que já exigem ser o autor dela.
 
 ## Cadastro e login
 
@@ -107,6 +107,10 @@ Corpo:
 {"conteudo":"Conteúdo revisado"}
 ```
 Sucesso `200`: objeto de anotação do POST, com `conteudo` atualizado. Erros: `400` conteúdo vazio/JSON inválido; `401` sem token válido; `404` anotação inexistente.
+
+### DELETE /anotacoes/{id} — implementado
+
+Sem corpo. Apenas o autor exclui. Sucesso `204`. As imagens da anotação são removidas junto: os registros saem na mesma transação e os arquivos são apagados do disco depois que a exclusão é confirmada. Os vínculos com tags também saem, mas as tags continuam existindo para as demais anotações. Erros: `401` sem token válido; `403` solicitante não é o autor; `404` anotação inexistente (inclusive se já foi excluída).
 
 ### POST /anotacoes/{id}/tags — implementado
 
