@@ -13,7 +13,7 @@ interface PersonalizacaoDisciplina {
 }
 
 export function useDisciplinas() {
-  const config = useRuntimeConfig()
+  const { $api } = useNuxtApp()
 
   function salvarHorarioDisciplina(
     disciplinaId: string,
@@ -103,10 +103,8 @@ export function useDisciplinas() {
   }
 
   async function listar(): Promise<Disciplina[]> {
-    const disciplinas =
-      await $fetch<Disciplina[]>(
-        `${config.public.apiBase}/api/disciplinas`
-      )
+    const { data: disciplinas } =
+      await $api.get<Disciplina[]>('/api/disciplinas')
 
     const personalizacoes =
       carregarPersonalizacoes()
@@ -129,14 +127,11 @@ export function useDisciplinas() {
   }
 
   async function criar(nova: NovaDisciplina): Promise<Disciplina> {
-    const criada = await $fetch<Disciplina>(
-      `${config.public.apiBase}/api/disciplinas`,
+    const { data: criada } = await $api.post<Disciplina>(
+      '/api/disciplinas',
       {
-        method: 'POST',
-        body: {
-          nome: nova.nome,
-          descricao: nova.descricao.trim() || null
-        }
+        nome: nova.nome,
+        descricao: nova.descricao.trim() || null
       }
     )
 
@@ -160,10 +155,7 @@ export function useDisciplinas() {
   }
 
   async function excluir(disciplinaId: string): Promise<void> {
-    await $fetch(
-      `${config.public.apiBase}/api/disciplinas/${disciplinaId}`,
-      { method: 'DELETE' }
-    )
+    await $api.delete(`/api/disciplinas/${disciplinaId}`)
 
     excluirDadosLocais(disciplinaId)
   }

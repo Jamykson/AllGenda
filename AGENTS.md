@@ -9,7 +9,7 @@
 
 ## Tooling
 
-The root `mise.toml` sets up the dev environment with [mise](https://mise.jdx.dev): it pins tool versions (Java 25, Node 24), defines env vars (`DB_*`), and declares tasks. Run `mise trust && mise install` once, or run `./iniciar-allgenda.sh`, which also installs mise and runs `mise run setup`. Put local overrides, such as `NUXT_PUBLIC_API_BASE`, in a gitignored `mise.local.toml`.
+The root `mise.toml` sets up the dev environment with [mise](https://mise.jdx.dev): it pins tool versions (Java 25, Node 24), defines env vars (`DB_*`, `JWT_SECRET`, the dev test user `DEV_USUARIO_*`, and `API_COM_USUARIO_DE_TESTE`), and declares tasks. Run `mise trust && mise install` once, or run `./iniciar-allgenda.sh`, which also installs mise and runs `mise run setup`. Put local overrides, such as `NUXT_PUBLIC_API_BASE`, in a gitignored `mise.local.toml`.
 
 ## Common commands
 
@@ -24,7 +24,7 @@ Run these from anywhere in the repo (`mise tasks` lists them all):
 
 The underlying commands still work directly, as long as mise's tools and env are active: `npm run dev` / `npm run build` from `frontend/`, and `./mvnw spring-boot:run` / `./mvnw test` from `allgenda/`.
 
-PostgreSQL runs in Docker via `compose.yaml` at `localhost:5433`, with a database named `allgenda`. `application.properties` reads the connection from the `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` env vars set in `mise.toml`, falling back to the same values. Backend tests run against an in-memory H2 database with their own JWT secret (`allgenda/src/test/resources/application.properties`), so they do not need PostgreSQL. The backend requires `JWT_SECRET` (at least 32 bytes); `mise.toml` sets a development-only value, which can be overridden in `mise.local.toml` or the environment.
+PostgreSQL runs in Docker via `compose.yaml` at `localhost:5433`, with a database named `allgenda`. `application.properties` reads the connection from the `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` env vars set in `mise.toml`, falling back to the same values. Backend tests run against an in-memory H2 database with their own JWT secret (`allgenda/src/test/resources/application.properties`), so they do not need PostgreSQL. The backend requires `JWT_SECRET` (at least 32 bytes); `mise.toml` sets a development-only value, which can be overridden in `mise.local.toml` or the environment. On startup, the backend creates the test user from `DEV_USUARIO_*` if it does not exist (`config/UsuarioTesteInitializer.java`). Only under `nuxt dev` with `API_COM_USUARIO_DE_TESTE=true` (off by default), the frontend gets a token with that user for API calls when it has none; no screen changes, so the login page still appears. The token is handled by `composables/useAuth.ts` and the interceptors in `plugins/axios.ts`.
 
 ## Change guidance
 

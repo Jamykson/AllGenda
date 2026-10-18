@@ -30,7 +30,26 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase
+      apiBase,
+      // credenciais do usuário de teste usado nas chamadas à API; vazias = desligado (sempre vazias fora do `nuxt dev`)
+      usuarioDeTesteNaApi: {
+        email: '',
+        senha: ''
+      }
+    }
+  },
+
+  // só no `nuxt dev`: as credenciais do usuário de teste nunca entram no build de produção
+  $development: {
+    runtimeConfig: {
+      public: {
+        usuarioDeTesteNaApi: process.env.API_COM_USUARIO_DE_TESTE === 'true'
+          ? {
+              email: process.env.DEV_USUARIO_EMAIL ?? '',
+              senha: process.env.DEV_USUARIO_SENHA ?? ''
+            }
+          : { email: '', senha: '' }
+      }
     }
   }
 })
