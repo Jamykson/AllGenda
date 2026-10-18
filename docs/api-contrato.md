@@ -122,7 +122,7 @@ Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplica�
 
 ## Imagens de anotação
 
-Implementado (B-BE1, #54). Aceita PNG, JPEG e WebP de até 5 MB, com no máximo 10 imagens por anotação. O tipo é detectado pelo conteúdo do arquivo: o `Content-Type` e a extensão enviados são ignorados. Os arquivos ficam no diretório `UPLOADS_DIR` (padrão `allgenda/uploads/`, ignorado pelo Git).
+Implementado (B-BE1, #54). Aceita PNG, JPEG e WebP de até 5 MB, com no máximo 10 imagens por anotação. O tipo é detectado pelo conteúdo do arquivo: o `Content-Type` e a extensão enviados são ignorados. Os arquivos ficam no diretório `UPLOADS_DIR` (padrão `allgenda/uploads/`, ignorado pelo Git). Excluir a anotação (`DELETE /anotacoes/{id}`) ou a disciplina inteira (`DELETE /disciplinas/{id}`) também apaga os arquivos das imagens, depois que a exclusão é confirmada no banco.
 
 ### POST /anotacoes/{id}/imagens — implementado
 
