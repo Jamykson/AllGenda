@@ -1,33 +1,37 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.dto.request.DisciplinaRequestDTO;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
-import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.DisciplinaMapper;
-import com.allgenda.model.Disciplina;
-import com.allgenda.repository.DisciplinaRepository;
-import com.allgenda.repository.ImagemAnotacaoRepository;
-import com.allgenda.service.ArmazenamentoService;
-import com.allgenda.service.RemocaoArquivos;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InOrder;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
-
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import org.mockito.InOrder;
+import org.mockito.Mock;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+
+import com.allgenda.dto.request.DisciplinaRequestDTO;
+import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.RequisicaoInvalidaException;
+import com.allgenda.mapper.DisciplinaMapper;
+import com.allgenda.model.Disciplina;
+import com.allgenda.model.PapelParticipacao;
+import com.allgenda.model.StatusParticipacao;
+import com.allgenda.model.Usuario;
+import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.ImagemAnotacaoRepository;
+import com.allgenda.service.ArmazenamentoService;
+import com.allgenda.service.RemocaoArquivos;
+import com.allgenda.service.UsuarioAutenticado;
 
 @ExtendWith(MockitoExtension.class)
 class DisciplinaServiceImplTest {
@@ -38,16 +42,19 @@ class DisciplinaServiceImplTest {
     private ImagemAnotacaoRepository imagemRepository;
     @Mock
     private ArmazenamentoService armazenamento;
+    @Mock
+    private UsuarioAutenticado usuarioAutenticado;
 
     private DisciplinaServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, imagemRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper());
+        service = new DisciplinaServiceImpl(repository, imagemRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado);
     }
 
     @Test
     void cadastraDisciplinaComNomeEDescricaoNormalizados() {
+        when(usuarioAutenticado.obter()).thenReturn(new Usuario());
         when(repository.save(any(Disciplina.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -76,6 +83,23 @@ class DisciplinaServiceImplTest {
             .isInstanceOf(RequisicaoInvalidaException.class);
 
         verify(repository, never()).save(any(Disciplina.class));
+    }
+
+    @Test
+    void quemCriaADisciplinaViraDonoComParticipacaoAceita() {
+        var usuario = new Usuario();
+        when(usuarioAutenticado.obter()).thenReturn(usuario);
+        when(repository.save(any(Disciplina.class))).thenAnswer(i -> i.getArgument(0));
+
+        service.cadastrar(new DisciplinaRequestDTO("Física", null));
+
+        var captor = org.mockito.ArgumentCaptor.forClass(Disciplina.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getParticipacoes()).singleElement().satisfies(p -> {
+            assertThat(p.getUsuario()).isSameAs(usuario);
+            assertThat(p.getPapel()).isEqualTo(PapelParticipacao.DONO);
+            assertThat(p.getStatus()).isEqualTo(StatusParticipacao.ACEITO);
+        });
     }
 
     @Test

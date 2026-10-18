@@ -33,6 +33,9 @@ public class Disciplina implements Serializable {
     @OneToMany(mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Aula> aulas = new ArrayList<>();
 
+    @OneToMany (mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Participacao> participacoes = new ArrayList<>();
+
     public static long getSerialversionuid() {
         return serialVersionUID;
     }
@@ -63,5 +66,15 @@ public class Disciplina implements Serializable {
 
     public void setAulas(List<Aula> aulas) {
         this.aulas = aulas;
+    }
+
+    public List<Participacao> getParticipacoes() {
+        return participacoes;
+    }
+
+    // Mantém os dois lados da relação coerentes: a lista da disciplina e o campo disciplina da participação
+    public void addParticipacao(Participacao participacao) {
+        participacoes.add(participacao);
+        participacao.setDisciplina(this);
     }
 }
