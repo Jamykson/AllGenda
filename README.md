@@ -67,7 +67,7 @@ As variáveis ficam em `[env]` no `mise.toml`:
 | `DB_USER`, `DB_PASSWORD` | `allgenda_user`, `alljgc` | Credenciais **somente de desenvolvimento** |
 | `JWT_SECRET` | valor de desenvolvimento no `mise.toml` | Chave de assinatura dos tokens (mínimo de 32 bytes) |
 | `DEV_USUARIO_NOME`, `DEV_USUARIO_EMAIL`, `DEV_USUARIO_SENHA` | `Aluno Teste`, `aluno@allgenda.test`, `senha-de-teste-123` | Usuário de teste, **somente de desenvolvimento** (veja "Autenticação") |
-| `LOGIN_AUTOMATICO` | `false` | `true` faz o front entrar sozinho com o usuário de teste (só no `nuxt dev`) |
+| `API_COM_USUARIO_DE_TESTE` | `false` | `true` faz o front usar o usuário de teste nas chamadas à API (só no `nuxt dev`); não pula a tela de login |
 
 O `JWT_SECRET` do `mise.toml` serve **apenas para desenvolvimento**. O back-end não tem valor
 padrão para ele e não sobe sem uma chave definida, então um ambiente real precisa de uma chave
@@ -89,7 +89,7 @@ Quase todos os endpoints exigem um token. Cadastre-se em `POST /api/usuarios`, e
 `POST /api/auth/login` e envie `Authorization: Bearer <token>` nas demais requisições
 (o token vale por 1 hora). Os detalhes estão em `docs/api-contrato.md`.
 
-### Usuário de teste e login automático
+### Usuário de teste
 
 Ao iniciar, o back-end cria um usuário de teste, se ele ainda não existir. Assim, todo banco
 de desenvolvimento novo já tem com quem entrar, inclusive depois de `mise run db:reset`:
@@ -100,35 +100,38 @@ de desenvolvimento novo já tem com quem entrar, inclusive depois de `mise run d
 As credenciais vêm das variáveis `DEV_USUARIO_*` do `mise.toml`. Sem elas, o usuário não é
 criado; os testes e qualquer outro ambiente não o recebem.
 
-O front também pode entrar sozinho com esse usuário, sem passar pela tela de login. Isso fica
-**desligado por padrão**.
+### Usar o usuário de teste nas chamadas à API
 
-**Para ligar** só na sua máquina, rode `mise set -E local LOGIN_AUTOMATICO=true`, ou coloque no
-`mise.local.toml`:
+Enquanto as telas de login e cadastro não estão ligadas à API, o front pode usar o usuário de
+teste nas chamadas à API: quando não há token, ele obtém um com o usuário de teste. Nenhuma
+tela muda, e a tela de login continua aparecendo. Isso fica **desligado por padrão**.
+
+**Para ligar** só na sua máquina, rode `mise set -E local API_COM_USUARIO_DE_TESTE=true`, ou
+coloque no `mise.local.toml`:
 
 ```toml
 [env]
-LOGIN_AUTOMATICO = "true"
+API_COM_USUARIO_DE_TESTE = "true"
 ```
 
 Depois, reinicie o front (`mise run dev`).
 
-**Para desligar**, rode `mise unset --file mise.local.toml LOGIN_AUTOMATICO` e reinicie o front.
-Assim vale de novo o `false` do `mise.toml`. Não esqueça o `--file`: sem ele, o `mise unset`
-apaga a variável do `mise.toml` compartilhado.
+**Para desligar**, rode `mise unset --file mise.local.toml API_COM_USUARIO_DE_TESTE` e reinicie
+o front. Assim vale de novo o `false` do `mise.toml`. Não esqueça o `--file`: sem ele, o
+`mise unset` apaga a variável do `mise.toml` compartilhado.
 
-**Como usar:** o login automático acontece na primeira chamada à API, mas a tela de login
+**Como usar:** o token de teste é obtido na primeira chamada à API, mas a tela de login
 (`http://localhost:3000/`) não chama a API e continua aparecendo normalmente. Então:
 
 - entre direto em http://localhost:3000/disciplinas ou http://localhost:3000/agenda; ou
 - use o login simulado (`admin@gmail.com` / `123`), que leva à agenda.
 
-Daí em diante, o login automático cuida do token: entra com o usuário de teste quando não há
-token e entra de novo quando ele expira (1 hora).
+Daí em diante, o front cuida do token: obtém um com o usuário de teste quando não há token e
+obtém outro quando ele expira (1 hora).
 
-O login automático só funciona com o front rodando em modo de desenvolvimento (`mise run dev`,
-`mise run frontend:dev` ou `npm run dev`); ele não existe no build de produção. Quando ligado,
-a senha de teste fica visível no navegador, por isso esse usuário nunca deve existir fora do
+Isso só funciona com o front rodando em modo de desenvolvimento (`mise run dev`,
+`mise run frontend:dev` ou `npm run dev`); não existe no build de produção. Quando ligado, a
+senha de teste fica visível no navegador, por isso esse usuário nunca deve existir fora do
 banco de desenvolvimento.
 
 ## Testes

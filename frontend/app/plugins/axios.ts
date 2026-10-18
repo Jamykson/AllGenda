@@ -28,12 +28,13 @@ export default defineNuxtPlugin(() => {
     timeout: 5000
   })
 
-  // Login automático com o usuário de teste: só no `nuxt dev` e com LOGIN_AUTOMATICO=true (veja o README).
-  const { email, senha } = config.public.loginAutomatico
-  const loginAutomaticoAtivo = import.meta.dev && Boolean(email && senha)
+  // Usuário de teste nas chamadas à API: só no `nuxt dev` e com API_COM_USUARIO_DE_TESTE=true (veja o README).
+  // Não muda nenhuma tela; sem token, as requisições usam um token obtido com o usuário de teste.
+  const { email, senha } = config.public.usuarioDeTesteNaApi
+  const usuarioDeTesteAtivo = import.meta.dev && Boolean(email && senha)
   let loginEmAndamento: Promise<void> | null = null
 
-  function garantirLoginAutomatico() {
+  function garantirTokenDeTeste() {
     // várias requisições sem token ao mesmo tempo esperam o mesmo login
     loginEmAndamento ??= api.post<RespostaLogin>('/api/auth/login', { email, senha })
       .then(({ data }) => definirSessao(data))
@@ -45,8 +46,8 @@ export default defineNuxtPlugin(() => {
     if (ehRotaPublica(requisicao)) {
       return requisicao
     }
-    if (!token.value && loginAutomaticoAtivo) {
-      await garantirLoginAutomatico()
+    if (!token.value && usuarioDeTesteAtivo) {
+      await garantirTokenDeTeste()
     }
     if (token.value) {
       requisicao.headers.Authorization = `Bearer ${token.value}`
@@ -54,11 +55,11 @@ export default defineNuxtPlugin(() => {
     return requisicao
   })
 
-  // com o login automático, um token expirado (401) é renovado e a requisição é repetida uma vez
+  // com o usuário de teste ativo, um token expirado (401) é renovado e a requisição é repetida uma vez
   api.interceptors.response.use(undefined, async (erro) => {
     const requisicao = erro.config as (InternalAxiosRequestConfig & { _repetida?: boolean }) | undefined
     if (
-      loginAutomaticoAtivo
+      usuarioDeTesteAtivo
       && erro.response?.status === 401
       && requisicao
       && !requisicao._repetida
@@ -66,7 +67,7 @@ export default defineNuxtPlugin(() => {
     ) {
       requisicao._repetida = true
       token.value = null
-      await garantirLoginAutomatico()
+      await garantirTokenDeTeste()
       return api(requisicao)
     }
     return Promise.reject(erro)

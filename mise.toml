@@ -26,9 +26,10 @@ DEV_USUARIO_NOME = "Aluno Teste"
 DEV_USUARIO_EMAIL = "aluno@allgenda.test"
 DEV_USUARIO_SENHA = "senha-de-teste-123"
 
-# Login automático do front com o usuário de teste (só com `nuxt dev`). Desligado por padrão:
-# para ligar, defina LOGIN_AUTOMATICO = "true" em mise.local.toml.
-LOGIN_AUTOMATICO = "false"
+# "true" faz o front (só com `nuxt dev`) usar o usuário de teste nas chamadas à API quando não
+# há token. Não pula a tela de login. Desligado por padrão: para ligar, defina
+# API_COM_USUARIO_DE_TESTE = "true" em mise.local.toml.
+API_COM_USUARIO_DE_TESTE = "false"
 
 # Esconde as barras de progresso de download do Maven (poluem a saída das tarefas)
 MAVEN_ARGS = "--no-transfer-progress"

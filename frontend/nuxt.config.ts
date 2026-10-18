@@ -31,8 +31,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       apiBase,
-      // credenciais do login automático; vazias = desligado (sempre vazias fora do `nuxt dev`)
-      loginAutomatico: {
+      // credenciais do usuário de teste usado nas chamadas à API; vazias = desligado (sempre vazias fora do `nuxt dev`)
+      usuarioDeTesteNaApi: {
         email: '',
         senha: ''
       }
@@ -43,7 +43,7 @@ export default defineNuxtConfig({
   $development: {
     runtimeConfig: {
       public: {
-        loginAutomatico: process.env.LOGIN_AUTOMATICO === 'true'
+        usuarioDeTesteNaApi: process.env.API_COM_USUARIO_DE_TESTE === 'true'
           ? {
               email: process.env.DEV_USUARIO_EMAIL ?? '',
               senha: process.env.DEV_USUARIO_SENHA ?? ''
