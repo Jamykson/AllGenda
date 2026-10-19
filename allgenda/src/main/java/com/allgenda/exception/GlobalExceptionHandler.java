@@ -2,9 +2,10 @@ package com.allgenda.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
@@ -63,5 +64,15 @@ public class GlobalExceptionHandler {
             HttpStatus.BAD_REQUEST, 
             "Formato de requisição inválido. Verifique os tipos e formatos dos campos enviados (ex: data no padrão AAAA-MM-DD)."
         );
+    }
+
+    @ExceptionHandler(ConflitoException.class)
+    public ProblemDetail tratarConflitoDeNegocio(ConflitoException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class) // UUID ou status inválido na URL
+    public ProblemDetail tratarParametroInvalido(MethodArgumentTypeMismatchException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Valor inválido para '" + ex.getName() + "'.");
     }
 }
