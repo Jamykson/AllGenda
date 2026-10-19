@@ -15,6 +15,8 @@ import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemAnotacaoService.ImagemArquivo;
 import com.allgenda.service.RemocaoArquivos;
+import com.allgenda.service.UsuarioAutenticado;
+import com.allgenda.repository.UsuarioRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,8 @@ class ImagemAnotacaoServiceImplTest {
     private ImagemAnotacaoRepository imagemRepository;
     @Mock
     private ArmazenamentoService armazenamento;
+    @Mock
+    private UsuarioRepository usuarioRepository; // o UsuarioAutenticado só precisa dele para obter(); aqui basta o id()
 
     private ImagemAnotacaoServiceImpl service;
 
@@ -81,7 +85,8 @@ class ImagemAnotacaoServiceImplTest {
 
     private ImagemAnotacaoServiceImpl criarService(DataSize tamanhoMaximo, int maximoPorAnotacao) {
         return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository, armazenamento,
-                new RemocaoArquivos(armazenamento), new AnotacaoMapper(), tamanhoMaximo, maximoPorAnotacao);
+                new RemocaoArquivos(armazenamento), new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository),
+                tamanhoMaximo, maximoPorAnotacao);
     }
 
     private static void autenticar(UUID usuarioId) {

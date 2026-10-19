@@ -25,6 +25,8 @@ import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
+import com.allgenda.service.UsuarioAutenticado;
+import com.allgenda.dto.request.AnotacaoUpdateDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,8 +72,9 @@ class AnotacaoServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, disciplinaRepository, usuarioRepository, tagService,
-                new RemocaoArquivos(armazenamento), new AnotacaoMapper());
+        // UsuarioAutenticado real: lê o usuário do SecurityContext preparado abaixo e o busca no repositório simulado
+        service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, disciplinaRepository,
+                new UsuarioAutenticado(usuarioRepository), tagService, new RemocaoArquivos(armazenamento), new AnotacaoMapper());
 
         Disciplina disciplina = new Disciplina();
         disciplina.setNome("PDS");
@@ -116,6 +119,7 @@ class AnotacaoServiceImplTest {
         AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Strategy e Observer", List.of("java", "poo")));
 
         assertThat(resposta.conteudo()).isEqualTo("Strategy e Observer");
+        assertThat(resposta.autorId()).isEqualTo(usuarioId);
         assertThat(resposta.autorNome()).isEqualTo("Maria");
         assertThat(resposta.aulaTopico()).isEqualTo("Padrões de projeto");
         assertThat(resposta.disciplinaNome()).isEqualTo("PDS");
@@ -212,6 +216,61 @@ class AnotacaoServiceImplTest {
     void associarListaVaziaDeTagsLancaRequisicaoInvalida() {
         assertThatThrownBy(() -> service.associarTags(UUID.randomUUID(), List.of()))
                 .isInstanceOf(RequisicaoInvalidaException.class);
+    }
+
+    @Test
+    void quemNaoEhAutorTambemAssociaTags() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto", tag("java"));
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        when(tagService.buscarOuCriar(List.of("poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"))));
+        when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
+        autenticarOutroUsuario();
+
+        AnotacaoResponseDTO resposta = service.associarTags(anotacaoId, List.of("poo"));
+
+        assertThat(resposta.tags()).containsExactlyInAnyOrder("java", "poo");
+    }
+
+    @Test
+    void autorEditaConteudoDaAnotacao() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto antigo");
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
+
+        AnotacaoResponseDTO resposta = service.editar(anotacaoId, new AnotacaoUpdateDTO("Texto revisado"));
+
+        assertThat(resposta.conteudo()).isEqualTo("Texto revisado");
+        assertThat(resposta.autorId()).isEqualTo(usuarioId);
+    }
+
+    @Test
+    void quemNaoEhAutorNaoEditaAnotacao() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto antigo");
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        autenticarOutroUsuario();
+
+        assertThatThrownBy(() -> service.editar(anotacaoId, new AnotacaoUpdateDTO("Texto do colega")))
+                .isInstanceOf(AcessoNegadoException.class)
+                .hasMessage("Somente o autor pode editar a anotação.");
+        verify(anotacaoRepository, never()).save(any());
+        assertThat(anotacao.getConteudo()).isEqualTo("Texto antigo");
+    }
+
+    @Test
+    void editarAnotacaoInexistenteLancaErroTratado() {
+        UUID anotacaoId = UUID.randomUUID();
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.editar(anotacaoId, new AnotacaoUpdateDTO("Texto")))
+                .isInstanceOf(AnotacaoNaoEncontradaException.class);
+    }
+
+    private static void autenticarOutroUsuario() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(UUID.randomUUID().toString(), null, List.of()));
     }
 
     @Test
