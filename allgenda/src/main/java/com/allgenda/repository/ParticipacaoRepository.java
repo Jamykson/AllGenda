@@ -15,4 +15,5 @@ public interface ParticipacaoRepository extends JpaRepository<Participacao, UUID
     List<Participacao> findByUsuarioIdAndStatus(UUID usuarioId, StatusParticipacao status);
     // só convites (papel MEMBRO): a participação do dono (DONO/ACEITO) não é um convite
     List<Participacao> findByUsuarioIdAndPapelAndStatus(UUID usuarioId, PapelParticipacao papel, StatusParticipacao status);
+    boolean existsByUsuarioIdAndDisciplinaIdAndStatus(UUID usuarioId, UUID disciplinaId, StatusParticipacao status);
 }
