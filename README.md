@@ -16,17 +16,39 @@ definir as variáveis de ambiente e padronizar as tarefas. O banco (PostgreSQL 1
 ### Início rápido (com Docker)
 
 ```bash
-./iniciar-allgenda.sh   # instala o mise (se faltar), sobe o banco, instala dependências e compila
-mise run dev            # inicia banco, back-end e front-end
+# Instala o mise (se faltar) e prepara o ambiente.
+./iniciar-allgenda.sh
+# Se o mise já estiver instalado, dá para trocar esse script por:
+# mise trust && mise install && mise run setup
+
+# Usa o usuário de teste nas chamadas à API (só na sua máquina)
+mise set --file mise.local.toml API_COM_USUARIO_DE_TESTE=true
+
+# Inicia banco, back-end e front-end
+mise run dev
 ```
 
-Se você já tem o mise instalado, o script equivale a:
-
-```bash
-mise trust && mise install && mise run setup
-```
+Sem o usuário de teste nas chamadas à API, não dá para usar o front-end: a tela de login ainda é simulada e não obtém token (veja "Primeiro acesso no navegador").
 
 O back-end fica em `http://localhost:8080` e o front-end em `http://localhost:3000`.
+
+### Primeiro acesso no navegador
+
+- **A tela de login é simulada.** Ela não chama a API e só aceita `aluno@gmail.com` /
+  `12345678`, que leva à agenda. As páginas também não exigem login: dá para abrir
+  http://localhost:3000/agenda direto.
+- **Sem o usuário de teste nas chamadas à API, as telas não carregam dados.** O início rápido
+  já o liga. Sem ele (o padrão do `mise.toml`), o login simulado não obtém token, a API
+  responde 401 e aparece, por exemplo, "Não foi possível carregar a agenda.". Para desligar,
+  rode `mise unset --file mise.local.toml API_COM_USUARIO_DE_TESTE` e reinicie o
+  `mise run dev`. Detalhes em "Usar o usuário de teste nas chamadas à API".
+- **O banco do Docker continua existindo depois de um novo clone.** Todo clone na máquina usa
+  o mesmo volume (`allgenda_pgdata`), com os dados e o usuário de teste que já estavam lá, e o
+  back-end não atualiza um usuário de teste que já existe. Se o login do usuário de teste
+  falhar, rode `mise run db:reset` (apaga os dados locais) e inicie de novo para recriá-lo.
+- **Na primeira execução, a página pode recarregar sozinha.** O Vite otimiza dependências na
+  primeira vez que uma página as usa e recarrega o navegador, o que limpa o formulário. Basta
+  preencher de novo.
 
 ### Sem Docker (PostgreSQL próprio)
 
@@ -106,7 +128,7 @@ Enquanto as telas de login e cadastro não estão ligadas à API, o front pode u
 teste nas chamadas à API: quando não há token, ele obtém um com o usuário de teste. Nenhuma
 tela muda, e a tela de login continua aparecendo. Isso fica **desligado por padrão**.
 
-**Para ligar** só na sua máquina, rode `mise set -E local API_COM_USUARIO_DE_TESTE=true`, ou
+**Para ligar** só na sua máquina, rode `mise set --file mise.local.toml API_COM_USUARIO_DE_TESTE=true`, ou
 coloque no `mise.local.toml`:
 
 ```toml
