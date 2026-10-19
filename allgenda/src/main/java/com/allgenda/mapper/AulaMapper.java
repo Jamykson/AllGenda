@@ -15,6 +15,7 @@ public class AulaMapper {
             aula.getData(),
             aula.getHorario(),
             aula.getTopico(),
+            aula.getDisciplina().getId(),
             aula.getDisciplina().getNome()
         );
     }

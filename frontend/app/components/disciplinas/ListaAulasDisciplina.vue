@@ -25,24 +25,12 @@ const props = defineProps<{
 
 const { $api } = useNuxtApp()
 const aulas = ref<Aula[]>([])
-const aulaSelecionada = ref<Aula | null>(null)
 const carregando = ref(true)
 const erro = ref('')
 
-// as ocorrências recorrentes não guardam a disciplina, que o modal precisa para cadastrá-las no backend
-const aulaDoModal = computed(() =>
-  aulaSelecionada.value ? { ...aulaSelecionada.value, disciplinaId: props.disciplinaId } : null
-)
-
-// anotar numa aula recorrente cadastra a aula; ao fechar o modal, a lista recarrega para mostrá-la
-const aulaCadastradaNoModal = ref(false)
-
-function fecharAula() {
-  aulaSelecionada.value = null
-  if (aulaCadastradaNoModal.value) {
-    aulaCadastradaNoModal.value = false
-    carregarAulas()
-  }
+// as ocorrências recorrentes não guardam a disciplina, que a página da aula precisa para cadastrá-las no backend
+function abrirAula(aula: Aula) {
+  navigateTo(rotaDaAula({ ...aula, disciplinaId: props.disciplinaId }))
 }
 
 function minutosInicio(horario: string) {
@@ -256,9 +244,9 @@ onMounted(carregarAulas)
         class="item-aula"
         tabindex="0"
         :style="estiloAula(aula)"
-        @click="aulaSelecionada = aula"
-        @keydown.enter.prevent="aulaSelecionada = aula"
-        @keydown.space.prevent="aulaSelecionada = aula"
+        @click="abrirAula(aula)"
+        @keydown.enter.prevent="abrirAula(aula)"
+        @keydown.space.prevent="abrirAula(aula)"
       >
         <div class="bloco-data">
           <span class="hora-inicio">{{ horaInicio(aula.horario) }}</span>
@@ -272,13 +260,6 @@ onMounted(carregarAulas)
       </li>
     </ol>
   </section>
-
-  <AulaModal
-    v-if="aulaDoModal"
-    :aula="aulaDoModal"
-    @fechar="fecharAula"
-    @aula-cadastrada="aulaCadastradaNoModal = true"
-  />
 </template>
 
 <style scoped>

@@ -1,5 +1,6 @@
 import { isAxiosError } from 'axios'
-import type { Anotacao, AulaDaAnotacao, ImagemAnotacao, ImagemAula, Tag } from '~/types/anotacao'
+import type { RouteLocationRaw } from 'vue-router'
+import type { Anotacao, AulaDaAnotacao, AulaDaPagina, ImagemAnotacao, ImagemAula, Tag } from '~/types/anotacao'
 
 // Limites aceitos pelo backend (app.uploads.* no application.properties).
 export const TIPOS_DE_IMAGEM = ['image/png', 'image/jpeg', 'image/webp']
@@ -27,6 +28,25 @@ export function mensagemDeErro(erro: unknown, padrao: string): string {
     }
   }
   return padrao
+}
+
+/**
+ * Endereço da página de uma aula. Uma aula recorrente ainda não existe no backend, então a página
+ * recebe pela URL o que precisa para mostrá-la e para cadastrá-la quando ela ganhar conteúdo.
+ */
+export function rotaDaAula(aula: AulaDaAnotacao): RouteLocationRaw {
+  if (!aula.recorrente) {
+    return `/aulas/${aula.id}`
+  }
+  return {
+    path: '/aulas/recorrente',
+    query: {
+      disciplinaId: aula.disciplinaId,
+      data: aula.data,
+      horario: aula.horario,
+      ...(aula.topico ? { topico: aula.topico } : {})
+    }
+  }
 }
 
 /**
@@ -79,6 +99,12 @@ export function useAnotacoes() {
     return data
   }
 
+  // qualquer participante remove; o nome vai na query porque uma tag pode ter "/"
+  async function removerTag(anotacaoId: string, nome: string) {
+    const { data } = await $api.delete<Anotacao>(`/api/anotacoes/${anotacaoId}/tags`, { params: { nome } })
+    return data
+  }
+
   async function excluir(anotacaoId: string) {
     await $api.delete(`/api/anotacoes/${anotacaoId}`)
   }
@@ -117,6 +143,12 @@ export function useAnotacoes() {
     return data
   }
 
+  // ids: todas as imagens da aula, na nova ordem; qualquer participante reordena
+  async function reordenarImagensDaAula(aulaId: string, ids: string[]) {
+    const { data } = await $api.put<ImagemAula[]>(`/api/aulas/${aulaId}/imagens/ordem`, ids)
+    return data
+  }
+
   // só o autor edita; legenda vazia deixa a imagem sem legenda
   async function editarLegenda(imagem: ImagemAula, legenda: string) {
     const { data } = await $api.patch<ImagemAula>(imagem.url, { legenda: legenda || null })
@@ -134,13 +166,18 @@ export function useAnotacoes() {
     return data
   }
 
+  async function buscarAula(aulaId: string) {
+    const { data } = await $api.get<AulaDaPagina>(`/api/aulas/${aulaId}`)
+    return data
+  }
+
   // Cadastra no backend uma aula recorrente (gerada no navegador), com a mesma data e o mesmo horário.
   // As telas escondem a aula recorrente quando existe uma aula real igual, então ela passa a ser uma aula normal.
   async function cadastrarAulaRecorrente(aula: AulaDaAnotacao) {
     if (!aula.disciplinaId) {
       throw new Error('A aula recorrente não informa a disciplina.')
     }
-    const { data } = await $api.post<AulaDaAnotacao>('/api/aulas', {
+    const { data } = await $api.post<AulaDaPagina>('/api/aulas', {
       disciplinaId: aula.disciplinaId,
       data: aula.data,
       horario: aula.horario,
@@ -156,14 +193,17 @@ export function useAnotacoes() {
     criar,
     editar,
     acrescentarTags,
+    removerTag,
     excluir,
     anexarImagem,
     removerImagem,
     listarImagensDaAula,
     adicionarImagemAula,
+    reordenarImagensDaAula,
     editarLegenda,
     removerImagemAula,
     baixarImagem,
+    buscarAula,
     cadastrarAulaRecorrente
   }
 }

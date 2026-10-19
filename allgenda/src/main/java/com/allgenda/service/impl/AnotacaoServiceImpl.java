@@ -94,10 +94,34 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
         Anotacao anotacao = anotacaoRepository.findById(anotacaoId)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(anotacaoId));
+        // qualquer participante da disciplina pode acrescentar tags, não só o autor (decisão do grupo, #64)
+        exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId());
 
-        // qualquer usuário logado pode acrescentar tags, não só o autor (decisão do grupo, #64)
         // as tags são acrescentadas às existentes; como tags é um Set, uma tag já associada não é duplicada
         tagService.buscarOuCriar(nomesTags).forEach(anotacao::addTag);
+
+        Anotacao salva = anotacaoRepository.save(anotacao);
+        return mapper.toDto(salva);
+    }
+
+    @Override
+    @Transactional
+    public AnotacaoResponseDTO removerTag(UUID anotacaoId, String nomeTag) {
+        if (nomeTag == null || nomeTag.isBlank()) {
+            throw new RequisicaoInvalidaException("O nome da tag é obrigatório.");
+        }
+
+        Anotacao anotacao = anotacaoRepository.findById(anotacaoId)
+                .orElseThrow(() -> new AnotacaoNaoEncontradaException(anotacaoId));
+        // como acrescentar, remover é permitido a qualquer participante da disciplina
+        exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId());
+
+        // a busca ignora maiúsculas, como a criação de tags; uma tag que a anotação não tem não é erro
+        String nome = nomeTag.strip();
+        anotacao.getTags().stream()
+                .filter(tag -> tag.getNome().equalsIgnoreCase(nome))
+                .toList()
+                .forEach(anotacao::removeTag);
 
         Anotacao salva = anotacaoRepository.save(anotacao);
         return mapper.toDto(salva);

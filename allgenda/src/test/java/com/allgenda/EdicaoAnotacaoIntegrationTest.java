@@ -3,6 +3,7 @@ package com.allgenda;
 import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.repository.AnotacaoRepository;
+import com.allgenda.repository.TagRepository;
 import com.allgenda.service.AuthService;
 import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
@@ -23,6 +24,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +39,7 @@ class EdicaoAnotacaoIntegrationTest {
     @Autowired AuthService auth;
     @Autowired UsuarioService cadastroUsuarios;
     @Autowired AnotacaoRepository anotacoes;
+    @Autowired TagRepository tags;
     @Autowired TransactionTemplate transacao;
 
     private MockMvc mvc;
@@ -128,6 +131,30 @@ class EdicaoAnotacaoIntegrationTest {
                 .andExpect(jsonPath("$.autorId").value(autorId)); // o autor continua sendo quem criou a anotação
 
         assertThat(quantidadeDeTagsSalvas()).isEqualTo(2);
+    }
+
+    @Test
+    void colegaRemoveTagDaAnotacaoDoAutorEATagContinuaExistindo() throws Exception {
+        mvc.perform(comToken(delete("/api/anotacoes/{id}/tags", anotacaoId).param("nome", "JAVA"), tokenColega))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tags.length()").value(0))
+                .andExpect(jsonPath("$.autorId").value(autorId));
+
+        assertThat(quantidadeDeTagsSalvas()).isZero();
+        assertThat(tags.findByNomeIgnoreCase("java")).isPresent();
+    }
+
+    @Test
+    void quemNaoParticipaNaoAcrescentaNemRemoveTags() throws Exception {
+        String sufixo = UUID.randomUUID().toString();
+        var visitante = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Visitante " + sufixo, "visitante-" + sufixo + "@example.com", "senha-forte-123"));
+        String tokenVisitante = auth.login(new LoginRequestDTO(visitante.email(), "senha-forte-123")).token();
+
+        mvc.perform(novasTags(tokenVisitante)).andExpect(status().isForbidden());
+        mvc.perform(comToken(delete("/api/anotacoes/{id}/tags", anotacaoId).param("nome", "java"), tokenVisitante))
+                .andExpect(status().isForbidden());
+
+        assertThat(quantidadeDeTagsSalvas()).isEqualTo(1);
     }
 
     @Test

@@ -8,5 +8,6 @@ public record AulaResponseDTO(
     LocalDate data, 
     String horario, 
     String topico,
+    UUID disciplinaId,
     String disciplinaNome
     ) {}

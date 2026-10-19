@@ -23,7 +23,6 @@ const horaInicial = ref('')
 const horaFinal = ref('')
 const tagsSelecionadas = ref<string[]>([])
 const buscaTag = ref('')
-const aulaSelecionada = ref<AulaPesquisa | null>(null)
 const barraFiltrosRef = ref<HTMLElement | null>(null)
 const filtroAberto = ref<'disciplina' | 'data' | 'horario' | 'tags' | null>(null)
 
@@ -163,19 +162,9 @@ function formatarData(data: string) {
   }).format(new Date(ano, mes - 1, dia))
 }
 
+// voltar da página da aula remonta a pesquisa, que recarrega os resultados
 function abrirAula(aula: AulaPesquisa) {
-  aulaSelecionada.value = aula
-}
-
-// se algo mudou no modal (anotação ou aula cadastrada), os resultados são recarregados ao fechar
-const houveAlteracaoNoModal = ref(false)
-
-function fecharAula() {
-  aulaSelecionada.value = null
-  if (houveAlteracaoNoModal.value) {
-    houveAlteracaoNoModal.value = false
-    void carregar()
-  }
+  navigateTo(rotaDaAula(aula))
 }
 </script>
 
@@ -414,14 +403,6 @@ function fecharAula() {
         </button>
       </div>
     </section>
-
-    <AulaModal
-      v-if="aulaSelecionada"
-      :aula="aulaSelecionada"
-      @fechar="fecharAula"
-      @alterado="houveAlteracaoNoModal = true"
-      @aula-cadastrada="houveAlteracaoNoModal = true"
-    />
   </main>
 </template>
 

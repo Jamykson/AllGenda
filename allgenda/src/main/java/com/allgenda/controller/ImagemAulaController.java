@@ -45,6 +45,12 @@ public class ImagemAulaController {
         return service.listarPorAula(aulaId);
     }
 
+    // corpo: todos os ids das imagens da aula, na nova ordem, ex: ["id1", "id2"]
+    @PutMapping("/ordem")
+    public List<ImagemAulaResponseDTO> reordenar(@PathVariable UUID aulaId, @RequestBody List<UUID> ids) {
+        return service.reordenar(aulaId, ids);
+    }
+
     @GetMapping("/{imagemId}")
     public ResponseEntity<Resource> baixar(@PathVariable UUID aulaId, @PathVariable UUID imagemId) {
         ImagemArquivo imagem = service.carregar(aulaId, imagemId);

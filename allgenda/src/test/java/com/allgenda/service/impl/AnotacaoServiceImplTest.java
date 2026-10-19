@@ -47,6 +47,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,6 +74,7 @@ class AnotacaoServiceImplTest {
     private AnotacaoServiceImpl service;
 
     private final UUID aulaId = UUID.randomUUID();
+    private final UUID disciplinaDaAulaId = UUID.randomUUID();
     private Aula aula;
     private final UUID usuarioId = UUID.randomUUID();
     private Usuario usuarioPadrao;
@@ -85,6 +87,7 @@ class AnotacaoServiceImplTest {
 
         Disciplina disciplina = new Disciplina();
         disciplina.setNome("PDS");
+        ReflectionTestUtils.setField(disciplina, "id", disciplinaDaAulaId);
         aula = new Aula();
         aula.setTopico("Padrões de projeto");
         aula.setDisciplina(disciplina);
@@ -250,6 +253,7 @@ class AnotacaoServiceImplTest {
         anotacao.setAutor(usuarioPadrao);
         anotacao.addTag(tag("java"));
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        participantesDaDisciplinaDaAula();
         when(tagService.buscarOuCriar(List.of("poo", "spring"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"), tag("spring"))));
         when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
 
@@ -278,6 +282,7 @@ class AnotacaoServiceImplTest {
         UUID anotacaoId = UUID.randomUUID();
         Anotacao anotacao = anotacao("Texto", tag("java"));
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        participantesDaDisciplinaDaAula();
         when(tagService.buscarOuCriar(List.of("poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"))));
         when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
         autenticarOutroUsuario();
@@ -285,6 +290,72 @@ class AnotacaoServiceImplTest {
         AnotacaoResponseDTO resposta = service.associarTags(anotacaoId, List.of("poo"));
 
         assertThat(resposta.tags()).containsExactlyInAnyOrder("java", "poo");
+    }
+
+    @Test
+    void quemNaoParticipaNaoAssociaTags() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto", tag("java"));
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+
+        assertThatThrownBy(() -> service.associarTags(anotacaoId, List.of("poo")))
+                .isInstanceOf(AcessoNegadoException.class);
+        verify(anotacaoRepository, never()).save(any());
+        assertThat(anotacao.getTags()).extracting(Tag::getNome).containsExactly("java");
+    }
+
+    @Test
+    void quemNaoEhAutorRemoveTagIgnorandoMaiusculas() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto", tag("Java"), tag("poo"));
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        participantesDaDisciplinaDaAula();
+        when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
+        autenticarOutroUsuario();
+
+        AnotacaoResponseDTO resposta = service.removerTag(anotacaoId, " java ");
+
+        assertThat(resposta.tags()).containsExactly("poo");
+    }
+
+    @Test
+    void removerTagQueAAnotacaoNaoTemNaoMudaNada() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto", tag("java"));
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        participantesDaDisciplinaDaAula();
+        when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
+
+        AnotacaoResponseDTO resposta = service.removerTag(anotacaoId, "spring");
+
+        assertThat(resposta.tags()).containsExactly("java");
+    }
+
+    @Test
+    void quemNaoParticipaNaoRemoveTags() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto", tag("java"));
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+
+        assertThatThrownBy(() -> service.removerTag(anotacaoId, "java"))
+                .isInstanceOf(AcessoNegadoException.class);
+        verify(anotacaoRepository, never()).save(any());
+        assertThat(anotacao.getTags()).hasSize(1);
+    }
+
+    @Test
+    void removerTagEmAnotacaoInexistenteLancaErroTratado() {
+        UUID anotacaoId = UUID.randomUUID();
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.removerTag(anotacaoId, "java"))
+                .isInstanceOf(AnotacaoNaoEncontradaException.class);
+    }
+
+    // qualquer usuário autenticado participa da disciplina da aula (dono ou membro com participação ACEITO)
+    private void participantesDaDisciplinaDaAula() {
+        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(
+                any(), eq(disciplinaDaAulaId), eq(StatusParticipacao.ACEITO))).thenReturn(true);
     }
 
     @Test

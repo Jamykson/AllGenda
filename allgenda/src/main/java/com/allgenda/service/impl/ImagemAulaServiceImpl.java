@@ -25,8 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ImagemAulaServiceImpl implements ImagemAulaService {
@@ -76,6 +79,7 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
         imagem.setTamanho(recebida.tamanho());
         imagem.setChaveArmazenamento(recebida.chave());
         imagem.setDataCriacao(LocalDateTime.now());
+        imagem.setPosicao(imagemRepository.findMaiorPosicaoByAulaId(aulaId) + 1); // entra no fim da galeria
         imagem.setAutor(usuarioAutenticado.obter());
         aula.addImagem(imagem);
 
@@ -86,7 +90,26 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
     @Transactional(readOnly = true)
     public List<ImagemAulaResponseDTO> listarPorAula(UUID aulaId) {
         exigirParticipanteAceito(buscarAula(aulaId));
-        return mapper.toDtoList(imagemRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId));
+        return mapper.toDtoList(imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId));
+    }
+
+    @Override
+    @Transactional
+    public List<ImagemAulaResponseDTO> reordenar(UUID aulaId, List<UUID> ids) {
+        exigirParticipanteAceito(buscarAula(aulaId));
+        List<ImagemAula> imagens = imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
+
+        // a lista precisa ter cada imagem da aula exatamente uma vez; outra combinação provavelmente
+        // vem de uma tela desatualizada, e aplicá-la deixaria a ordem inconsistente
+        Map<UUID, ImagemAula> porId = imagens.stream().collect(Collectors.toMap(ImagemAula::getId, imagem -> imagem));
+        if (ids == null || ids.size() != imagens.size() || !porId.keySet().equals(new HashSet<>(ids))) {
+            throw new RequisicaoInvalidaException("A nova ordem deve listar exatamente as imagens da aula.");
+        }
+
+        for (int i = 0; i < ids.size(); i++) {
+            porId.get(ids.get(i)).setPosicao(i);
+        }
+        return mapper.toDtoList(imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId));
     }
 
     @Override
