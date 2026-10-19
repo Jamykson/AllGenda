@@ -1,3 +1,4 @@
+import type { Anotacao, ImagemAnotacao } from '~/types/anotacao'
 import type { Disciplina } from '~/types/disciplina'
 
 export interface AulaPesquisa {
@@ -15,9 +16,9 @@ export interface AulaPesquisa {
 export interface AnotacaoPesquisa {
   id: string
   texto: string
-  imagens: string[]
-  videos: string[]
+  imagens: ImagemAnotacao[]
   tags: string[]
+  autorNome: string
 }
 
 export interface ResultadoPesquisa {
@@ -40,8 +41,6 @@ interface AulaApi {
   topico?: string | null
 }
 
-const CHAVE_ANOTACOES = 'allgenda-anotacoes-aulas'
-const CHAVE_TAGS = 'allgenda-tags-disponiveis'
 const CHAVE_HORARIOS = 'allgenda-horarios-recorrentes'
 
 function lerRegistroLocal<T>(chave: string): Record<string, T> {
@@ -56,64 +55,22 @@ function lerRegistroLocal<T>(chave: string): Record<string, T> {
   }
 }
 
-function lerListaTags(): string[] {
-  try {
-    const tags = JSON.parse(localStorage.getItem(CHAVE_TAGS) || '[]')
-    return Array.isArray(tags)
-      ? tags.filter((tag): tag is string => typeof tag === 'string')
-      : []
-  }
-  catch {
-    return []
-  }
-}
-
-function normalizarAnotacao(
-  anotacao: Partial<AnotacaoPesquisa> | null | undefined,
-  idFallback: string
-): AnotacaoPesquisa {
+function paraAnotacaoPesquisa(anotacao: Anotacao): AnotacaoPesquisa {
   return {
-    id: typeof anotacao?.id === 'string' ? anotacao.id : idFallback,
-    texto: typeof anotacao?.texto === 'string' ? anotacao.texto : '',
-    imagens: Array.isArray(anotacao?.imagens) ? anotacao.imagens : [],
-    videos: Array.isArray(anotacao?.videos) ? anotacao.videos : [],
-    tags: Array.isArray(anotacao?.tags)
-      ? anotacao.tags.filter((tag): tag is string => typeof tag === 'string')
-      : []
+    id: anotacao.id,
+    texto: anotacao.conteudo,
+    imagens: anotacao.imagens,
+    tags: anotacao.tags,
+    autorNome: anotacao.autorNome
   }
 }
 
-function anotacaoTemConteudo(anotacao: AnotacaoPesquisa) {
-  return Boolean(
-    anotacao.texto.trim()
-    || anotacao.tags.length
-    || anotacao.imagens.length
-    || anotacao.videos.length
-  )
-}
-
-function lerAnotacoes(): Record<string, AnotacaoPesquisa[]> {
-  const salvas = lerRegistroLocal<{
-    anotacoes?: Partial<AnotacaoPesquisa>[]
-    texto?: string
-    imagens?: string[]
-    videos?: string[]
-    tags?: string[]
-  }>(CHAVE_ANOTACOES)
-
-  return Object.fromEntries(
-    Object.entries(salvas).map(([aulaId, registro]) => {
-      const anotacoes = Array.isArray(registro?.anotacoes)
-        ? registro.anotacoes.map((anotacao, indice) =>
-            normalizarAnotacao(anotacao, `${aulaId}-${indice}`)
-          )
-        : registro && ['texto', 'tags', 'imagens', 'videos'].some(campo => campo in registro)
-          ? [normalizarAnotacao(registro, `${aulaId}-legada`)]
-          : []
-
-      return [aulaId, anotacoes]
-    })
-  )
+function agruparPorAula(anotacoes: Anotacao[]): Record<string, AnotacaoPesquisa[]> {
+  const porAula: Record<string, AnotacaoPesquisa[]> = {}
+  for (const anotacao of anotacoes) {
+    (porAula[anotacao.aulaId] ??= []).push(paraAnotacaoPesquisa(anotacao))
+  }
+  return porAula
 }
 
 function chaveData(data: Date) {
@@ -183,6 +140,7 @@ function gerarAulasRecorrentes(
 
 export function usePesquisa() {
   const { listar } = useDisciplinas()
+  const { listarPorDisciplina, listarTags } = useAnotacoes()
   const { $api } = useNuxtApp()
   const disciplinas = ref<Disciplina[]>([])
   const aulas = ref<AulaPesquisa[]>([])
@@ -194,7 +152,6 @@ export function usePesquisa() {
   const resultados = computed<ResultadoPesquisa[]>(() =>
     aulas.value.flatMap(aula =>
       (anotacoesPorAula.value[aula.id] || [])
-        .filter(anotacaoTemConteudo)
         .map(anotacao => ({ aula, anotacao }))
     )
   )
@@ -206,21 +163,26 @@ export function usePesquisa() {
     try {
       disciplinas.value = await listar()
 
-      const aulasPorDisciplina = await Promise.all(
-        disciplinas.value.map(async (disciplina) => {
-          const resposta = await $api.get<AulaApi[]>('/api/aulas', {
-            params: { disciplinaId: disciplina.id }
-          })
+      // aulas e anotações de cada disciplina, e as tags, são buscadas em paralelo
+      const [aulasPorDisciplina, anotacoesPorDisciplina, tagsDaApi] = await Promise.all([
+        Promise.all(
+          disciplinas.value.map(async (disciplina) => {
+            const resposta = await $api.get<AulaApi[]>('/api/aulas', {
+              params: { disciplinaId: disciplina.id }
+            })
 
-          return resposta.data.map(aula => ({
-            ...aula,
-            disciplinaId: disciplina.id,
-            disciplinaNome: disciplina.nome,
-            disciplinaCor: disciplina.cor,
-            disciplinaIcone: disciplina.icone
-          }))
-        })
-      )
+            return resposta.data.map(aula => ({
+              ...aula,
+              disciplinaId: disciplina.id,
+              disciplinaNome: disciplina.nome,
+              disciplinaCor: disciplina.cor,
+              disciplinaIcone: disciplina.icone
+            }))
+          })
+        ),
+        Promise.all(disciplinas.value.map(disciplina => listarPorDisciplina(disciplina.id))),
+        listarTags()
+      ])
 
       const aulasDaApi = aulasPorDisciplina.flat()
       const horarios = lerRegistroLocal<HorarioRecorrente>(CHAVE_HORARIOS)
@@ -228,13 +190,13 @@ export function usePesquisa() {
         ...aulasDaApi,
         ...gerarAulasRecorrentes(disciplinas.value, aulasDaApi, horarios)
       ]
-      anotacoesPorAula.value = lerAnotacoes()
+      anotacoesPorAula.value = agruparPorAula(anotacoesPorDisciplina.flat())
 
-      const listaTagsLocais = lerListaTags()
+      // só as tags usadas em alguma anotação ajudam a filtrar
       const tagsDasAnotacoes = Object.values(anotacoesPorAula.value)
         .flatMap(anotacoes => anotacoes.flatMap(anotacao => anotacao.tags))
-
-      tagsDisponiveis.value = [...new Set([...listaTagsLocais, ...tagsDasAnotacoes])]
+      tagsDisponiveis.value = tagsDaApi
+        .filter(tag => tagsDasAnotacoes.includes(tag))
         .sort((tagA, tagB) => tagA.localeCompare(tagB, 'pt-BR'))
     }
     catch (error) {

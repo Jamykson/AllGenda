@@ -29,6 +29,22 @@ const aulaSelecionada = ref<Aula | null>(null)
 const carregando = ref(true)
 const erro = ref('')
 
+// as ocorrências recorrentes não guardam a disciplina, que o modal precisa para cadastrá-las no backend
+const aulaDoModal = computed(() =>
+  aulaSelecionada.value ? { ...aulaSelecionada.value, disciplinaId: props.disciplinaId } : null
+)
+
+// anotar numa aula recorrente cadastra a aula; ao fechar o modal, a lista recarrega para mostrá-la
+const aulaCadastradaNoModal = ref(false)
+
+function fecharAula() {
+  aulaSelecionada.value = null
+  if (aulaCadastradaNoModal.value) {
+    aulaCadastradaNoModal.value = false
+    carregarAulas()
+  }
+}
+
 function minutosInicio(horario: string) {
   const correspondencia = /(?:^|\s)(\d{1,2}):(\d{2})/.exec(horario)
   if (!correspondencia) return Number.MAX_SAFE_INTEGER
@@ -257,7 +273,12 @@ onMounted(carregarAulas)
     </ol>
   </section>
 
-  <AulaModal v-if="aulaSelecionada" :aula="aulaSelecionada" @fechar="aulaSelecionada = null" />
+  <AulaModal
+    v-if="aulaDoModal"
+    :aula="aulaDoModal"
+    @fechar="fecharAula"
+    @aula-cadastrada="aulaCadastradaNoModal = true"
+  />
 </template>
 
 <style scoped>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, CalendarDays, ChevronDown, Clock3, Image as ImageIcon, Search, Tag as TagIcon, Video as VideoIcon, X } from '@lucide/vue'
+import { BookOpen, CalendarDays, ChevronDown, Clock3, Image as ImageIcon, Search, Tag as TagIcon, X } from '@lucide/vue'
 import type { AulaPesquisa } from '~/composables/usePesquisa'
 
 definePageMeta({
@@ -165,6 +165,17 @@ function formatarData(data: string) {
 
 function abrirAula(aula: AulaPesquisa) {
   aulaSelecionada.value = aula
+}
+
+// se algo mudou no modal (anotação ou aula cadastrada), os resultados são recarregados ao fechar
+const houveAlteracaoNoModal = ref(false)
+
+function fecharAula() {
+  aulaSelecionada.value = null
+  if (houveAlteracaoNoModal.value) {
+    houveAlteracaoNoModal.value = false
+    void carregar()
+  }
 }
 </script>
 
@@ -389,14 +400,10 @@ function abrirAula(aula: AulaPesquisa) {
             </span>
             <span v-else class="tags-resultado-vazias" />
 
-            <span v-if="resultado.anotacao.imagens.length || resultado.anotacao.videos.length" class="indicadores-midia">
-              <span v-if="resultado.anotacao.imagens.length" :title="`${resultado.anotacao.imagens.length} imagem(ns)`">
+            <span v-if="resultado.anotacao.imagens.length" class="indicadores-midia">
+              <span :title="`${resultado.anotacao.imagens.length} imagem(ns)`">
                 <ImageIcon :size="14" :stroke-width="1.8" aria-hidden="true" />
                 <span class="visually-hidden">Possui imagem</span>
-              </span>
-              <span v-if="resultado.anotacao.videos.length" :title="`${resultado.anotacao.videos.length} vídeo(s)`">
-                <VideoIcon :size="14" :stroke-width="1.8" aria-hidden="true" />
-                <span class="visually-hidden">Possui vídeo</span>
               </span>
             </span>
           </span>
@@ -407,7 +414,9 @@ function abrirAula(aula: AulaPesquisa) {
     <AulaModal
       v-if="aulaSelecionada"
       :aula="aulaSelecionada"
-      @fechar="aulaSelecionada = null"
+      @fechar="fecharAula"
+      @alterado="houveAlteracaoNoModal = true"
+      @aula-cadastrada="houveAlteracaoNoModal = true"
     />
   </main>
 </template>
