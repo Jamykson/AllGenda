@@ -21,27 +21,19 @@ definir as variáveis de ambiente e padronizar as tarefas. O banco (PostgreSQL 1
 # Se o mise já estiver instalado, dá para trocar esse script por:
 # mise trust && mise install && mise run setup
 
-# Usa o usuário de teste nas chamadas à API (só na sua máquina)
-mise set --file mise.local.toml API_COM_USUARIO_DE_TESTE=true
-
 # Inicia banco, back-end e front-end
 mise run dev
 ```
 
-Sem o usuário de teste nas chamadas à API, não dá para usar o front-end: a tela de login ainda é simulada e não obtém token (veja "Primeiro acesso no navegador").
+Entre com o usuário de teste ou crie uma conta na tela de cadastro. Login e cadastro já chamam a API real.
 
 O back-end fica em `http://localhost:8080` e o front-end em `http://localhost:3000`.
 
 ### Primeiro acesso no navegador
 
-- **A tela de login é simulada.** Ela não chama a API e só aceita `aluno@gmail.com` /
-  `12345678`, que leva à agenda. As páginas também não exigem login: dá para abrir
-  http://localhost:3000/agenda direto.
-- **Sem o usuário de teste nas chamadas à API, as telas não carregam dados.** O início rápido
-  já o liga. Sem ele (o padrão do `mise.toml`), o login simulado não obtém token, a API
-  responde 401 e aparece, por exemplo, "Não foi possível carregar a agenda.". Para desligar,
-  rode `mise unset --file mise.local.toml API_COM_USUARIO_DE_TESTE` e reinicie o
-  `mise run dev`. Detalhes em "Usar o usuário de teste nas chamadas à API".
+- **Login e cadastro usam a API real.** Entre com `aluno@gmail.com` / `12345678` (usuário criado no desenvolvimento) ou crie sua conta. O token é guardado por uma hora e enviado nas chamadas seguintes. As páginas internas exigem sessão; uma resposta 401 limpa o token e leva ao login.
+- **O modo de usuário de teste automático é opcional.** O padrão é desligado. Com `API_COM_USUARIO_DE_TESTE=true` no `mise.local.toml`, apenas no `nuxt dev`, o primeiro acesso direto a uma rota interna pode obter um token de teste. Ele não renova uma sessão que recebe 401.
+- **Provas, entregas e convites** estão no menu lateral. Avaliações são cadastradas e listadas por disciplina, com as futuras da mais próxima para a mais distante. Donos podem convidar colegas já cadastrados; destinatários aceitam ou recusam em `/convites`.
 - **O banco do Docker continua existindo depois de um novo clone.** Todo clone na máquina usa
   o mesmo volume (`allgenda_pgdata`), com os dados e o usuário de teste que já estavam lá, e o
   back-end não atualiza um usuário de teste que já existe. Se o login do usuário de teste
@@ -124,9 +116,7 @@ criado; os testes e qualquer outro ambiente não o recebem.
 
 ### Usar o usuário de teste nas chamadas à API
 
-Enquanto as telas de login e cadastro não estão ligadas à API, o front pode usar o usuário de
-teste nas chamadas à API: quando não há token, ele obtém um com o usuário de teste. Nenhuma
-tela muda, e a tela de login continua aparecendo. Isso fica **desligado por padrão**.
+Além do login real, o front pode obter um token do usuário de teste na primeira chamada sem sessão, somente no desenvolvimento. Esse atalho fica **desligado por padrão**.
 
 **Para ligar** só na sua máquina, rode `mise set --file mise.local.toml API_COM_USUARIO_DE_TESTE=true`, ou
 coloque no `mise.local.toml`:
@@ -142,14 +132,7 @@ Depois, reinicie o front (`mise run dev`).
 o front. Assim vale de novo o `false` do `mise.toml`. Não esqueça o `--file`: sem ele, o
 `mise unset` apaga a variável do `mise.toml` compartilhado.
 
-**Como usar:** o token de teste é obtido na primeira chamada à API, mas a tela de login
-(`http://localhost:3000/`) não chama a API e continua aparecendo normalmente. Então:
-
-- entre direto em http://localhost:3000/disciplinas ou http://localhost:3000/agenda; ou
-- use o login simulado (`aluno@gmail.com` / `12345678`), que leva à agenda.
-
-Daí em diante, o front cuida do token: obtém um com o usuário de teste quando não há token e
-obtém outro quando ele expira (1 hora).
+**Como usar:** abra `/disciplinas` ou `/agenda` diretamente para obter o primeiro token de teste, ou entre normalmente pela tela de login. Quando uma chamada protegida recebe 401, a sessão é encerrada e você precisa entrar novamente.
 
 Isso só funciona com o front rodando em modo de desenvolvimento (`mise run dev`,
 `mise run frontend:dev` ou `npm run dev`); não existe no build de produção. Quando ligado, a

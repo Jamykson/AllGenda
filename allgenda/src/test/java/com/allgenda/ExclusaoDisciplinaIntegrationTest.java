@@ -6,6 +6,7 @@ import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.AuthService;
+import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,7 @@ class ExclusaoDisciplinaIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
     @Autowired AulaRepository aulas;
     @Autowired ImagemAnotacaoRepository imagens;
     @Autowired ArmazenamentoService armazenamento;
@@ -53,7 +55,7 @@ class ExclusaoDisciplinaIntegrationTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).addFilters(filtros).build();
 
         String sufixo = UUID.randomUUID().toString();
-        var usuario = auth.cadastrar(new UsuarioRequestDTO("Aluno " + sufixo, "aluno-" + sufixo + "@example.com", "senha-forte-123"));
+        var usuario = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Aluno " + sufixo, "aluno-" + sufixo + "@example.com", "senha-forte-123"));
         token = auth.login(new LoginRequestDTO(usuario.email(), "senha-forte-123")).token();
     }
 

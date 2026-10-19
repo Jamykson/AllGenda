@@ -27,13 +27,40 @@ public class Participacao {
     @Column(nullable = false)
     private StatusParticipacao status;
 
-    public UUID getId() { return id; }
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
-    public Disciplina getDisciplina() { return disciplina; }
-    public void setDisciplina(Disciplina disciplina) { this.disciplina = disciplina; }
-    public PapelParticipacao getPapel() { return papel; }
-    public void setPapel(PapelParticipacao papel) { this.papel = papel; }
-    public StatusParticipacao getStatus() { return status; }
-    public void setStatus(StatusParticipacao status) { this.status = status; }
+    public UUID getId() {
+        return id;
+    }
+
+    public Usuario getUsuario() {
+        return usuario;
+    }
+
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+    }
+
+    public Disciplina getDisciplina() {
+        return disciplina;
+    }
+
+    public void setDisciplina(Disciplina disciplina) {
+        this.disciplina = disciplina;
+    }
+
+    public PapelParticipacao getPapel() {
+        return papel;
+    }
+
+    public void setPapel(PapelParticipacao papel) {
+        this.papel = papel;
+    }
+
+    public StatusParticipacao getStatus() {
+        return status;
+    }
+
+    public void setStatus(StatusParticipacao status) {
+        this.status = status;
+    }
+
 }

@@ -24,6 +24,7 @@ import org.springframework.web.context.WebApplicationContext;
 import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.service.AuthService;
+import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 
 // Sem @Transactional, como os outros testes de integração: cada requisição confirma a própria transação.
@@ -33,6 +34,7 @@ class ConviteIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
 
     private MockMvc mvc;
     private String emailDono;
@@ -47,8 +49,8 @@ class ConviteIntegrationTest {
         String sufixo = UUID.randomUUID().toString();
         emailDono = "dono-" + sufixo + "@example.com";
         emailColega = "colega-" + sufixo + "@example.com";
-        auth.cadastrar(new UsuarioRequestDTO("Dono " + sufixo, emailDono, "senha-forte-123"));
-        auth.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, emailColega, "senha-forte-123"));
+        cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Dono " + sufixo, emailDono, "senha-forte-123"));
+        cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, emailColega, "senha-forte-123"));
         tokenDono = auth.login(new LoginRequestDTO(emailDono, "senha-forte-123")).token();
         tokenColega = auth.login(new LoginRequestDTO(emailColega, "senha-forte-123")).token();
     }

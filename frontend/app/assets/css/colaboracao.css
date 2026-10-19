@@ -1,0 +1,32 @@
+.colaboracao { width: 100%; max-width: 1040px; margin: 0 auto; color: #0f172a; }
+.colaboracao header { margin-bottom: 24px; }
+.colaboracao h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; }
+.colaboracao h2 { font-size: 18px; font-weight: 700; margin: 0 0 16px; }
+.colaboracao header p, .colaboracao .muted { color: #64748b; }
+.colaboracao .painel { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+.colaboracao form { display: grid; gap: 16px; }
+.colaboracao label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+.colaboracao input, .colaboracao select, .colaboracao textarea { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #0f172a; font: inherit; font-weight: 400; box-sizing: border-box; }
+.colaboracao textarea { resize: vertical; }
+.colaboracao input:focus, .colaboracao select:focus, .colaboracao textarea:focus { outline: 2px solid #93c5fd; outline-offset: 1px; }
+.colaboracao .campos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.colaboracao button, .colaboracao .link { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #334155; font-weight: 600; cursor: pointer; text-decoration: none; }
+.colaboracao button:hover, .colaboracao .link:hover { background: #f1f5f9; }
+.colaboracao button.primario { color: white; background: #2563eb; border-color: #2563eb; }
+.colaboracao button.primario:hover { background: #1d4ed8; }
+.colaboracao button:disabled { opacity: .55; cursor: not-allowed; }
+.colaboracao .acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.colaboracao .erro { color: #991b1b; background: #fef2f2; border-radius: 8px; padding: 12px; }
+.colaboracao .sucesso { color: #166534; background: #f0fdf4; border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+.colaboracao .lista { list-style: none; padding: 0; margin: 0; }
+.colaboracao .item { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 0; border-top: 1px solid #e2e8f0; }
+.colaboracao .item:first-child { border-top: none; }
+.colaboracao .item p { margin: 5px 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.colaboracao .tipo { display: inline-block; font-size: 12px; border-radius: 6px; padding: 3px 8px; background: #eff6ff; color: #1d4ed8; margin-bottom: 5px; }
+.colaboracao .tipo.entrega { background: #f5f3ff; color: #6d28d9; }
+.colaboracao time { white-space: nowrap; font-size: 14px; font-weight: 600; }
+@media (max-width: 640px) {
+  .colaboracao .campos { grid-template-columns: 1fr; }
+  .colaboracao .painel { padding: 16px; }
+  .colaboracao .item { align-items: flex-start; flex-direction: column; gap: 10px; }
+}

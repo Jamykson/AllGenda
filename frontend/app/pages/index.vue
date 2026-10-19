@@ -22,6 +22,7 @@
           class="form"
           @submit.prevent="entrar"
         >
+          <p v-if="aviso" role="status" class="mb-3 text-sm text-blue-700">{{ aviso }}</p>
           <div class="field-group">
             <input
               v-model="email"
@@ -97,6 +98,7 @@
           <p
             v-if="erroLogin"
             class="login-message"
+            role="alert"
           >
             {{ erroLogin }}
           </p>
@@ -104,9 +106,9 @@
           <button
             type="submit"
             class="submit-button"
-            :disabled="!formValido"
+            :disabled="!formValido || enviando"
           >
-            Entrar
+            {{ enviando ? 'Entrando…' : 'Entrar' }}
           </button>
 
           <NuxtLink
@@ -126,45 +128,45 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'auth'
-})
+import { mensagemDeErro } from '~/composables/useAnotacoes'
 
+definePageMeta({ layout: 'auth' })
+const auth = useAuth()
+const route = useRoute()
 const email = ref('')
 const senha = ref('')
 const mostrarSenha = ref(false)
-
 const erroEmail = ref('')
 const erroLogin = ref('')
-
-const formValido = computed(() =>
-  email.value.trim() !== '' &&
-  senha.value.trim() !== ''
-)
+const enviando = ref(false)
+const formValido = computed(() => email.value.trim() !== '' && senha.value !== '')
+const aviso = computed(() => route.query.cadastro === 'sucesso'
+  ? 'Conta criada! Entre com seu e-mail e senha.'
+  : route.query.sessao === 'expirada' ? 'Sua sessão expirou. Entre novamente.' : '')
 
 async function entrar() {
+  if (enviando.value) return
   erroEmail.value = ''
   erroLogin.value = ''
-
-  if (!email.value.trim()) {
-    erroEmail.value = 'E-mail obrigatório'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+    erroEmail.value = 'Informe um e-mail válido.'
     return
   }
-
-  if (!senha.value.trim()) {
+  if (!senha.value) {
     erroLogin.value = 'Informe sua senha.'
     return
   }
-
-  if (
-    email.value === 'aluno@gmail.com' &&
-    senha.value === '12345678'
-  ) {
-    await navigateTo('/agenda')
-    return
+  enviando.value = true
+  try {
+    await auth.entrar(email.value.trim(), senha.value)
+    // Permite retornar somente para caminhos internos da aplicação.
+    const retorno = route.query.retorno
+    await navigateTo(typeof retorno === 'string' && /^\/(?![\/\\])/.test(retorno) ? retorno : '/agenda')
+  } catch (erro) {
+    erroLogin.value = mensagemDeErro(erro, 'Não foi possível entrar. Confira os dados e tente novamente.')
+  } finally {
+    enviando.value = false
   }
-
-  erroLogin.value = 'E-mail ou senha inválidos.'
 }
 </script>
 

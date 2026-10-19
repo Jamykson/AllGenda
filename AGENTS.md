@@ -28,8 +28,9 @@ O PostgreSQL roda em Docker pelo `compose.yaml`, em `localhost:5433`, com um ban
 
 ## Rodar e testar no navegador
 
-- A tela de login (`frontend/app/pages/index.vue`) é simulada: não chama a API e só aceita `aluno@gmail.com` / `12345678`, que leva a `/agenda`. As páginas não têm proteção de rota, então também é possível abrir `/agenda`, `/disciplinas` ou `/pesquisar` direto.
-- Com o padrão `API_COM_USUARIO_DE_TESTE=false`, o login simulado não obtém token, a API responde 401 e as telas mostram erro (por exemplo, "Não foi possível carregar a agenda."). Para testar telas que usam a API, rode `mise set --file mise.local.toml API_COM_USUARIO_DE_TESTE=true` e reinicie o `mise run dev`; desfaça com `mise unset --file mise.local.toml API_COM_USUARIO_DE_TESTE`. Sempre passe `--file mise.local.toml`: sem ele, esses comandos alteram o `mise.toml` compartilhado.
+- A tela de login (`frontend/app/pages/index.vue`) chama a API e guarda a sessão com `useAuth`. Cadastro usa `POST /api/usuarios` e retorna ao login. Rotas internas exigem token; respostas 401 em rotas protegidas encerram a sessão e redirecionam para o login.
+- Com `API_COM_USUARIO_DE_TESTE=true`, somente no `nuxt dev`, o primeiro acesso direto a uma rota interna pode obter token do usuário de teste. Um 401 encerra essa sessão também. Login e cadastro continuam públicos. O padrão é `false`; ajustes locais usam `mise.local.toml`.
+- `/avaliacoes` cadastra e lista provas/entregas por disciplina; `/convites` envia convites e permite aceitar/recusar pendentes. Ambos usam a API real com token.
 - Todos os clones da máquina usam o mesmo volume do banco (`allgenda_pgdata`), porque o projeto do Compose se chama `allgenda`. Um banco antigo mantém os dados e o usuário de teste anteriores, e o back-end não atualiza um usuário de teste que já existe. Se o login do usuário de teste falhar, `mise run db:reset` recria o banco, mas apaga os dados locais: confirme com o usuário antes.
 - Na primeira execução depois de um clone, o Vite otimiza dependências e recarrega a página, o que pode limpar um formulário recém-preenchido. Basta tentar de novo.
 

@@ -21,6 +21,7 @@ import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.service.AuthService;
+import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 
 @SpringBootTest
@@ -29,13 +30,14 @@ class ParticipacaoDonoIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
     @Autowired ParticipacaoRepository participacoes;
 
     @Test
     void criarDisciplinaTornaQuemCriouDonoEExcluirApagaAParticipacao() throws Exception {
         var mvc = MockMvcBuilders.webAppContextSetup(context).addFilters(filtros).build();
         String sufixo = UUID.randomUUID().toString();
-        var usuario = auth.cadastrar(new UsuarioRequestDTO(
+        var usuario = cadastroUsuarios.cadastrar(new UsuarioRequestDTO(
                 "Aluno " + sufixo, "aluno-" + sufixo + "@example.com", "senha-forte-123"));
         String token = auth.login(new LoginRequestDTO(usuario.email(), "senha-forte-123")).token();
 

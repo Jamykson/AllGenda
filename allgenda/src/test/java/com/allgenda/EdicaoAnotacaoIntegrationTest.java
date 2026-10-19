@@ -4,6 +4,7 @@ import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.service.AuthService;
+import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ class EdicaoAnotacaoIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
     @Autowired AnotacaoRepository anotacoes;
     @Autowired TransactionTemplate transacao;
 
@@ -49,8 +51,8 @@ class EdicaoAnotacaoIntegrationTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).addFilters(filtros).build();
 
         String sufixo = UUID.randomUUID().toString();
-        var autor = auth.cadastrar(new UsuarioRequestDTO("Autor " + sufixo, "autor-" + sufixo + "@example.com", "senha-forte-123"));
-        var colega = auth.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
+        var autor = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Autor " + sufixo, "autor-" + sufixo + "@example.com", "senha-forte-123"));
+        var colega = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
         autorId = autor.id().toString();
         tokenAutor = auth.login(new LoginRequestDTO(autor.email(), "senha-forte-123")).token();
         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();

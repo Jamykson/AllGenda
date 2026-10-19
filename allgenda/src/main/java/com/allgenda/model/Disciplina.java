@@ -33,8 +33,20 @@ public class Disciplina implements Serializable {
     @OneToMany(mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Aula> aulas = new ArrayList<>();
 
-    @OneToMany (mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Associação independente: persistência e remoção de participações são explícitas no serviço.
+    @OneToMany(mappedBy = "disciplina")
     private List<Participacao> participacoes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Avaliacao> avaliacoes = new ArrayList<>();
+
+    public List<Avaliacao> getAvaliacoes() {
+        return avaliacoes;
+    }
+
+    public void setAvaliacoes(List<Avaliacao> avaliacoes) {
+        this.avaliacoes = avaliacoes;
+    }
 
     public static long getSerialversionuid() {
         return serialVersionUID;

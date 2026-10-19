@@ -16,6 +16,7 @@ import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.DisciplinaService;
 import com.allgenda.service.RemocaoArquivos;
@@ -25,17 +26,20 @@ import com.allgenda.service.UsuarioAutenticado;
 public class DisciplinaServiceImpl implements DisciplinaService {
 
     private final DisciplinaRepository repository;
+    private final ParticipacaoRepository participacaoRepository;
     private final ImagemAnotacaoRepository imagemRepository;
     private final RemocaoArquivos remocaoArquivos;
     private final DisciplinaMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
 
     public DisciplinaServiceImpl(DisciplinaRepository repository,
+                                 ParticipacaoRepository participacaoRepository,
                                  ImagemAnotacaoRepository imagemRepository,
                                  RemocaoArquivos remocaoArquivos,
                                  DisciplinaMapper mapper,
                                  UsuarioAutenticado usuarioAutenticado){
         this.repository = repository;
+        this.participacaoRepository = participacaoRepository;
         this.imagemRepository = imagemRepository;
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
@@ -65,9 +69,10 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         participacao.setUsuario(usuarioAutenticado.obter());
         participacao.setPapel(PapelParticipacao.DONO);
         participacao.setStatus(StatusParticipacao.ACEITO);
-        disciplina.addParticipacao(participacao);
-
         Disciplina salva = repository.save(disciplina);
+        salva.addParticipacao(participacao);
+        // A associação não usa cascata: disciplina e dono são gravados na mesma transação.
+        participacaoRepository.save(participacao);
         return mapper.toDto(salva); // mapeia a disciplina salva para um DisciplinaResponseDTO, para assim retornar ao controller o objeto adequado.
     }
 
@@ -94,6 +99,8 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         // a cascata disciplina -> aulas -> anotações -> imagens apaga os registros, mas não os arquivos;
         // as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada
         List<String> chavesDasImagens = imagemRepository.findChavesArmazenamentoByDisciplinaId(id);
+        // Remove os vínculos antes da disciplina para respeitar as FKs, sem composição JPA.
+        participacaoRepository.deleteByDisciplinaId(id);
         repository.delete(disciplina);
         remocaoArquivos.removerAoConfirmar(chavesDasImagens);
     }

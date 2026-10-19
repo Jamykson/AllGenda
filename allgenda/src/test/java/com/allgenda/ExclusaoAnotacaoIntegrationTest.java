@@ -7,6 +7,7 @@ import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.TagRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.AuthService;
+import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ class ExclusaoAnotacaoIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
     @Autowired AnotacaoRepository anotacoes;
     @Autowired ImagemAnotacaoRepository imagens;
     @Autowired TagRepository tags;
@@ -61,8 +63,8 @@ class ExclusaoAnotacaoIntegrationTest {
 
         String sufixo = UUID.randomUUID().toString();
         tag = "tag-" + sufixo;
-        var autor = auth.cadastrar(new UsuarioRequestDTO("Autor " + sufixo, "autor-" + sufixo + "@example.com", "senha-forte-123"));
-        var colega = auth.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
+        var autor = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Autor " + sufixo, "autor-" + sufixo + "@example.com", "senha-forte-123"));
+        var colega = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
         tokenAutor = auth.login(new LoginRequestDTO(autor.email(), "senha-forte-123")).token();
         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();
 

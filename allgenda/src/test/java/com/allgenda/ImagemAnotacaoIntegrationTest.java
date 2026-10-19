@@ -11,10 +11,12 @@ import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.AuthService;
+import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,8 +57,10 @@ class ImagemAnotacaoIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
     @Autowired UsuarioRepository usuarios;
     @Autowired DisciplinaRepository disciplinas;
+    @Autowired ParticipacaoRepository participacoes;
     @Autowired AulaRepository aulas;
     @Autowired AnotacaoRepository anotacoes;
     @Autowired ImagemAnotacaoRepository imagens;
@@ -73,8 +77,8 @@ class ImagemAnotacaoIntegrationTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).addFilters(filtros).build();
 
         String sufixo = UUID.randomUUID().toString();
-        var autor = auth.cadastrar(new UsuarioRequestDTO("Autor " + sufixo, "autor-" + sufixo + "@example.com", "senha-forte-123"));
-        var colega = auth.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
+        var autor = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Autor " + sufixo, "autor-" + sufixo + "@example.com", "senha-forte-123"));
+        var colega = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
         tokenAutor = auth.login(new LoginRequestDTO(autor.email(), "senha-forte-123")).token();
         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();
 
@@ -86,6 +90,8 @@ class ImagemAnotacaoIntegrationTest {
         participacao.setStatus(StatusParticipacao.ACEITO);
         disciplina.addParticipacao(participacao);
         disciplina = disciplinas.save(disciplina);
+        participacao.setDisciplina(disciplina);
+        participacoes.save(participacao);
         var aula = new Aula();
         aula.setDisciplina(disciplina);
         aula.setData(LocalDate.now());

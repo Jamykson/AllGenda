@@ -15,7 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
+import com.allgenda.exception.CredenciaisInvalidasException;
+import com.allgenda.service.UsuarioService;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest
@@ -24,6 +25,7 @@ class AuthIntegrationTest {
     @Autowired org.springframework.web.context.WebApplicationContext context;
     @Autowired org.springframework.security.web.FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
     @Autowired UsuarioRepository usuarios;
     @Autowired DisciplinaRepository disciplinas;
     @Autowired ParticipacaoRepository participacoes;
@@ -40,8 +42,39 @@ class AuthIntegrationTest {
     }
 
     @Test
+    void cadastroPublicoELoginMantemRespostasEErrosPadronizados() throws Exception {
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(context)
+                .addFilters(filtros).build();
+        String cadastro = """
+                {"nome":"Carlos","email":"carlos@example.com","senha":"senha-forte-123"}
+                """;
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/usuarios")
+                .contentType("application/json").content(cadastro))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isCreated())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.email").value("carlos@example.com"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.senha").doesNotExist())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.senhaHash").doesNotExist());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/usuarios")
+                .contentType("application/json").content(cadastro))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isConflict())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.status").value(409));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/auth/login")
+                .contentType("application/json").content("""
+                        {"email":"carlos@example.com","senha":"senha-errada"}
+                        """))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isUnauthorized())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.detail").value("E-mail ou senha inválidos."));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/auth/login")
+                .contentType("application/json").content("""
+                        {"email":"carlos@example.com","senha":"senha-forte-123"}
+                        """))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
     void cadastroArmazenaHashELoginEmiteTokenComIdentidade() {
-        var usuario = auth.cadastrar(new UsuarioRequestDTO("Maria", " MARIA@example.com ", "senha-forte-123"));
+        var usuario = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Maria", " MARIA@example.com ", "senha-forte-123"));
         var persistido = usuarios.findById(usuario.id()).orElseThrow();
         assertThat(persistido.getEmail()).isEqualTo("maria@example.com");
         assertThat(persistido.getSenhaHash()).isNotEqualTo("senha-forte-123");
@@ -51,13 +84,12 @@ class AuthIntegrationTest {
         assertThat(jwt.getSubject()).isEqualTo(usuario.id().toString());
         assertThat(jwt.getExpiresAt()).isEqualTo(jwt.getIssuedAt().plusSeconds(3600));
         assertThatThrownBy(() -> auth.login(new LoginRequestDTO("maria@example.com", "senha-errada")))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(401));
+                .isInstanceOf(CredenciaisInvalidasException.class);
     }
 
     @Test
     void assinaturaComOutroSegredoNaoEhAceita() {
-        var usuario = auth.cadastrar(new UsuarioRequestDTO("João", "joao@example.com", "senha-forte-123"));
+        var usuario = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("João", "joao@example.com", "senha-forte-123"));
         var login = auth.login(new LoginRequestDTO(usuario.email(), "senha-forte-123"));
         var key = new SecretKeySpec("outro-segredo-com-pelo-menos-32-bytes".getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         var outroDecoder = NimbusJwtDecoder.withSecretKey(key).build();
@@ -66,7 +98,7 @@ class AuthIntegrationTest {
 
     @Test
     void participacaoPersisteComUsuarioEDisciplinaSemRemoverAssociados() {
-        var cadastro = auth.cadastrar(new UsuarioRequestDTO("Ana", "ana@example.com", "senha-forte-123"));
+        var cadastro = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Ana", "ana@example.com", "senha-forte-123"));
         var usuario = usuarios.findById(cadastro.id()).orElseThrow();
         var disciplina = new Disciplina();
         disciplina.setNome("PDS");

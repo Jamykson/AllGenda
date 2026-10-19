@@ -23,6 +23,7 @@ import org.springframework.web.context.WebApplicationContext;
 import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.service.AuthService;
+import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 
 // Sem @Transactional, como os outros testes de integração: cada requisição confirma a própria transação.
@@ -34,6 +35,7 @@ class AnotacaoColegaIntegrationTest {
     @Autowired WebApplicationContext context;
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
+    @Autowired UsuarioService cadastroUsuarios;
 
     private MockMvc mvc;
     private Pessoa dono;
@@ -60,7 +62,7 @@ class AnotacaoColegaIntegrationTest {
     private Pessoa criarPessoa(String prefixo) {
         String sufixo = UUID.randomUUID().toString();
         String email = prefixo.toLowerCase() + "-" + sufixo + "@example.com";
-        var usuario = auth.cadastrar(new UsuarioRequestDTO(prefixo + " " + sufixo, email, "senha-forte-123"));
+        var usuario = cadastroUsuarios.cadastrar(new UsuarioRequestDTO(prefixo + " " + sufixo, email, "senha-forte-123"));
         String token = auth.login(new LoginRequestDTO(email, "senha-forte-123")).token();
         return new Pessoa(usuario.id(), email, token);
     }

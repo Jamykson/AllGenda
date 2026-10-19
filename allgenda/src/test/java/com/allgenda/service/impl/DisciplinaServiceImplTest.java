@@ -28,6 +28,7 @@ import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.RemocaoArquivos;
@@ -39,6 +40,8 @@ class DisciplinaServiceImplTest {
     @Mock
     private DisciplinaRepository repository;
     @Mock
+    private ParticipacaoRepository participacaoRepository;
+    @Mock
     private ImagemAnotacaoRepository imagemRepository;
     @Mock
     private ArmazenamentoService armazenamento;
@@ -49,7 +52,7 @@ class DisciplinaServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, imagemRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado);
+        service = new DisciplinaServiceImpl(repository, participacaoRepository, imagemRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado);
     }
 
     @Test
@@ -95,6 +98,7 @@ class DisciplinaServiceImplTest {
 
         var captor = org.mockito.ArgumentCaptor.forClass(Disciplina.class);
         verify(repository).save(captor.capture());
+        verify(participacaoRepository).save(any(com.allgenda.model.Participacao.class));
         assertThat(captor.getValue().getParticipacoes()).singleElement().satisfies(p -> {
             assertThat(p.getUsuario()).isSameAs(usuario);
             assertThat(p.getPapel()).isEqualTo(PapelParticipacao.DONO);
@@ -110,7 +114,9 @@ class DisciplinaServiceImplTest {
 
         service.excluir(id);
 
-        verify(repository).delete(disciplina);
+        InOrder ordem = inOrder(participacaoRepository, repository);
+        ordem.verify(participacaoRepository).deleteByDisciplinaId(id);
+        ordem.verify(repository).delete(disciplina);
     }
 
     @Test

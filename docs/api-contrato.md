@@ -5,7 +5,7 @@ Todos os endpoints exigem `Authorization: Bearer <token>`, exceto os POSTs de lo
 
 ## Estado da implementação
 
-Login, cadastro e endpoints de anotações abaixo estão implementados. Convites e a leitura exclusiva de anotações de colegas são um contrato **planejado para mocks**, sem controllers nesta entrega. As permissões de participação descritas nessas operações também são planejadas. Os endpoints atuais de anotações exigem autenticação, mas ainda não restringem a leitura por participação. Editar o conteúdo, excluir a anotação e anexar ou remover imagens exigem ser o autor dela; acrescentar tags é permitido a qualquer usuário logado.
+Login, cadastro e endpoints de anotações abaixo estão implementados. Convites estão implementados, incluindo permissões de dono e destinatário. A leitura exclusiva de anotações de colegas está implementada. Avaliações: veja [contrato de avaliações e telas](api-telas-colaboracao.md). A leitura de anotações exige participação ACEITO na disciplina; buscas por tag retornam somente anotações das disciplinas em que o usuário tem participação aceita. Editar o conteúdo, excluir a anotação e anexar ou remover imagens exigem ser o autor dela; acrescentar tags é permitido a qualquer usuário logado.
 
 ## Cadastro e login
 
@@ -33,7 +33,7 @@ Sucesso `200` (token ilustrativo):
 ```
 Erros: `400` e-mail/JSON inválido; `401` e-mail ou senha incorretos. Usuários legados sem credenciais não conseguem fazer login.
 
-## Convites — planejado, usar mocks
+## Convites — implementado
 
 Participação associa um usuário e uma disciplina, com papel `DONO` ou `MEMBRO` e status `PENDENTE`, `ACEITO` ou `RECUSADO`. Um par usuário/disciplina possui no máximo uma participação. Donos são participações `DONO/ACEITO`. Convites são enviados a usuários já cadastrados.
 
@@ -76,7 +76,7 @@ Erros: `401` sem token válido; `403` outro destinatário; `404` convite inexist
 
 ## Anotações
 
-### GET /disciplinas/{disciplinaId}/anotacoes/colegas — planejado
+### GET /disciplinas/{disciplinaId}/anotacoes/colegas — implementado
 
 Sem corpo. Participação `ACEITO` obrigatória. Retorna anotações da disciplina cujos autores são outros usuários; exclui as do solicitante. Sucesso `200` com lista no formato abaixo, ou `[]`. Ordenação: data da aula e data de criação crescentes. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente.
 
@@ -173,7 +173,7 @@ O contrato está pronto para revisão e mocks. A confirmação de entendimento p
 
 ## Execução e verificação — A-BE2 / A-BE3
 
-Veja o `README.md` na raiz para subir o ambiente (`mise run dev`). Em desenvolvimento o `JWT_SECRET` (mínimo de 32 bytes) vem do `mise.toml`; em qualquer outro ambiente use um segredo aleatório próprio, fora do Git. Hibernate cria/atualiza `participacoes`, com FKs obrigatórias e unicidade de `(usuario_id, disciplina_id)`. Não existem cascatas de persistência/remoção nessa associação.
+Veja o `README.md` na raiz para subir o ambiente (`mise run dev`). Em desenvolvimento o `JWT_SECRET` (mínimo de 32 bytes) vem do `mise.toml`; em qualquer outro ambiente use um segredo aleatório próprio, fora do Git. Hibernate cria/atualiza `participacoes`, com FKs obrigatórias e unicidade de `(usuario_id, disciplina_id)`. A associação não usa cascatas nem remoção de órfãos em nenhum lado. A criação da disciplina grava a participação do dono explicitamente; a exclusão da disciplina remove seus vínculos explicitamente antes de apagar a disciplina, na mesma transação. Remover um item da coleção Java não apaga a participação.
 
 Para conferir um insert manual no PostgreSQL, use IDs existentes de usuário e disciplina:
 ```sql
@@ -188,3 +188,11 @@ ROLLBACK;
 Os UUIDs são ilustrativos: substitua as duas FKs por registros reais. O rollback evita deixar dados de teste.
 
 Execute `./mvnw test` para testes com H2 isolado (não requer PostgreSQL nem segredo de produção). Incluem cadastro/hash/login, assinatura JWT, requisição protegida sem token, autoria autenticada e persistência/remoção da participação sem apagar usuário/disciplina. H2 não substitui a validação de inicialização e insert manual no PostgreSQL.
+
+### Evidências de aceite — #35, #36 e #37
+
+- #35: contrato neste arquivo com verbos, caminhos, corpos, sucessos, erros e exemplos JSON. A confirmação de entendimento dos colegas continua pendente; não foi enviada mensagem nem presumida aprovação.
+- #36: `Participacao` e repository existentes; duas FKs obrigatórias, enums persistidos como texto, sem composição JPA. Teste H2 executa insert SQL direto, verifica ambas as FKs e confirma que tirar uma participação da coleção não apaga o registro. Ainda falta executar o insert no PostgreSQL local para validar esse ambiente específico.
+- #37: login com BCrypt e JWT, `401` sem token e com token expirado, e autoria pela identidade autenticada são cobertos pelos testes. `UsuarioPadraoInitializer` não existe; `UsuarioTesteInitializer` é apenas uma conveniência de desenvolvimento e não substitui a identidade do JWT nas requisições. `SecurityConfig` e o código de autoria foram preservados.
+
+Validação final em 19/10/2026: suíte completa com **107 testes passando**, sem falhas ou erros. Não havia container PostgreSQL em execução; nenhum banco local foi criado, apagado ou alterado.

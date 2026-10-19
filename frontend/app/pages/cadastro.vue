@@ -98,9 +98,11 @@
             </button>
           </div>
 
+          <p class="text-xs text-slate-500">Use pelo menos 8 caracteres na senha.</p>
           <p
             v-if="erro"
             class="form-error"
+            role="alert"
           >
             {{ erro }}
           </p>
@@ -108,9 +110,9 @@
           <button
             type="submit"
             class="submit-button"
-            :disabled="!formValido"
+            :disabled="!formValido || enviando"
           >
-            Cadastrar-se com e-mail
+            {{ enviando ? 'Cadastrando…' : 'Cadastrar-se com e-mail' }}
           </button>
         </form>
 
@@ -129,31 +131,43 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'auth'
-})
+import { mensagemDeErro } from '~/composables/useAnotacoes'
 
+definePageMeta({ layout: 'auth' })
+const { $api } = useNuxtApp()
 const nome = ref('')
 const email = ref('')
 const senha = ref('')
 const mostrarSenha = ref(false)
 const erro = ref('')
-
-const formValido = computed(() =>
-  nome.value.trim() !== '' &&
-  email.value.trim() !== '' &&
-  senha.value.trim() !== ''
-)
+const enviando = ref(false)
+const formValido = computed(() => nome.value.trim() !== '' && email.value.trim() !== '' && senha.value !== '')
 
 async function cadastrar() {
+  if (enviando.value) return
   erro.value = ''
-
-  if (!formValido.value) {
-    erro.value = 'Preencha todos os campos.'
+  if (!nome.value.trim() || nome.value.trim().length > 255) {
+    erro.value = 'Informe um nome de até 255 caracteres.'
     return
   }
-
-  await navigateTo('/disciplinas')
+  if (email.value.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+    erro.value = 'Informe um e-mail válido.'
+    return
+  }
+  if (senha.value.length < 8 || new TextEncoder().encode(senha.value).length > 72) {
+    erro.value = 'A senha deve ter ao menos 8 caracteres e no máximo 72 bytes.'
+    return
+  }
+  enviando.value = true
+  try {
+    await $api.post('/api/usuarios', { nome: nome.value.trim(), email: email.value.trim(), senha: senha.value })
+    senha.value = ''
+    await navigateTo({ path: '/', query: { cadastro: 'sucesso' } })
+  } catch (falha) {
+    erro.value = mensagemDeErro(falha, 'Não foi possível cadastrar. Confira os dados e tente novamente.')
+  } finally {
+    enviando.value = false
+  }
 }
 </script>
 

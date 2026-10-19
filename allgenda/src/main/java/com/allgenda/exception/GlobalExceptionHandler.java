@@ -13,9 +13,14 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 @RestControllerAdvice // intercepta exceções lançadas por qualquer controller e as converte em respostas HTTP
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
-    public ProblemDetail tratarStatus(org.springframework.web.server.ResponseStatusException ex) {
-        return ProblemDetail.forStatusAndDetail(ex.getStatusCode(), ex.getReason());
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    public ProblemDetail tratarCredenciaisInvalidas(CredenciaisInvalidasException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(RecursoJaExisteException.class)
+    public ProblemDetail tratarRecursoJaExiste(RecursoJaExisteException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)

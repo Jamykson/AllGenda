@@ -11,6 +11,7 @@ import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 
 public interface ParticipacaoRepository extends JpaRepository<Participacao, UUID> {
+    void deleteByDisciplinaId(UUID disciplinaId);
     Optional<Participacao> findByUsuarioIdAndDisciplinaId(UUID usuarioId, UUID disciplinaId);
     List<Participacao> findByUsuarioIdAndStatus(UUID usuarioId, StatusParticipacao status);
     // só convites (papel MEMBRO): a participação do dono (DONO/ACEITO) não é um convite

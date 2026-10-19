@@ -19,9 +19,9 @@ function ehRotaPublica(config: InternalAxiosRequestConfig) {
   return config.method === 'post' && ROTAS_PUBLICAS.includes(config.url ?? '')
 }
 
-export default defineNuxtPlugin(() => {
+export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
-  const { token, definirSessao } = useAuth()
+  const { token, definirSessao, sair } = useAuth()
 
   const api = axios.create({
     baseURL: config.public.apiBase,
@@ -55,20 +55,13 @@ export default defineNuxtPlugin(() => {
     return requisicao
   })
 
-  // com o usuário de teste ativo, um token expirado (401) é renovado e a requisição é repetida uma vez
+  // Um 401 em uma rota protegida encerra a sessão, inclusive no modo de teste.
+  // Credenciais inválidas no login ficam no formulário e não causam redirecionamento.
   api.interceptors.response.use(undefined, async (erro) => {
-    const requisicao = erro.config as (InternalAxiosRequestConfig & { _repetida?: boolean }) | undefined
-    if (
-      usuarioDeTesteAtivo
-      && erro.response?.status === 401
-      && requisicao
-      && !requisicao._repetida
-      && !ehRotaPublica(requisicao)
-    ) {
-      requisicao._repetida = true
-      token.value = null
-      await garantirTokenDeTeste()
-      return api(requisicao)
+    const requisicao = erro.config as InternalAxiosRequestConfig | undefined
+    if (erro.response?.status === 401 && requisicao && !ehRotaPublica(requisicao)) {
+      sair()
+      await nuxtApp.runWithContext(() => navigateTo({ path: '/', query: { sessao: 'expirada' } }))
     }
     return Promise.reject(erro)
   })

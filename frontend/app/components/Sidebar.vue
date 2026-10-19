@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Search } from '@lucide/vue'
+import { Search, ClipboardList, Mail } from '@lucide/vue'
+const { sair } = useAuth()
 </script>
 
 <template>
@@ -38,9 +39,15 @@ import { Search } from '@lucide/vue'
         </span>
         <span>Disciplinas</span>
       </NuxtLink>
+      <NuxtLink to="/avaliacoes" class="nav-item">
+        <ClipboardList :size="16" aria-hidden="true" /><span>Provas e entregas</span>
+      </NuxtLink>
+      <NuxtLink to="/convites" class="nav-item">
+        <Mail :size="16" aria-hidden="true" /><span>Convites</span>
+      </NuxtLink>
     </nav>
 
-    <NuxtLink to="/" class="rodape" aria-label="Sair e voltar para a tela de login">
+    <NuxtLink to="/" class="rodape" @click="sair" aria-label="Sair e voltar para a tela de login">
       <span class="nav-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M9 7.5V6.8A3.8 3.8 0 0 1 12.8 3h.4A3.8 3.8 0 0 1 17 6.8v.7" />
@@ -166,6 +173,7 @@ nav {
   nav {
     flex: 1;
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 8px;
   }
 
