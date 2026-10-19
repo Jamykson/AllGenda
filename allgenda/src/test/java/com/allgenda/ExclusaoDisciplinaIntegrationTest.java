@@ -4,6 +4,7 @@ import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
+import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.AuthService;
 import com.allgenda.service.UsuarioService;
@@ -45,6 +46,7 @@ class ExclusaoDisciplinaIntegrationTest {
     @Autowired UsuarioService cadastroUsuarios;
     @Autowired AulaRepository aulas;
     @Autowired ImagemAnotacaoRepository imagens;
+    @Autowired ImagemAulaRepository imagensAvulsas;
     @Autowired ArmazenamentoService armazenamento;
 
     private MockMvc mvc;
@@ -94,30 +96,51 @@ class ExclusaoDisciplinaIntegrationTest {
         return chaves;
     }
 
+    // envia uma imagem avulsa para a aula e devolve a chave do arquivo
+    private String criarImagemAvulsa(String aulaId) throws Exception {
+        String resposta = mvc.perform(comToken(multipart("/api/aulas/{id}/imagens", aulaId)
+                        .file(new MockMultipartFile("arquivo", "slide.png", "image/png", PNG))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String imagemId = JsonPath.read(resposta, "$.id");
+        return imagensAvulsas.findById(UUID.fromString(imagemId)).orElseThrow().getChaveArmazenamento();
+    }
+
     @Test
     void excluirDisciplinaApagaOsArquivosDasImagensDeTodasAsAulasDela() throws Exception {
         String disciplinaId = criarDisciplina();
         List<String> chavesDaDisciplina = new ArrayList<>();
         chavesDaDisciplina.addAll(criarAnotacaoComImagens(criarAula(disciplinaId), 2));
-        chavesDaDisciplina.addAll(criarAnotacaoComImagens(criarAula(disciplinaId), 1));
+        String segundaAulaId = criarAula(disciplinaId);
+        chavesDaDisciplina.addAll(criarAnotacaoComImagens(segundaAulaId, 1));
+        String chaveAvulsa = criarImagemAvulsa(segundaAulaId);
 
         String outraDisciplinaId = criarDisciplina();
-        List<String> chavesDaOutra = criarAnotacaoComImagens(criarAula(outraDisciplinaId), 1);
+        String aulaDaOutraId = criarAula(outraDisciplinaId);
+        List<String> chavesDaOutra = criarAnotacaoComImagens(aulaDaOutraId, 1);
+        String chaveAvulsaDaOutra = criarImagemAvulsa(aulaDaOutraId);
 
         assertThat(imagens.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId)))
                 .containsExactlyInAnyOrderElementsOf(chavesDaDisciplina);
-        assertThat(chavesDaDisciplina).hasSize(3).allSatisfy(chave -> assertThat(armazenamento.carregar(chave)).isPresent());
+        assertThat(imagensAvulsas.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId)))
+                .containsExactly(chaveAvulsa);
+        chavesDaDisciplina.add(chaveAvulsa);
+        assertThat(chavesDaDisciplina).hasSize(4).allSatisfy(chave -> assertThat(armazenamento.carregar(chave)).isPresent());
 
         mvc.perform(comToken(delete("/api/disciplinas/{id}", disciplinaId))).andExpect(status().isNoContent());
 
         assertThat(chavesDaDisciplina).allSatisfy(chave -> assertThat(armazenamento.carregar(chave)).isEmpty());
         assertThat(imagens.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId))).isEmpty();
+        assertThat(imagensAvulsas.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId))).isEmpty();
         assertThat(aulas.findAll()).noneSatisfy(aula -> assertThat(aula.getDisciplina().getId().toString()).isEqualTo(disciplinaId));
 
         // a outra disciplina não é afetada
         assertThat(chavesDaOutra).singleElement().satisfies(chave -> assertThat(armazenamento.carregar(chave)).isPresent());
+        assertThat(armazenamento.carregar(chaveAvulsaDaOutra)).isPresent();
         assertThat(imagens.findChavesArmazenamentoByDisciplinaId(UUID.fromString(outraDisciplinaId)))
                 .containsExactlyElementsOf(chavesDaOutra);
+        assertThat(imagensAvulsas.findChavesArmazenamentoByDisciplinaId(UUID.fromString(outraDisciplinaId)))
+                .containsExactly(chaveAvulsaDaOutra);
     }
 
     @Test

@@ -30,6 +30,7 @@ import com.allgenda.model.Usuario;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
+import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
@@ -44,6 +45,8 @@ class DisciplinaServiceImplTest {
     @Mock
     private ImagemAnotacaoRepository imagemRepository;
     @Mock
+    private ImagemAulaRepository imagemAulaRepository;
+    @Mock
     private ArmazenamentoService armazenamento;
     @Mock
     private UsuarioAutenticado usuarioAutenticado;
@@ -52,7 +55,7 @@ class DisciplinaServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, participacaoRepository, imagemRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado);
+        service = new DisciplinaServiceImpl(repository, participacaoRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado);
     }
 
     @Test
@@ -136,6 +139,7 @@ class DisciplinaServiceImplTest {
         var disciplina = new Disciplina();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(disciplina));
         when(imagemRepository.findChavesArmazenamentoByDisciplinaId(id)).thenReturn(List.of("a.png", "b.jpg"));
+        when(imagemAulaRepository.findChavesArmazenamentoByDisciplinaId(id)).thenReturn(List.of("avulsa.webp"));
 
         service.excluir(id);
 
@@ -143,6 +147,7 @@ class DisciplinaServiceImplTest {
         ordem.verify(repository).delete(disciplina);
         ordem.verify(armazenamento).remover("a.png");
         ordem.verify(armazenamento).remover("b.jpg");
+        ordem.verify(armazenamento).remover("avulsa.webp");
     }
 
     @Test

@@ -15,7 +15,8 @@ export interface AulaPesquisa {
 
 export interface AnotacaoPesquisa {
   id: string
-  texto: string
+  titulo: string // vazio quando a anotação não tem título
+  texto: string // vazio quando a anotação só tem título
   imagens: ImagemAnotacao[]
   tags: string[]
   autorNome: string
@@ -58,7 +59,8 @@ function lerRegistroLocal<T>(chave: string): Record<string, T> {
 function paraAnotacaoPesquisa(anotacao: Anotacao): AnotacaoPesquisa {
   return {
     id: anotacao.id,
-    texto: anotacao.conteudo,
+    titulo: anotacao.titulo ?? '',
+    texto: anotacao.conteudo ?? '',
     imagens: anotacao.imagens,
     tags: anotacao.tags,
     autorNome: anotacao.autorNome

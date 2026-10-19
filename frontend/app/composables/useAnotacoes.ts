@@ -1,10 +1,12 @@
 import { isAxiosError } from 'axios'
-import type { Anotacao, AulaDaAnotacao, ImagemAnotacao, Tag } from '~/types/anotacao'
+import type { Anotacao, AulaDaAnotacao, ImagemAnotacao, ImagemAula, Tag } from '~/types/anotacao'
 
 // Limites aceitos pelo backend (app.uploads.* no application.properties).
 export const TIPOS_DE_IMAGEM = ['image/png', 'image/jpeg', 'image/webp']
 export const TAMANHO_MAXIMO_IMAGEM = 5 * 1024 * 1024
 export const MAXIMO_IMAGENS_POR_ANOTACAO = 10
+export const TAMANHO_MAXIMO_TITULO = 150
+export const TAMANHO_MAXIMO_LEGENDA = 300
 export const TOPICO_AULA_RECORRENTE = 'Aula recorrente'
 
 // Um arquivo de 5 MB pode demorar mais que o timeout padrão do $api (5 s) numa rede lenta.
@@ -28,7 +30,7 @@ export function mensagemDeErro(erro: unknown, padrao: string): string {
 }
 
 /**
- * Chamadas à API de anotações, tags e imagens.
+ * Chamadas à API de anotações, tags e imagens (anexadas a anotações ou avulsas na aula).
  *
  * Uso:
  *   const { listarPorAula, criar } = useAnotacoes()
@@ -51,14 +53,23 @@ export function useAnotacoes() {
     return data.map(tag => tag.nome)
   }
 
-  async function criar(aulaId: string, conteudo: string, tags: string[]) {
-    const { data } = await $api.post<Anotacao>('/api/anotacoes', { aulaId, conteudo, tags })
+  // título e conteúdo vazios vão como null; a API exige ao menos um dos dois
+  async function criar(aulaId: string, titulo: string, conteudo: string, tags: string[]) {
+    const { data } = await $api.post<Anotacao>('/api/anotacoes', {
+      aulaId,
+      titulo: titulo || null,
+      conteudo: conteudo || null,
+      tags
+    })
     return data
   }
 
-  // só o autor edita o conteúdo
-  async function editar(anotacaoId: string, conteudo: string) {
-    const { data } = await $api.patch<Anotacao>(`/api/anotacoes/${anotacaoId}`, { conteudo })
+  // só o autor edita; a API substitui os dois campos, então o título é sempre reenviado
+  async function editar(anotacaoId: string, titulo: string, conteudo: string) {
+    const { data } = await $api.patch<Anotacao>(`/api/anotacoes/${anotacaoId}`, {
+      titulo: titulo || null,
+      conteudo: conteudo || null
+    })
     return data
   }
 
@@ -87,8 +98,38 @@ export function useAnotacoes() {
     await $api.delete(imagem.url)
   }
 
-  // <img src> não envia o token, então a imagem é baixada aqui e exibida com URL.createObjectURL
-  async function baixarImagem(imagem: ImagemAnotacao) {
+  async function listarImagensDaAula(aulaId: string) {
+    const { data } = await $api.get<ImagemAula[]>(`/api/aulas/${aulaId}/imagens`)
+    return data
+  }
+
+  async function adicionarImagemAula(aulaId: string, arquivo: File, legenda: string) {
+    const formulario = new FormData()
+    formulario.append('arquivo', arquivo)
+    if (legenda) {
+      formulario.append('legenda', legenda)
+    }
+    const { data } = await $api.post<ImagemAula>(
+      `/api/aulas/${aulaId}/imagens`,
+      formulario,
+      { timeout: TIMEOUT_UPLOAD }
+    )
+    return data
+  }
+
+  // só o autor edita; legenda vazia deixa a imagem sem legenda
+  async function editarLegenda(imagem: ImagemAula, legenda: string) {
+    const { data } = await $api.patch<ImagemAula>(imagem.url, { legenda: legenda || null })
+    return data
+  }
+
+  async function removerImagemAula(imagem: ImagemAula) {
+    await $api.delete(imagem.url)
+  }
+
+  // <img src> não envia o token, então a imagem é baixada aqui e exibida com URL.createObjectURL.
+  // Serve tanto para imagens de anotação quanto para imagens avulsas da aula.
+  async function baixarImagem(imagem: { url: string }) {
     const { data } = await $api.get<Blob>(imagem.url, { responseType: 'blob' })
     return data
   }
@@ -118,6 +159,10 @@ export function useAnotacoes() {
     excluir,
     anexarImagem,
     removerImagem,
+    listarImagensDaAula,
+    adicionarImagemAula,
+    editarLegenda,
+    removerImagemAula,
     baixarImagem,
     cadastrarAulaRecorrente
   }

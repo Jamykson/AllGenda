@@ -123,7 +123,7 @@ class AnotacaoServiceImplTest {
         when(tagService.buscarOuCriar(List.of("java", "poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("java"), tag("poo"))));
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Strategy e Observer", List.of("java", "poo")));
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Strategy e Observer", List.of("java", "poo")));
 
         assertThat(resposta.conteudo()).isEqualTo("Strategy e Observer");
         assertThat(resposta.autorId()).isEqualTo(usuarioId);
@@ -140,7 +140,7 @@ class AnotacaoServiceImplTest {
         when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Sem tags", null));
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Sem tags", null));
 
         assertThat(resposta.tags()).isEmpty();
     }
@@ -155,7 +155,7 @@ class AnotacaoServiceImplTest {
         when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Texto", null));
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Texto", null));
 
         assertThat(resposta.autorNome()).isEqualTo("Maria");
     }
@@ -166,7 +166,7 @@ class AnotacaoServiceImplTest {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(autorId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "Texto", null)))
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Texto", null)))
                 .isInstanceOf(UsuarioNaoEncontradoException.class);
         verify(anotacaoRepository, never()).save(any());
     }
@@ -175,21 +175,69 @@ class AnotacaoServiceImplTest {
     void aulaInexistenteLancaErroTratado() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "Texto", null)))
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Texto", null)))
                 .isInstanceOf(AulaNaoEncontradaException.class);
         verify(anotacaoRepository, never()).save(any());
     }
 
     @Test
-    void conteudoVazioLancaRequisicaoInvalida() {
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "   ", null)))
-                .isInstanceOf(RequisicaoInvalidaException.class);
+    void tituloEConteudoVaziosLancaRequisicaoInvalida() {
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "  ", "   ", null)))
+                .isInstanceOf(RequisicaoInvalidaException.class)
+                .hasMessage("Escreva um título ou um texto para a anotação.");
+        verify(anotacaoRepository, never()).save(any());
+    }
+
+    @Test
+    void cadastraAnotacaoSoComTitulo() {
+        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
+        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "  Prova 1  ", " ", null));
+
+        assertThat(resposta.titulo()).isEqualTo("Prova 1");
+        assertThat(resposta.conteudo()).isNull();
+    }
+
+    @Test
+    void cadastraAnotacaoComTituloEConteudo() {
+        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
+        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Padrões", "Strategy e Observer", null));
+
+        assertThat(resposta.titulo()).isEqualTo("Padrões");
+        assertThat(resposta.conteudo()).isEqualTo("Strategy e Observer");
+    }
+
+    @Test
+    void tituloEmBrancoFicaNulo() {
+        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
+        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "   ", "Texto", null));
+
+        assertThat(resposta.titulo()).isNull();
+        assertThat(resposta.conteudo()).isEqualTo("Texto");
+    }
+
+    @Test
+    void tituloLongoDemaisLancaRequisicaoInvalida() {
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, "a".repeat(151), "Texto", null)))
+                .isInstanceOf(RequisicaoInvalidaException.class)
+                .hasMessage("O título deve ter no máximo 150 caracteres.");
         verify(anotacaoRepository, never()).save(any());
     }
 
     @Test
     void aulaIdNuloLancaRequisicaoInvalida() {
-        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(null, "Texto", null)))
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(null, null, "Texto", null)))
                 .isInstanceOf(RequisicaoInvalidaException.class);
     }
 
@@ -246,10 +294,60 @@ class AnotacaoServiceImplTest {
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
         when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
 
-        AnotacaoResponseDTO resposta = service.editar(anotacaoId, new AnotacaoUpdateDTO("Texto revisado"));
+        AnotacaoResponseDTO resposta = service.editar(anotacaoId, new AnotacaoUpdateDTO(null, "Texto revisado"));
 
         assertThat(resposta.conteudo()).isEqualTo("Texto revisado");
         assertThat(resposta.autorId()).isEqualTo(usuarioId);
+    }
+
+    @Test
+    void autorTrocaOTituloDaAnotacao() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto");
+        anotacao.setTitulo("Antigo");
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
+
+        AnotacaoResponseDTO resposta = service.editar(anotacaoId, new AnotacaoUpdateDTO("Novo", "Texto"));
+
+        assertThat(resposta.titulo()).isEqualTo("Novo");
+        assertThat(resposta.conteudo()).isEqualTo("Texto");
+    }
+
+    @Test
+    void editarSemTituloLimpaOTitulo() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto");
+        anotacao.setTitulo("Antigo");
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
+
+        AnotacaoResponseDTO resposta = service.editar(anotacaoId, new AnotacaoUpdateDTO("", "Texto"));
+
+        assertThat(resposta.titulo()).isNull();
+    }
+
+    @Test
+    void editarDeixandoSoOTituloApagaOConteudo() {
+        UUID anotacaoId = UUID.randomUUID();
+        Anotacao anotacao = anotacao("Texto");
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
+        when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
+
+        AnotacaoResponseDTO resposta = service.editar(anotacaoId, new AnotacaoUpdateDTO("Só o título", null));
+
+        assertThat(resposta.titulo()).isEqualTo("Só o título");
+        assertThat(resposta.conteudo()).isNull();
+    }
+
+    @Test
+    void editarDeixandoTituloEConteudoVaziosLancaRequisicaoInvalida() {
+        UUID anotacaoId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.editar(anotacaoId, new AnotacaoUpdateDTO(" ", "")))
+                .isInstanceOf(RequisicaoInvalidaException.class)
+                .hasMessage("Escreva um título ou um texto para a anotação.");
+        verify(anotacaoRepository, never()).save(any());
     }
 
     @Test
@@ -259,7 +357,7 @@ class AnotacaoServiceImplTest {
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
         autenticarOutroUsuario();
 
-        assertThatThrownBy(() -> service.editar(anotacaoId, new AnotacaoUpdateDTO("Texto do colega")))
+        assertThatThrownBy(() -> service.editar(anotacaoId, new AnotacaoUpdateDTO(null, "Texto do colega")))
                 .isInstanceOf(AcessoNegadoException.class)
                 .hasMessage("Somente o autor pode editar a anotação.");
         verify(anotacaoRepository, never()).save(any());
@@ -271,7 +369,7 @@ class AnotacaoServiceImplTest {
         UUID anotacaoId = UUID.randomUUID();
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.editar(anotacaoId, new AnotacaoUpdateDTO("Texto")))
+        assertThatThrownBy(() -> service.editar(anotacaoId, new AnotacaoUpdateDTO(null, "Texto")))
                 .isInstanceOf(AnotacaoNaoEncontradaException.class);
     }
 

@@ -31,6 +31,8 @@ import java.util.UUID;
 @Service
 public class AnotacaoServiceImpl implements AnotacaoService {
 
+    private static final int TAMANHO_MAXIMO_TITULO = 150;
+
     private final AnotacaoRepository anotacaoRepository;
     private final AulaRepository aulaRepository;
     private final DisciplinaRepository disciplinaRepository;
@@ -64,15 +66,16 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         if (dto.aulaId() == null) {
             throw new RequisicaoInvalidaException("O id da aula é obrigatório.");
         }
-        if (dto.conteudo() == null || dto.conteudo().isBlank()) {
-            throw new RequisicaoInvalidaException("O conteúdo da anotação é obrigatório.");
-        }
+        String titulo = normalizarTitulo(dto.titulo());
+        String conteudo = normalizarConteudo(dto.conteudo());
+        exigirTituloOuConteudo(titulo, conteudo);
 
         Aula aula = aulaRepository.findById(dto.aulaId())
                 .orElseThrow(() -> new AulaNaoEncontradaException(dto.aulaId()));
 
         Anotacao anotacao = new Anotacao();
-        anotacao.setConteudo(dto.conteudo());
+        anotacao.setTitulo(titulo);
+        anotacao.setConteudo(conteudo);
         anotacao.setDataCriacao(LocalDateTime.now());
         anotacao.setAula(aula);
         anotacao.setAutor(usuarioAutenticado.obter());
@@ -143,6 +146,29 @@ public class AnotacaoServiceImpl implements AnotacaoService {
                 .findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc(tag.trim(), disciplinasDoUsuario));
     }
 
+    // título em branco vira null; o limite acompanha a coluna titulo de Anotacao
+    private static String normalizarTitulo(String titulo) {
+        if (titulo == null || titulo.isBlank()) {
+            return null;
+        }
+        String semEspacos = titulo.strip();
+        if (semEspacos.length() > TAMANHO_MAXIMO_TITULO) {
+            throw new RequisicaoInvalidaException("O título deve ter no máximo " + TAMANHO_MAXIMO_TITULO + " caracteres.");
+        }
+        return semEspacos;
+    }
+
+    // conteúdo em branco vira null; o texto informado é mantido como veio, com quebras de linha e recuos
+    private static String normalizarConteudo(String conteudo) {
+        return conteudo == null || conteudo.isBlank() ? null : conteudo;
+    }
+
+    private static void exigirTituloOuConteudo(String titulo, String conteudo) {
+        if (titulo == null && conteudo == null) {
+            throw new RequisicaoInvalidaException("Escreva um título ou um texto para a anotação.");
+        }
+    }
+
     // acao completa a mensagem de erro, ex.: "editar a anotação" -> "Somente o autor pode editar a anotação."
     private void exigirAutor(Anotacao anotacao, String acao) {
         if (!usuarioAutenticado.id().equals(anotacao.getAutor().getId())) {
@@ -153,15 +179,16 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     @Override
     @Transactional
     public AnotacaoResponseDTO editar(UUID id, AnotacaoUpdateDTO dto) {
-        if (dto.conteudo() == null || dto.conteudo().isBlank()) {
-            throw new RequisicaoInvalidaException("O conteúdo da anotação é obrigatório.");
-        }
+        String titulo = normalizarTitulo(dto.titulo());
+        String conteudo = normalizarConteudo(dto.conteudo());
+        exigirTituloOuConteudo(titulo, conteudo);
 
         Anotacao anotacao = anotacaoRepository.findById(id)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(id));
         exigirAutor(anotacao, "editar a anotação");
 
-        anotacao.setConteudo(dto.conteudo());
+        anotacao.setTitulo(titulo);
+        anotacao.setConteudo(conteudo);
 
         Anotacao salva = anotacaoRepository.save(anotacao);
         return mapper.toDto(salva);

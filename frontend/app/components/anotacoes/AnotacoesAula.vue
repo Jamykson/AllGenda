@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { Image as ImageIcon, PencilLine, Tag as TagIcon, Trash2 } from '@lucide/vue'
-import type { Anotacao, AulaDaAnotacao, ImagemAnotacao } from '~/types/anotacao'
+import { Image as ImageIcon, ImagePlus, PencilLine, Tag as TagIcon, Trash2 } from '@lucide/vue'
+import type { Anotacao, AulaDaAnotacao, ImagemAnotacao, ImagemAula } from '~/types/anotacao'
 
-// Anotações de uma aula: lista, cria, edita, exclui e anexa imagens, tudo pela API.
-// Usado pelo AulaModal e pela página /aulas/[id].
+// Conteúdo de uma aula: anotações (com título opcional, tags e imagens anexadas) e imagens avulsas,
+// listadas juntas por ordem de criação. Tudo pela API. Usado pelo AulaModal e pela página /aulas/[id].
 
 interface ArquivoPendente {
   id: string
   arquivo: File
   preview: string // URL temporária para a prévia; liberada ao remover ou salvar
 }
+
+type ItemDaAula =
+  | { tipo: 'anotacao', id: string, dataCriacao: string, anotacao: Anotacao }
+  | { tipo: 'imagem', id: string, dataCriacao: string, imagem: ImagemAula }
 
 const props = defineProps<{
   aula: AulaDaAnotacao
@@ -33,6 +37,7 @@ const TAGS_SUGERIDAS = [
 
 const {
   listarPorAula,
+  listarImagensDaAula,
   listarTags,
   criar,
   editar,
@@ -46,9 +51,12 @@ const { usuario } = useAuth()
 
 const aulaAtual = ref<AulaDaAnotacao>({ ...props.aula })
 const anotacoes = ref<Anotacao[]>([])
+const imagensAvulsas = ref<ImagemAula[]>([])
 const carregando = ref(false)
 const erroLista = ref('')
+const mostrarNovaImagem = ref(false)
 
+const titulo = ref('')
 const texto = ref('')
 const tagsSelecionadas = ref<string[]>([]) // tags que serão acrescentadas ao salvar
 const imagensRemovidas = ref<string[]>([]) // ids das imagens já salvas que serão removidas ao salvar
@@ -72,6 +80,23 @@ const imagensMantidas = computed(() =>
 )
 const tagsDoEditor = computed(() => [...tagsFixas.value, ...tagsSelecionadas.value])
 
+// anotações e imagens avulsas numa lista só, da mais antiga para a mais nova
+// (as datas vêm em ISO, então a comparação de texto respeita a ordem)
+const itens = computed<ItemDaAula[]>(() => [
+  ...anotacoes.value.map(anotacao => ({
+    tipo: 'anotacao' as const,
+    id: anotacao.id,
+    dataCriacao: anotacao.dataCriacao,
+    anotacao
+  })),
+  ...imagensAvulsas.value.map(imagem => ({
+    tipo: 'imagem' as const,
+    id: imagem.id,
+    dataCriacao: imagem.dataCriacao,
+    imagem
+  }))
+].sort((itemA, itemB) => (itemA.dataCriacao < itemB.dataCriacao ? -1 : itemA.dataCriacao > itemB.dataCriacao ? 1 : 0)))
+
 function mesmaTag(tagA: string, tagB: string) {
   return tagA.toLowerCase() === tagB.toLowerCase()
 }
@@ -94,6 +119,7 @@ function liberarArquivosNovos() {
 }
 
 function resetarEditor() {
+  titulo.value = ''
   texto.value = ''
   tagsSelecionadas.value = []
   imagensRemovidas.value = []
@@ -102,10 +128,11 @@ function resetarEditor() {
   erroEditor.value = ''
 }
 
-async function carregarAnotacoes() {
-  // uma aula recorrente ainda não existe no backend, então não tem anotações
+async function carregarItens() {
+  // uma aula recorrente ainda não existe no backend, então não tem anotações nem imagens
   if (aulaAtual.value.recorrente) {
     anotacoes.value = []
+    imagensAvulsas.value = []
     return
   }
 
@@ -113,10 +140,15 @@ async function carregarAnotacoes() {
   erroLista.value = ''
 
   try {
-    anotacoes.value = await listarPorAula(aulaAtual.value.id)
+    const [anotacoesDaAula, imagensDaAula] = await Promise.all([
+      listarPorAula(aulaAtual.value.id),
+      listarImagensDaAula(aulaAtual.value.id)
+    ])
+    anotacoes.value = anotacoesDaAula
+    imagensAvulsas.value = imagensDaAula
   }
   catch (erro) {
-    console.error('[anotacao] erro ao carregar anotações:', erro)
+    console.error('[anotacao] erro ao carregar o conteúdo da aula:', erro)
     erroLista.value = mensagemDeErro(erro, 'Não foi possível carregar as anotações desta aula.')
   }
   finally {
@@ -149,7 +181,7 @@ async function carregarTags() {
   }
 }
 
-// garante que a aula exista no backend antes de salvar a primeira anotação dela
+// garante que a aula exista no backend antes de salvar a primeira anotação ou imagem dela
 async function idDaAulaNoBackend() {
   if (!aulaAtual.value.recorrente) {
     return aulaAtual.value.id
@@ -181,9 +213,10 @@ async function enviarImagens(anotacaoId: string) {
 async function salvar() {
   if (salvando.value) return
 
+  const tituloInformado = titulo.value.trim()
   const conteudo = texto.value.trim()
-  if (!conteudo) {
-    erroEditor.value = 'Escreva o texto da anotação antes de salvar.'
+  if (!tituloInformado && !conteudo) {
+    erroEditor.value = 'Escreva um título ou um texto antes de salvar.'
     return
   }
 
@@ -197,8 +230,8 @@ async function salvar() {
     const emEdicao = anotacaoEditando.value
 
     if (emEdicao) {
-      if (conteudo !== emEdicao.conteudo) {
-        await editar(emEdicao.id, conteudo)
+      if (tituloInformado !== (emEdicao.titulo ?? '') || conteudo !== (emEdicao.conteudo ?? '')) {
+        await editar(emEdicao.id, tituloInformado, conteudo)
       }
       if (tagsSelecionadas.value.length) {
         await acrescentarTags(emEdicao.id, tagsSelecionadas.value)
@@ -210,7 +243,7 @@ async function salvar() {
     }
     else {
       const aulaId = await idDaAulaNoBackend()
-      const criada = await criar(aulaId, conteudo, tagsSelecionadas.value)
+      const criada = await criar(aulaId, tituloInformado, conteudo, tagsSelecionadas.value)
       anotacaoId = criada.id
     }
 
@@ -229,7 +262,7 @@ async function salvar() {
         erroEditor.value = `A anotação foi salva, mas estas imagens não foram enviadas: ${falhasDeImagem.join('; ')}.`
       }
     }
-    await carregarAnotacoes()
+    await carregarItens()
     salvando.value = false
   }
 }
@@ -237,7 +270,8 @@ async function salvar() {
 async function editarAnotacao(anotacao: Anotacao) {
   resetarEditor()
   anotacaoEditando.value = anotacao
-  texto.value = anotacao.conteudo
+  titulo.value = anotacao.titulo ?? ''
+  texto.value = anotacao.conteudo ?? ''
 
   await nextTick()
   campoAnotacao.value?.focus()
@@ -260,11 +294,22 @@ async function excluirAnotacao(anotacao: Anotacao) {
     erroLista.value = mensagemDeErro(erro, 'Não foi possível excluir a anotação.')
   }
 
-  await carregarAnotacoes()
+  await carregarItens()
 }
 
 function cancelarEdicaoAnotacao() {
   resetarEditor()
+}
+
+async function aoSalvarImagemAvulsa() {
+  mostrarNovaImagem.value = false
+  emit('alterado')
+  await carregarItens()
+}
+
+async function aoAlterarImagemAvulsa() {
+  emit('alterado')
+  await carregarItens()
 }
 
 function removerImagemSalva(imagem: ImagemAnotacao) {
@@ -319,7 +364,8 @@ watch(
   () => {
     aulaAtual.value = { ...props.aula }
     resetarEditor()
-    carregarAnotacoes()
+    mostrarNovaImagem.value = false
+    carregarItens()
   },
   { immediate: true }
 )
@@ -432,58 +478,82 @@ onBeforeUnmount(() => {
     <p v-if="carregando" class="estado-lista" role="status">Carregando anotações...</p>
     <p v-if="erroLista" class="mensagem-erro" role="alert">{{ erroLista }}</p>
 
-    <div v-if="anotacoes.length" class="lista-anotacoes">
-      <article v-for="anotacao in anotacoes" :key="anotacao.id" class="anotacao-card">
-        <div v-if="anotacao.tags.length" class="anotacao-cabecalho">
-          <div class="chips">
-            <span v-for="tag in anotacao.tags" :key="`${anotacao.id}-${tag}`" class="chip chip-selecionado">
-              {{ tag }}
-            </span>
+    <div v-if="itens.length" class="lista-anotacoes">
+      <template v-for="item in itens" :key="`${item.tipo}-${item.id}`">
+        <ImagemAulaCard v-if="item.tipo === 'imagem'" :imagem="item.imagem" @alterado="aoAlterarImagemAvulsa" />
+        <article v-else class="anotacao-card">
+          <div v-if="item.anotacao.tags.length" class="anotacao-cabecalho">
+            <div class="chips">
+              <span v-for="tag in item.anotacao.tags" :key="`${item.anotacao.id}-${tag}`" class="chip chip-selecionado">
+                {{ tag }}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <!-- editar, excluir e mexer nas imagens são só do autor; a API responde 403 aos demais -->
-        <div v-if="ehDoUsuario(anotacao)" class="acoes-anotacao">
-          <button
-            type="button"
-            class="acao-anotacao"
-            aria-label="Editar anotação"
-            title="Editar anotação"
-            :disabled="salvando"
-            @click="editarAnotacao(anotacao)"
-          >
-            <PencilLine :size="15" :stroke-width="1.8" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            class="acao-anotacao acao-excluir"
-            aria-label="Excluir anotação"
-            title="Excluir anotação"
-            :disabled="salvando"
-            @click="excluirAnotacao(anotacao)"
-          >
-            <Trash2 :size="15" :stroke-width="1.8" aria-hidden="true" />
-          </button>
-        </div>
-
-        <p
-          class="texto-anotacao"
-          :class="{ 'texto-sem-tags': !anotacao.tags.length && ehDoUsuario(anotacao) }"
-        >
-          {{ anotacao.conteudo }}
-        </p>
-
-        <p v-if="!ehDoUsuario(anotacao)" class="autor-anotacao">por {{ anotacao.autorNome }}</p>
-
-        <div v-if="anotacao.imagens.length" class="previews">
-          <div v-for="imagem in anotacao.imagens" :key="imagem.id" class="item-midia imagem-item">
-            <ImagemDaAnotacao :imagem="imagem" />
+          <!-- editar, excluir e mexer nas imagens são só do autor; a API responde 403 aos demais -->
+          <div v-if="ehDoUsuario(item.anotacao)" class="acoes-anotacao">
+            <button
+              type="button"
+              class="acao-anotacao"
+              aria-label="Editar anotação"
+              title="Editar anotação"
+              :disabled="salvando"
+              @click="editarAnotacao(item.anotacao)"
+            >
+              <PencilLine :size="15" :stroke-width="1.8" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              class="acao-anotacao acao-excluir"
+              aria-label="Excluir anotação"
+              title="Excluir anotação"
+              :disabled="salvando"
+              @click="excluirAnotacao(item.anotacao)"
+            >
+              <Trash2 :size="15" :stroke-width="1.8" aria-hidden="true" />
+            </button>
           </div>
-        </div>
-      </article>
+
+          <h3
+            v-if="item.anotacao.titulo"
+            class="titulo-anotacao"
+            :class="{ 'texto-sem-tags': !item.anotacao.tags.length && ehDoUsuario(item.anotacao) }"
+          >
+            {{ item.anotacao.titulo }}
+          </h3>
+
+          <p
+            v-if="item.anotacao.conteudo"
+            class="texto-anotacao"
+            :class="{ 'texto-sem-tags': !item.anotacao.titulo && !item.anotacao.tags.length && ehDoUsuario(item.anotacao) }"
+          >
+            {{ item.anotacao.conteudo }}
+          </p>
+
+          <p v-if="!ehDoUsuario(item.anotacao)" class="autor-anotacao">por {{ item.anotacao.autorNome }}</p>
+
+          <div v-if="item.anotacao.imagens.length" class="previews">
+            <div v-for="imagem in item.anotacao.imagens" :key="imagem.id" class="item-midia imagem-item">
+              <ImagemDaAnotacao :imagem="imagem" />
+            </div>
+          </div>
+        </article>
+      </template>
     </div>
 
-    <p v-else-if="!carregando && !erroLista" class="estado-lista">Nenhuma anotação nesta aula ainda.</p>
+    <p v-else-if="!carregando && !erroLista" class="estado-lista">Nenhuma anotação ou imagem nesta aula ainda.</p>
+
+    <input
+      v-model="titulo"
+      type="text"
+      class="campo-titulo"
+      aria-label="Título da anotação"
+      placeholder="Título"
+      :maxlength="TAMANHO_MAXIMO_TITULO"
+      :disabled="salvando"
+      @keydown.enter.ctrl.prevent="salvar"
+      @keydown.enter.meta.prevent="salvar"
+    />
 
     <textarea
       id="anotacoes-aula"
@@ -518,12 +588,12 @@ onBeforeUnmount(() => {
     <div class="secao-midia">
       <div class="acoes-contextuais">
         <div class="upload-row">
-          <label class="upload-btn" title="Adicionar imagem (PNG, JPEG ou WebP, até 5 MB)">
+          <label class="upload-btn" title="Anexar imagem à anotação (PNG, JPEG ou WebP, até 5 MB)">
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
               multiple
-              aria-label="Adicionar imagem"
+              aria-label="Anexar imagem à anotação"
               :disabled="salvando"
               @change="adicionarArquivos"
             />
@@ -563,6 +633,17 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
+    <NovaImagemAula
+      v-if="mostrarNovaImagem"
+      :obter-aula-id="idDaAulaNoBackend"
+      @salva="aoSalvarImagemAvulsa"
+      @cancelar="mostrarNovaImagem = false"
+    />
+    <button v-else type="button" class="btn-nova-imagem" @click="mostrarNovaImagem = true">
+      <ImagePlus :size="15" :stroke-width="1.8" aria-hidden="true" />
+      Adicionar imagem
+    </button>
   </div>
 
   <Teleport to="body">
@@ -838,6 +919,15 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
+.titulo-anotacao {
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .texto-anotacao {
   margin: 0;
   white-space: pre-wrap;
@@ -973,9 +1063,50 @@ textarea {
   box-sizing: border-box;
 }
 
-textarea:focus {
+textarea:focus,
+.campo-titulo:focus {
   outline: 2px solid #bfdbfe;
   outline-offset: 1px;
+}
+
+.campo-titulo {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 14px;
+  font: inherit;
+  font-weight: 600;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+
+.btn-nova-imagem {
+  display: inline-flex;
+  align-items: center;
+  justify-self: flex-start;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.btn-nova-imagem:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.btn-nova-imagem:focus-visible {
+  outline: 2px solid rgb(37 99 235 / 55%);
+  outline-offset: 2px;
 }
 
 .upload-row {

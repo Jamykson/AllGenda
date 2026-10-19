@@ -44,6 +44,10 @@ public class Aula implements Serializable{
     @OneToMany(mappedBy = "aula", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Anotacao> anotacoes = new ArrayList<>();
 
+    // imagens avulsas, sem anotação; tirar uma desta lista apaga o registro (o arquivo é apagado pelo service)
+    @OneToMany(mappedBy = "aula", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ImagemAula> imagens = new ArrayList<>();
+
     public static long getSerialversionuid() {
         return serialVersionUID;
     }
@@ -90,5 +94,18 @@ public class Aula implements Serializable{
 
     public void setAnotacoes(List<Anotacao> anotacoes) {
         this.anotacoes = anotacoes;
+    }
+
+    public List<ImagemAula> getImagens() {
+        return imagens;
+    }
+
+    public void addImagem(ImagemAula imagem) {
+        imagem.setAula(this);
+        this.imagens.add(imagem);
+    }
+
+    public void removeImagem(ImagemAula imagem) {
+        this.imagens.remove(imagem);
     }
 }

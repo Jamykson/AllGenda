@@ -2,6 +2,7 @@ package com.allgenda.controller;
 
 import com.allgenda.dto.response.ImagemAnotacaoResponseDTO;
 import com.allgenda.service.ImagemAnotacaoService;
+import com.allgenda.service.ImagemArquivo;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
@@ -36,7 +37,7 @@ public class ImagemAnotacaoController {
 
     @GetMapping("/{imagemId}")
     public ResponseEntity<Resource> baixar(@PathVariable UUID anotacaoId, @PathVariable UUID imagemId) {
-        ImagemAnotacaoService.ImagemArquivo imagem = service.carregar(anotacaoId, imagemId);
+        ImagemArquivo imagem = service.carregar(anotacaoId, imagemId);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(imagem.contentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION,

@@ -94,7 +94,7 @@ const resultadosFiltrados = computed(() => {
 
   return resultados.value
     .filter(({ aula, anotacao }) => {
-      if (consulta && !normalizarTexto(anotacao.texto).includes(consulta)) {
+      if (consulta && !normalizarTexto(`${anotacao.titulo}\n${anotacao.texto}`).includes(consulta)) {
         return false
       }
 
@@ -386,6 +386,10 @@ function fecharAula() {
 
           <span class="data-horario">
             {{ formatarData(resultado.aula.data) }} · {{ resultado.aula.horario }}
+          </span>
+
+          <span v-if="resultado.anotacao.titulo" class="titulo-anotacao">
+            {{ resultado.anotacao.titulo }}
           </span>
 
           <span v-if="resultado.anotacao.texto.trim()" class="trecho-anotacao">
@@ -740,6 +744,14 @@ button.chip-tag {
 .data-horario {
   color: #64748b;
   font-size: 12px;
+}
+
+.titulo-anotacao {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .trecho-anotacao {

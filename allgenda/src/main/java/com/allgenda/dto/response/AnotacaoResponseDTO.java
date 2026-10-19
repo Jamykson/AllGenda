@@ -7,7 +7,8 @@ import java.util.List;
 
 public record AnotacaoResponseDTO(
     UUID id,
-    String conteudo,
+    String titulo, // null quando a anotação não tem título
+    String conteudo, // null quando a anotação só tem título
     LocalDateTime dataCriacao,
     UUID autorId, // o front compara com o id do usuário logado para saber se a anotação é dele
     String autorNome,

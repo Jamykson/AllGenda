@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import type { ImagemAnotacao } from '~/types/anotacao'
-
-// Mostra uma imagem já salva. Ela é baixada com o token (o <img src> direto não o enviaria)
-// e exibida por uma URL temporária, liberada quando o componente sai da tela.
+// Mostra uma imagem já salva, de uma anotação ou avulsa na aula. Ela é baixada com o token
+// (o <img src> direto não o enviaria) e exibida por uma URL temporária, liberada quando o componente sai da tela.
 
 const props = defineProps<{
-  imagem: ImagemAnotacao
+  imagem: { url: string, nome: string }
 }>()
 
 const { baixarImagem } = useAnotacoes()

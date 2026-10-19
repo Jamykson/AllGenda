@@ -1,5 +1,6 @@
 package com.allgenda.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +19,7 @@ import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
+import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.DisciplinaService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
@@ -28,6 +30,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     private final DisciplinaRepository repository;
     private final ParticipacaoRepository participacaoRepository;
     private final ImagemAnotacaoRepository imagemRepository;
+    private final ImagemAulaRepository imagemAulaRepository;
     private final RemocaoArquivos remocaoArquivos;
     private final DisciplinaMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
@@ -35,12 +38,14 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public DisciplinaServiceImpl(DisciplinaRepository repository,
                                  ParticipacaoRepository participacaoRepository,
                                  ImagemAnotacaoRepository imagemRepository,
+                                 ImagemAulaRepository imagemAulaRepository,
                                  RemocaoArquivos remocaoArquivos,
                                  DisciplinaMapper mapper,
                                  UsuarioAutenticado usuarioAutenticado){
         this.repository = repository;
         this.participacaoRepository = participacaoRepository;
         this.imagemRepository = imagemRepository;
+        this.imagemAulaRepository = imagemAulaRepository;
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
         this.usuarioAutenticado = usuarioAutenticado;
@@ -96,9 +101,10 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         Disciplina disciplina = repository.findById(id)
             .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));
 
-        // a cascata disciplina -> aulas -> anotações -> imagens apaga os registros, mas não os arquivos;
-        // as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada
-        List<String> chavesDasImagens = imagemRepository.findChavesArmazenamentoByDisciplinaId(id);
+        // a cascata disciplina -> aulas -> anotações -> imagens (e aulas -> imagens avulsas) apaga os registros,
+        // mas não os arquivos; as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada
+        List<String> chavesDasImagens = new ArrayList<>(imagemRepository.findChavesArmazenamentoByDisciplinaId(id));
+        chavesDasImagens.addAll(imagemAulaRepository.findChavesArmazenamentoByDisciplinaId(id));
         // Remove os vínculos antes da disciplina para respeitar as FKs, sem composição JPA.
         participacaoRepository.deleteByDisciplinaId(id);
         repository.delete(disciplina);

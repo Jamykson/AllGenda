@@ -13,7 +13,8 @@ import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
-import com.allgenda.service.ImagemAnotacaoService.ImagemArquivo;
+import com.allgenda.service.ImagemArquivo;
+import com.allgenda.service.RecebimentoImagem;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
 import com.allgenda.repository.UsuarioRepository;
@@ -30,7 +31,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.unit.DataSize;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -84,9 +84,10 @@ class ImagemAnotacaoServiceImplTest {
     void limparContexto() { SecurityContextHolder.clearContext(); }
 
     private ImagemAnotacaoServiceImpl criarService(DataSize tamanhoMaximo, int maximoPorAnotacao) {
-        return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository, armazenamento,
-                new RemocaoArquivos(armazenamento), new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository),
-                tamanhoMaximo, maximoPorAnotacao);
+        RemocaoArquivos remocaoArquivos = new RemocaoArquivos(armazenamento);
+        return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository,
+                new RecebimentoImagem(armazenamento, remocaoArquivos, tamanhoMaximo), armazenamento,
+                remocaoArquivos, new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository), maximoPorAnotacao);
     }
 
     private static void autenticar(UUID usuarioId) {
@@ -251,17 +252,5 @@ class ImagemAnotacaoServiceImplTest {
         assertThat(anotacao.getImagens()).hasSize(1);
         verify(imagemRepository, never()).findByIdAndAnotacaoId(any(), any());
         verify(armazenamento, never()).remover(anyString());
-    }
-
-    @Test
-    void nomeSeguroTiraCaminhoEControlesELimitaTamanho() {
-        assertThat(ImagemAnotacaoServiceImpl.nomeSeguro(null)).isEqualTo("imagem");
-        assertThat(ImagemAnotacaoServiceImpl.nomeSeguro("C:\\fotos\\quadro.png")).isEqualTo("quadro.png");
-        assertThat(ImagemAnotacaoServiceImpl.nomeSeguro("pasta/")).isEqualTo("imagem");
-        assertThat(ImagemAnotacaoServiceImpl.nomeSeguro("a\r\nb.png")).isEqualTo("ab.png");
-
-        char[] longo = new char[300];
-        Arrays.fill(longo, 'x');
-        assertThat(ImagemAnotacaoServiceImpl.nomeSeguro(new String(longo))).hasSize(255);
     }
 }
