@@ -3,7 +3,6 @@ package com.allgenda.service.impl;
 import com.allgenda.dto.response.ImagemAnotacaoResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
-import com.allgenda.exception.ArquivoMuitoGrandeException;
 import com.allgenda.exception.ImagemNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.mapper.AnotacaoMapper;
@@ -13,51 +12,47 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemAnotacaoService;
+import com.allgenda.service.ImagemArquivo;
+import com.allgenda.service.RecebimentoImagem;
+import com.allgenda.service.RecebimentoImagem.ImagemRecebida;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
 
-    private static final String NOME_PADRAO = "imagem";
-    private static final int TAMANHO_MAXIMO_NOME = 255;
-
     private final AnotacaoRepository anotacaoRepository;
     private final ImagemAnotacaoRepository imagemRepository;
+    private final RecebimentoImagem recebimento;
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
     private final AnotacaoMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
-    private final DataSize tamanhoMaximo;
     private final int maximoPorAnotacao;
 
     public ImagemAnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
                                      ImagemAnotacaoRepository imagemRepository,
+                                     RecebimentoImagem recebimento,
                                      ArmazenamentoService armazenamento,
                                      RemocaoArquivos remocaoArquivos,
                                      AnotacaoMapper mapper,
                                      UsuarioAutenticado usuarioAutenticado,
-                                     @Value("${app.uploads.tamanho-maximo}") DataSize tamanhoMaximo,
                                      @Value("${app.uploads.maximo-por-anotacao}") int maximoPorAnotacao) {
         this.anotacaoRepository = anotacaoRepository;
         this.imagemRepository = imagemRepository;
+        this.recebimento = recebimento;
         this.armazenamento = armazenamento;
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
         this.usuarioAutenticado = usuarioAutenticado;
-        this.tamanhoMaximo = tamanhoMaximo;
         this.maximoPorAnotacao = maximoPorAnotacao;
     }
 
@@ -67,29 +62,18 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
         Anotacao anotacao = buscarAnotacao(anotacaoId);
         exigirAutor(anotacao);
 
-        if (arquivo == null || arquivo.isEmpty()) {
-            throw new RequisicaoInvalidaException("Envie um arquivo de imagem.");
-        }
-        if (arquivo.getSize() > tamanhoMaximo.toBytes()) {
-            throw new ArquivoMuitoGrandeException(tamanhoMaximo);
-        }
+        recebimento.validarEnvio(arquivo);
         if (anotacao.getImagens().size() >= maximoPorAnotacao) {
             throw new RequisicaoInvalidaException("A anotação já tem o máximo de " + maximoPorAnotacao + " imagens.");
         }
 
-        byte[] conteudo = lerConteudo(arquivo);
-        // o tipo vem dos primeiros bytes do arquivo; o Content-Type e a extensão enviados pelo cliente não são confiáveis
-        TipoImagem tipo = TipoImagem.detectar(conteudo)
-                .orElseThrow(() -> new RequisicaoInvalidaException("Formato não suportado. Envie uma imagem PNG, JPEG ou WebP."));
-
-        String chave = armazenamento.salvar(conteudo, tipo.extensao);
-        remocaoArquivos.removerSeDesfeita(chave);
+        ImagemRecebida recebida = recebimento.receber(arquivo);
 
         ImagemAnotacao imagem = new ImagemAnotacao();
-        imagem.setNomeOriginal(nomeSeguro(arquivo.getOriginalFilename()));
-        imagem.setContentType(tipo.contentType);
-        imagem.setTamanho(conteudo.length);
-        imagem.setChaveArmazenamento(chave);
+        imagem.setNomeOriginal(recebida.nomeOriginal());
+        imagem.setContentType(recebida.contentType());
+        imagem.setTamanho(recebida.tamanho());
+        imagem.setChaveArmazenamento(recebida.chave());
         imagem.setDataCriacao(LocalDateTime.now());
         anotacao.addImagem(imagem);
 
@@ -129,66 +113,6 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     private void exigirAutor(Anotacao anotacao) {
         if (!usuarioAutenticado.id().equals(anotacao.getAutor().getId())) {
             throw new AcessoNegadoException("Somente o autor da anotação pode alterar as imagens dela.");
-        }
-    }
-
-    private static byte[] lerConteudo(MultipartFile arquivo) {
-        try {
-            return arquivo.getBytes();
-        } catch (IOException e) {
-            throw new UncheckedIOException("Não foi possível ler o arquivo enviado.", e);
-        }
-    }
-
-    // o nome enviado só é exibido; tira o caminho e caracteres de controle e limita o tamanho
-    static String nomeSeguro(String nomeOriginal) {
-        if (nomeOriginal == null) {
-            return NOME_PADRAO;
-        }
-        String nome = nomeOriginal.replace('\\', '/');
-        nome = nome.substring(nome.lastIndexOf('/') + 1).replaceAll("\\p{Cntrl}", "").strip();
-        if (nome.isEmpty()) {
-            return NOME_PADRAO;
-        }
-        return nome.length() > TAMANHO_MAXIMO_NOME ? nome.substring(0, TAMANHO_MAXIMO_NOME) : nome;
-    }
-
-    private enum TipoImagem {
-        PNG("image/png", "png"),
-        JPEG("image/jpeg", "jpg"),
-        WEBP("image/webp", "webp");
-
-        private final String contentType;
-        private final String extensao;
-
-        TipoImagem(String contentType, String extensao) {
-            this.contentType = contentType;
-            this.extensao = extensao;
-        }
-
-        static Optional<TipoImagem> detectar(byte[] conteudo) {
-            if (comecaCom(conteudo, 0, 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A)) {
-                return Optional.of(PNG);
-            }
-            if (comecaCom(conteudo, 0, 0xFF, 0xD8, 0xFF)) {
-                return Optional.of(JPEG);
-            }
-            if (comecaCom(conteudo, 0, 'R', 'I', 'F', 'F') && comecaCom(conteudo, 8, 'W', 'E', 'B', 'P')) {
-                return Optional.of(WEBP);
-            }
-            return Optional.empty();
-        }
-
-        private static boolean comecaCom(byte[] conteudo, int inicio, int... esperados) {
-            if (conteudo.length < inicio + esperados.length) {
-                return false;
-            }
-            for (int i = 0; i < esperados.length; i++) {
-                if ((conteudo[inicio + i] & 0xFF) != esperados[i]) {
-                    return false;
-                }
-            }
-            return true;
         }
     }
 }

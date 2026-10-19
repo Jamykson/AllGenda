@@ -33,6 +33,10 @@ public class Anotacao implements Serializable {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    // título e conteúdo são opcionais, mas a anotação precisa ter ao menos um dos dois
+    @Column(name = "titulo", length = 150)
+    private String titulo;
+
     @Column(name = "conteudo", columnDefinition = "TEXT")
     private String conteudo;
 
@@ -63,6 +67,14 @@ public class Anotacao implements Serializable {
 
     public UUID getId() {
         return id;
+    }
+
+    public String getTitulo() {
+        return titulo;
+    }
+
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
     }
 
     public String getConteudo() {

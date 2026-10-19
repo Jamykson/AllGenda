@@ -8,9 +8,11 @@ export interface ImagemAnotacao {
   url: string // caminho do GET que devolve a imagem; exige o token, então é baixada pelo $api
 }
 
+// título e conteúdo são opcionais, mas toda anotação tem ao menos um dos dois
 export interface Anotacao {
   id: string
-  conteudo: string
+  titulo: string | null
+  conteudo: string | null
   dataCriacao: string
   autorId: string
   autorNome: string
@@ -20,6 +22,20 @@ export interface Anotacao {
   aulaData: string
   aulaTopico: string | null
   imagens: ImagemAnotacao[]
+}
+
+// Imagem avulsa da aula, que não pertence a nenhuma anotação.
+export interface ImagemAula {
+  id: string
+  legenda: string | null
+  nome: string
+  contentType: string
+  tamanho: number
+  url: string // caminho do GET que devolve a imagem; exige o token, então é baixada pelo $api
+  dataCriacao: string
+  autorId: string
+  autorNome: string
+  aulaId: string
 }
 
 export interface Tag {

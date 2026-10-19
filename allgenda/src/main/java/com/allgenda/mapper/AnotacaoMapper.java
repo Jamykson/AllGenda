@@ -18,6 +18,7 @@ public class AnotacaoMapper {
 
         return new AnotacaoResponseDTO(
             anotacao.getId(),
+            anotacao.getTitulo(),
             anotacao.getConteudo(),
             anotacao.getDataCriacao(),
             anotacao.getAutor().getId(),

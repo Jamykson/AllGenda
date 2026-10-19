@@ -84,19 +84,19 @@ Sem corpo. Participação `ACEITO` obrigatória. Retorna anotações da discipli
 
 Corpo (o autor vem exclusivamente do JWT; não enviar `autorId`):
 ```json
-{"aulaId":"55555555-5555-4555-8555-555555555555","conteudo":"Strategy e Observer","tags":["java","poo"]}
+{"aulaId":"55555555-5555-4555-8555-555555555555","titulo":"Padrões comportamentais","conteudo":"Strategy e Observer","tags":["java","poo"]}
 ```
 Sucesso `201`:
 ```json
-{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}
+{"id":"66666666-6666-4666-8666-666666666666","titulo":"Padrões comportamentais","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}
 ```
-Tags são opcionais; sua ordem não é garantida. `autorId` é o `id` do autor, o mesmo `usuario.id` da resposta do login; o front compara os dois para saber se a anotação é do usuário logado. `imagens` lista as imagens anexadas (ver [Imagens de anotação](#imagens-de-anotação)); vem vazia numa anotação nova. Erros: `400` aulaId/conteúdo ausente ou JSON inválido; `401` token ausente, inválido ou expirado; `404` aula ou usuário do token não existe.
+`titulo` e `conteudo` são opcionais, mas é preciso informar ao menos um dos dois; o que vier vazio ou só com espaços fica `null` na resposta. O título tem no máximo 150 caracteres e é salvo sem os espaços das pontas. Tags são opcionais; sua ordem não é garantida. `autorId` é o `id` do autor, o mesmo `usuario.id` da resposta do login; o front compara os dois para saber se a anotação é do usuário logado. `imagens` lista as imagens anexadas (ver [Imagens de anotação](#imagens-de-anotação)); vem vazia numa anotação nova. Erros: `400` aulaId ausente, título e conteúdo ausentes, título com mais de 150 caracteres ou JSON inválido; `401` token ausente, inválido ou expirado; `404` aula ou usuário do token não existe.
 
 ### GET /anotacoes?aulaId={id} — implementado
 
 Sem corpo. Alternativas: `?disciplinaId={id}` com `&tag=java` opcional, ou `?tag=java`. Filtro por aula não pode ser combinado. Sucesso `200`:
 ```json
-[{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}]
+[{"id":"66666666-6666-4666-8666-666666666666","titulo":"Padrões comportamentais","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}]
 ```
 Pode retornar `[]`. Inclui anotações próprias e de outros usuários. Erros: `400` filtro ausente/incompatível, tag vazia ou UUID inválido; `401` sem token válido; `404` aula/disciplina inexistente.
 
@@ -104,9 +104,9 @@ Pode retornar `[]`. Inclui anotações próprias e de outros usuários. Erros: `
 
 Corpo:
 ```json
-{"conteudo":"Conteúdo revisado"}
+{"titulo":"Padrões comportamentais","conteudo":"Conteúdo revisado"}
 ```
-Apenas o autor edita. Sucesso `200`: objeto de anotação do POST, com `conteudo` atualizado. Erros: `400` conteúdo vazio/JSON inválido; `401` sem token válido; `403` solicitante não é o autor; `404` anotação inexistente.
+Apenas o autor edita. Os dois campos são substituídos pelos valores enviados: um campo ausente ou vazio fica `null`, então para manter o título é preciso reenviá-lo. Vale a mesma regra do POST, ao menos um dos dois é obrigatório. Sucesso `200`: objeto de anotação do POST, com `titulo` e `conteudo` atualizados. Erros: `400` título e conteúdo vazios, título com mais de 150 caracteres ou JSON inválido; `401` sem token válido; `403` solicitante não é o autor; `404` anotação inexistente.
 
 ### DELETE /anotacoes/{id} — implementado
 
@@ -145,6 +145,42 @@ Como `<img src>` não envia o header `Authorization`, o front deve baixar a imag
 ### DELETE /anotacoes/{id}/imagens/{imagemId} — implementado
 
 Sem corpo. Sucesso `204`; o arquivo é apagado do disco depois que a remoção é confirmada no banco. Erros: `401` sem token válido; `403` solicitante não é o autor da anotação; `404` anotação ou imagem inexistente.
+
+## Imagens da aula
+
+Imagens avulsas, que pertencem à aula e não a uma anotação, com legenda opcional. Aceitam os mesmos formatos e o mesmo tamanho máximo das [imagens de anotação](#imagens-de-anotação), sem limite de quantidade por aula. Enviar, listar e baixar exigem participação `ACEITO` na disciplina da aula; editar a legenda e excluir exigem ser o autor da imagem. Excluir a disciplina (`DELETE /disciplinas/{id}`) também apaga os arquivos dessas imagens. A busca de anotações (`GET /anotacoes`) não inclui imagens avulsas.
+
+### POST /aulas/{aulaId}/imagens — implementado
+
+Corpo `multipart/form-data` com o arquivo no campo `arquivo` e, opcionalmente, a legenda no campo `legenda`:
+```bash
+curl -F arquivo=@slide.png -F legenda="Diagrama de classes" -H "Authorization: Bearer $TOKEN" localhost:8080/api/aulas/55555555-5555-4555-8555-555555555555/imagens
+```
+Sucesso `201`, com `Location` apontando para a imagem:
+```json
+{"id":"99999999-9999-4999-8999-999999999999","legenda":"Diagrama de classes","nome":"slide.png","contentType":"image/png","tamanho":48213,"url":"/api/aulas/55555555-5555-4555-8555-555555555555/imagens/99999999-9999-4999-8999-999999999999","dataCriacao":"2026-10-14T10:05:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","aulaId":"55555555-5555-4555-8555-555555555555"}
+```
+A legenda tem no máximo 300 caracteres e é salva sem os espaços das pontas; vazia, fica `null`. `autorId` serve, como nas anotações, para o front saber se a imagem é do usuário logado. Erros: `400` campo `arquivo` ausente, arquivo vazio, formato não suportado ou legenda com mais de 300 caracteres; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente; `413` arquivo acima de 5 MB.
+
+### GET /aulas/{aulaId}/imagens — implementado
+
+Sem corpo. Sucesso `200` com a lista de imagens avulsas da aula, no formato do POST, em ordem de criação. Pode retornar `[]`. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente.
+
+### GET /aulas/{aulaId}/imagens/{imagemId} — implementado
+
+Sem corpo. Sucesso `200` com os bytes da imagem, como em `GET /anotacoes/{id}/imagens/{imagemId}`; o front a exibe da mesma forma, baixando com axios e usando `URL.createObjectURL`. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula ou imagem inexistente, ou imagem de outra aula.
+
+### PATCH /aulas/{aulaId}/imagens/{imagemId} — implementado
+
+Corpo:
+```json
+{"legenda":"Diagrama revisado"}
+```
+Apenas o autor edita. A legenda é substituída; ausente ou vazia, a imagem fica sem legenda. Sucesso `200`: objeto de imagem do POST. Erros: `400` legenda com mais de 300 caracteres ou JSON inválido; `401` sem token válido; `403` solicitante não é o autor; `404` imagem inexistente ou de outra aula.
+
+### DELETE /aulas/{aulaId}/imagens/{imagemId} — implementado
+
+Sem corpo. Apenas o autor exclui. Sucesso `204`; o arquivo é apagado do disco depois que a remoção é confirmada no banco. Erros: `401` sem token válido; `403` solicitante não é o autor; `404` imagem inexistente ou de outra aula.
 
 ## Erros e exemplos para mocks
 
