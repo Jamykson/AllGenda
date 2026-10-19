@@ -20,6 +20,7 @@ public class AnotacaoMapper {
             anotacao.getId(),
             anotacao.getConteudo(),
             anotacao.getDataCriacao(),
+            anotacao.getAutor().getId(),
             anotacao.getAutor().getNome(),
             nomesDasTags,
             anotacao.getAula().getDisciplina().getNome(),

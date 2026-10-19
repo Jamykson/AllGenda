@@ -5,7 +5,7 @@ Todos os endpoints exigem `Authorization: Bearer <token>`, exceto os POSTs de lo
 
 ## Estado da implementação
 
-Login, cadastro e endpoints de anotações abaixo estão implementados. Convites e a leitura exclusiva de anotações de colegas são um contrato **planejado para mocks**, sem controllers nesta entrega. As permissões de participação descritas nessas operações também são planejadas. Os endpoints atuais de anotações exigem autenticação, mas ainda não restringem acesso por participação nem edição por autor; as exceções são excluir a anotação e anexar ou remover imagens, que já exigem ser o autor dela.
+Login, cadastro e endpoints de anotações abaixo estão implementados. Convites e a leitura exclusiva de anotações de colegas são um contrato **planejado para mocks**, sem controllers nesta entrega. As permissões de participação descritas nessas operações também são planejadas. Os endpoints atuais de anotações exigem autenticação, mas ainda não restringem a leitura por participação. Alterar uma anotação (editar o conteúdo, acrescentar tags, excluir, anexar ou remover imagens) exige ser o autor dela.
 
 ## Cadastro e login
 
@@ -88,15 +88,15 @@ Corpo (o autor vem exclusivamente do JWT; não enviar `autorId`):
 ```
 Sucesso `201`:
 ```json
-{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}
+{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}
 ```
-Tags são opcionais; sua ordem não é garantida. `imagens` lista as imagens anexadas (ver [Imagens de anotação](#imagens-de-anotação)); vem vazia numa anotação nova. Erros: `400` aulaId/conteúdo ausente ou JSON inválido; `401` token ausente, inválido ou expirado; `404` aula ou usuário do token não existe.
+Tags são opcionais; sua ordem não é garantida. `autorId` é o `id` do autor, o mesmo `usuario.id` da resposta do login; o front compara os dois para saber se a anotação é do usuário logado. `imagens` lista as imagens anexadas (ver [Imagens de anotação](#imagens-de-anotação)); vem vazia numa anotação nova. Erros: `400` aulaId/conteúdo ausente ou JSON inválido; `401` token ausente, inválido ou expirado; `404` aula ou usuário do token não existe.
 
 ### GET /anotacoes?aulaId={id} — implementado
 
 Sem corpo. Alternativas: `?disciplinaId={id}` com `&tag=java` opcional, ou `?tag=java`. Filtro por aula não pode ser combinado. Sucesso `200`:
 ```json
-[{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}]
+[{"id":"66666666-6666-4666-8666-666666666666","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}]
 ```
 Pode retornar `[]`. Inclui anotações próprias e de outros usuários. Erros: `400` filtro ausente/incompatível, tag vazia ou UUID inválido; `401` sem token válido; `404` aula/disciplina inexistente.
 
@@ -106,7 +106,7 @@ Corpo:
 ```json
 {"conteudo":"Conteúdo revisado"}
 ```
-Sucesso `200`: objeto de anotação do POST, com `conteudo` atualizado. Erros: `400` conteúdo vazio/JSON inválido; `401` sem token válido; `404` anotação inexistente.
+Apenas o autor edita. Sucesso `200`: objeto de anotação do POST, com `conteudo` atualizado. Erros: `400` conteúdo vazio/JSON inválido; `401` sem token válido; `403` solicitante não é o autor; `404` anotação inexistente.
 
 ### DELETE /anotacoes/{id} — implementado
 
@@ -118,7 +118,7 @@ Corpo:
 ```json
 ["java","spring"]
 ```
-Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplicação. Erros: `400` lista sem tags válidas/JSON inválido; `401` sem token válido; `404` anotação inexistente.
+Apenas o autor acrescenta tags. Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplicação. Erros: `400` lista sem tags válidas/JSON inválido; `401` sem token válido; `403` solicitante não é o autor; `404` anotação inexistente.
 
 ## Imagens de anotação
 

@@ -1,8 +1,6 @@
 package com.allgenda.service.impl;
 import com.allgenda.dto.request.AnotacaoUpdateDTO;
 
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import com.allgenda.dto.request.AnotacaoRequestDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
@@ -10,19 +8,17 @@ import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.AulaNaoEncontradaException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.exception.UsuarioNaoEncontradoException;
 import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
 import com.allgenda.model.ImagemAnotacao;
-import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
-import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.AnotacaoService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
+import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +32,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     private final AnotacaoRepository anotacaoRepository;
     private final AulaRepository aulaRepository;
     private final DisciplinaRepository disciplinaRepository;
-    private final UsuarioRepository usuarioRepository;
+    private final UsuarioAutenticado usuarioAutenticado;
     private final TagService tagService;
     private final RemocaoArquivos remocaoArquivos;
     private final AnotacaoMapper mapper;
@@ -44,14 +40,14 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     public AnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
                                 AulaRepository aulaRepository,
                                 DisciplinaRepository disciplinaRepository,
-                                UsuarioRepository usuarioRepository,
+                                UsuarioAutenticado usuarioAutenticado,
                                 TagService tagService,
                                 RemocaoArquivos remocaoArquivos,
                                 AnotacaoMapper mapper) {
         this.anotacaoRepository = anotacaoRepository;
         this.aulaRepository = aulaRepository;
         this.disciplinaRepository = disciplinaRepository;
-        this.usuarioRepository = usuarioRepository;
+        this.usuarioAutenticado = usuarioAutenticado;
         this.tagService = tagService;
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
@@ -74,7 +70,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         anotacao.setConteudo(dto.conteudo());
         anotacao.setDataCriacao(LocalDateTime.now());
         anotacao.setAula(aula);
-        anotacao.setAutor(buscarAutor());
+        anotacao.setAutor(usuarioAutenticado.obter());
         tagService.buscarOuCriar(dto.tags()).forEach(anotacao::addTag); // tags são opcionais
 
         Anotacao salva = anotacaoRepository.save(anotacao);
@@ -90,6 +86,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
         Anotacao anotacao = anotacaoRepository.findById(anotacaoId)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(anotacaoId));
+        exigirAutor(anotacao, "alterar as tags da anotação");
 
         // as tags são acrescentadas às existentes; como tags é um Set, uma tag já associada não é duplicada
         tagService.buscarOuCriar(nomesTags).forEach(anotacao::addTag);
@@ -130,24 +127,11 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         return mapper.toDtoList(anotacaoRepository.findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(tag.trim()));
     }
 
-    private Usuario buscarAutor() {
-        UUID usuarioId = usuarioAutenticadoId();
-        return usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new UsuarioNaoEncontradoException(usuarioId));
-    }
-
-    private void exigirAutor(Anotacao anotacao) {
-        if (!usuarioAutenticadoId().equals(anotacao.getAutor().getId())) {
-            throw new AcessoNegadoException("Somente o autor pode excluir a anotação.");
+    // acao completa a mensagem de erro, ex.: "editar a anotação" -> "Somente o autor pode editar a anotação."
+    private void exigirAutor(Anotacao anotacao, String acao) {
+        if (!usuarioAutenticado.id().equals(anotacao.getAutor().getId())) {
+            throw new AcessoNegadoException("Somente o autor pode " + acao + ".");
         }
-    }
-
-    private UUID usuarioAutenticadoId() {
-        var autenticacao = SecurityContextHolder.getContext().getAuthentication();
-        if (autenticacao == null || !autenticacao.isAuthenticated()) {
-            throw new AuthenticationCredentialsNotFoundException("Autenticação obrigatória.");
-        }
-        return UUID.fromString(autenticacao.getName());
     }
 
     @Override
@@ -159,6 +143,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
         Anotacao anotacao = anotacaoRepository.findById(id)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(id));
+        exigirAutor(anotacao, "editar a anotação");
 
         anotacao.setConteudo(dto.conteudo());
 
@@ -171,7 +156,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     public void excluir(UUID id) {
         Anotacao anotacao = anotacaoRepository.findById(id)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(id));
-        exigirAutor(anotacao);
+        exigirAutor(anotacao, "excluir a anotação");
 
         // as chaves são lidas antes, porque a cascata apaga os registros das imagens junto com a anotação
         List<String> chavesDasImagens = anotacao.getImagens().stream()
