@@ -39,7 +39,7 @@ O back-end fica em `http://localhost:8080` e o front-end em `http://localhost:30
    ```
    Sem o mise, defina `JWT_SECRET` você mesmo antes de rodar (veja "Configuração").
    Em uma IDE, coloque `JWT_SECRET` nas variáveis de ambiente da configuração de execução.
-3. Rode o front-end com `npm install` e `npm run dev` dentro de `frontend/`.
+3. Rode o front-end com `pnpm install` e `pnpm dev` dentro de `frontend/`.
 
 > As tarefas `mise run dev` e `mise run backend:dev` sobem o banco com Docker.
 > Sem Docker, use o comando do passo 2.
@@ -130,7 +130,7 @@ Daí em diante, o front cuida do token: obtém um com o usuário de teste quando
 obtém outro quando ele expira (1 hora).
 
 Isso só funciona com o front rodando em modo de desenvolvimento (`mise run dev`,
-`mise run frontend:dev` ou `npm run dev`); não existe no build de produção. Quando ligado, a
+`mise run frontend:dev` ou `pnpm dev`); não existe no build de produção. Quando ligado, a
 senha de teste fica visível no navegador, por isso esse usuário nunca deve existir fora do
 banco de desenvolvimento.
 

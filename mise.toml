@@ -8,6 +8,7 @@
 [tools]
 java = "temurin-25"
 node = "24"
+pnpm = "12.14.0"
 
 [env]
 # Banco de dados (lido pelo compose.yaml e pelo application.properties)
@@ -90,21 +91,21 @@ run_windows = "mvnw.cmd package -DskipTests"
 [tasks."frontend:install"]
 description = "Instala as dependências do frontend"
 dir = "frontend"
-sources = ["package.json", "package-lock.json"]
-outputs = ["node_modules/.package-lock.json"]
-run = "npm ci"
+sources = ["package.json", "pnpm-lock.yaml"]
+outputs = ["node_modules/.modules.yaml"]
+run = "pnpm install --frozen-lockfile"
 
 [tasks."frontend:dev"]
 description = "Inicia o frontend (Nuxt)"
 dir = "frontend"
 depends = ["frontend:install"]
-run = "npm run dev"
+run = "pnpm dev"
 
 [tasks."frontend:build"]
 description = "Gera o build do frontend"
 dir = "frontend"
 depends = ["frontend:install"]
-run = "npm run build"
+run = "pnpm build"
 
 # ---------- Atalhos ----------
 
