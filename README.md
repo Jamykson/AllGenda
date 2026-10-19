@@ -66,7 +66,7 @@ As variáveis ficam em `[env]` no `mise.toml`:
 | `DB_HOST`, `DB_PORT`, `DB_NAME` | `localhost`, `5433`, `allgenda` | Conexão com o banco |
 | `DB_USER`, `DB_PASSWORD` | `allgenda_user`, `alljgc` | Credenciais **somente de desenvolvimento** |
 | `JWT_SECRET` | valor de desenvolvimento no `mise.toml` | Chave de assinatura dos tokens (mínimo de 32 bytes) |
-| `DEV_USUARIO_NOME`, `DEV_USUARIO_EMAIL`, `DEV_USUARIO_SENHA` | `Aluno Teste`, `aluno@allgenda.test`, `senha-de-teste-123` | Usuário de teste, **somente de desenvolvimento** (veja "Autenticação") |
+| `DEV_USUARIO_NOME`, `DEV_USUARIO_EMAIL`, `DEV_USUARIO_SENHA` | `Aluno Teste`, `aluno@gmail.com`, `12345678` | Usuário de teste, **somente de desenvolvimento** (veja "Autenticação") |
 | `API_COM_USUARIO_DE_TESTE` | `false` | `true` faz o front usar o usuário de teste nas chamadas à API (só no `nuxt dev`); não pula a tela de login |
 
 O `JWT_SECRET` do `mise.toml` serve **apenas para desenvolvimento**. O back-end não tem valor
@@ -94,8 +94,8 @@ Quase todos os endpoints exigem um token. Cadastre-se em `POST /api/usuarios`, e
 Ao iniciar, o back-end cria um usuário de teste, se ele ainda não existir. Assim, todo banco
 de desenvolvimento novo já tem com quem entrar, inclusive depois de `mise run db:reset`:
 
-- e-mail: `aluno@allgenda.test`
-- senha: `senha-de-teste-123`
+- e-mail: `aluno@gmail.com`
+- senha: `12345678`
 
 As credenciais vêm das variáveis `DEV_USUARIO_*` do `mise.toml`. Sem elas, o usuário não é
 criado; os testes e qualquer outro ambiente não o recebem.
@@ -124,7 +124,7 @@ o front. Assim vale de novo o `false` do `mise.toml`. Não esqueça o `--file`: 
 (`http://localhost:3000/`) não chama a API e continua aparecendo normalmente. Então:
 
 - entre direto em http://localhost:3000/disciplinas ou http://localhost:3000/agenda; ou
-- use o login simulado (`admin@gmail.com` / `123`), que leva à agenda.
+- use o login simulado (`aluno@gmail.com` / `12345678`), que leva à agenda.
 
 Daí em diante, o front cuida do token: obtém um com o usuário de teste quando não há token e
 obtém outro quando ele expira (1 hora).

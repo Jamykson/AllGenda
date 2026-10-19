@@ -23,8 +23,8 @@ JWT_SECRET = "segredo-de-desenvolvimento-do-allgenda-nao-usar-em-producao"
 
 # Usuário de teste que o back-end cria ao iniciar, se ainda não existir. SOMENTE desenvolvimento.
 DEV_USUARIO_NOME = "Aluno Teste"
-DEV_USUARIO_EMAIL = "aluno@allgenda.test"
-DEV_USUARIO_SENHA = "senha-de-teste-123"
+DEV_USUARIO_EMAIL = "aluno@gmail.com"
+DEV_USUARIO_SENHA = "12345678"
 
 # "true" faz o front (só com `nuxt dev`) usar o usuário de teste nas chamadas à API quando não
 # há token. Não pula a tela de login. Desligado por padrão: para ligar, defina

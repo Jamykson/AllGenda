@@ -157,8 +157,8 @@ async function entrar() {
   }
 
   if (
-    email.value === 'admin@gmail.com' &&
-    senha.value === '123'
+    email.value === 'aluno@gmail.com' &&
+    senha.value === '12345678'
   ) {
     await navigateTo('/agenda')
     return
