@@ -27,7 +27,7 @@ class UsuarioTesteInitializerTest {
     private AuthService auth;
 
     private UsuarioTesteInitializer inicializador(String email) {
-        return new UsuarioTesteInitializer(usuarios, auth, "Aluno Teste", email, "senha-de-teste-123");
+        return new UsuarioTesteInitializer(usuarios, auth, "Aluno Teste", email, "12345678");
     }
 
     @Test
@@ -39,24 +39,24 @@ class UsuarioTesteInitializerTest {
 
     @Test
     void usuarioJaExistenteNaoEhCriadoDeNovo() {
-        when(usuarios.existsByEmail("aluno@allgenda.test")).thenReturn(true);
+        when(usuarios.existsByEmail("aluno@gmail.com")).thenReturn(true);
 
-        inicializador(" Aluno@Allgenda.test ").run(null);
+        inicializador(" Aluno@Gmail.com ").run(null);
 
         verify(auth, never()).cadastrar(any());
     }
 
     @Test
     void usuarioAusenteEhCadastradoPeloAuthService() {
-        inicializador("aluno@allgenda.test").run(null);
+        inicializador("aluno@gmail.com").run(null);
 
-        verify(auth).cadastrar(new UsuarioRequestDTO("Aluno Teste", "aluno@allgenda.test", "senha-de-teste-123"));
+        verify(auth).cadastrar(new UsuarioRequestDTO("Aluno Teste", "aluno@gmail.com", "12345678"));
     }
 
     @Test
     void conflitoAoCadastrarNaoImpedeOBackendDeSubir() {
         when(auth.cadastrar(any())).thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Nome ou e-mail já cadastrado."));
 
-        assertThatCode(() -> inicializador("aluno@allgenda.test").run(null)).doesNotThrowAnyException();
+        assertThatCode(() -> inicializador("aluno@gmail.com").run(null)).doesNotThrowAnyException();
     }
 }

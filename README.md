@@ -16,17 +16,39 @@ definir as variáveis de ambiente e padronizar as tarefas. O banco (PostgreSQL 1
 ### Início rápido (com Docker)
 
 ```bash
-./iniciar-allgenda.sh   # instala o mise (se faltar), sobe o banco, instala dependências e compila
-mise run dev            # inicia banco, back-end e front-end
+# Instala o mise (se faltar) e prepara o ambiente.
+./iniciar-allgenda.sh
+# Se o mise já estiver instalado, dá para trocar esse script por:
+# mise trust && mise install && mise run setup
+
+# Usa o usuário de teste nas chamadas à API (só na sua máquina)
+mise set --file mise.local.toml API_COM_USUARIO_DE_TESTE=true
+
+# Inicia banco, back-end e front-end
+mise run dev
 ```
 
-Se você já tem o mise instalado, o script equivale a:
-
-```bash
-mise trust && mise install && mise run setup
-```
+Sem o usuário de teste nas chamadas à API, não dá para usar o front-end: a tela de login ainda é simulada e não obtém token (veja "Primeiro acesso no navegador").
 
 O back-end fica em `http://localhost:8080` e o front-end em `http://localhost:3000`.
+
+### Primeiro acesso no navegador
+
+- **A tela de login é simulada.** Ela não chama a API e só aceita `aluno@gmail.com` /
+  `12345678`, que leva à agenda. As páginas também não exigem login: dá para abrir
+  http://localhost:3000/agenda direto.
+- **Sem o usuário de teste nas chamadas à API, as telas não carregam dados.** O início rápido
+  já o liga. Sem ele (o padrão do `mise.toml`), o login simulado não obtém token, a API
+  responde 401 e aparece, por exemplo, "Não foi possível carregar a agenda.". Para desligar,
+  rode `mise unset --file mise.local.toml API_COM_USUARIO_DE_TESTE` e reinicie o
+  `mise run dev`. Detalhes em "Usar o usuário de teste nas chamadas à API".
+- **O banco do Docker continua existindo depois de um novo clone.** Todo clone na máquina usa
+  o mesmo volume (`allgenda_pgdata`), com os dados e o usuário de teste que já estavam lá, e o
+  back-end não atualiza um usuário de teste que já existe. Se o login do usuário de teste
+  falhar, rode `mise run db:reset` (apaga os dados locais) e inicie de novo para recriá-lo.
+- **Na primeira execução, a página pode recarregar sozinha.** O Vite otimiza dependências na
+  primeira vez que uma página as usa e recarrega o navegador, o que limpa o formulário. Basta
+  preencher de novo.
 
 ### Sem Docker (PostgreSQL próprio)
 
@@ -66,7 +88,7 @@ As variáveis ficam em `[env]` no `mise.toml`:
 | `DB_HOST`, `DB_PORT`, `DB_NAME` | `localhost`, `5433`, `allgenda` | Conexão com o banco |
 | `DB_USER`, `DB_PASSWORD` | `allgenda_user`, `alljgc` | Credenciais **somente de desenvolvimento** |
 | `JWT_SECRET` | valor de desenvolvimento no `mise.toml` | Chave de assinatura dos tokens (mínimo de 32 bytes) |
-| `DEV_USUARIO_NOME`, `DEV_USUARIO_EMAIL`, `DEV_USUARIO_SENHA` | `Aluno Teste`, `aluno@allgenda.test`, `senha-de-teste-123` | Usuário de teste, **somente de desenvolvimento** (veja "Autenticação") |
+| `DEV_USUARIO_NOME`, `DEV_USUARIO_EMAIL`, `DEV_USUARIO_SENHA` | `Aluno Teste`, `aluno@gmail.com`, `12345678` | Usuário de teste, **somente de desenvolvimento** (veja "Autenticação") |
 | `API_COM_USUARIO_DE_TESTE` | `false` | `true` faz o front usar o usuário de teste nas chamadas à API (só no `nuxt dev`); não pula a tela de login |
 
 O `JWT_SECRET` do `mise.toml` serve **apenas para desenvolvimento**. O back-end não tem valor
@@ -94,8 +116,8 @@ Quase todos os endpoints exigem um token. Cadastre-se em `POST /api/usuarios`, e
 Ao iniciar, o back-end cria um usuário de teste, se ele ainda não existir. Assim, todo banco
 de desenvolvimento novo já tem com quem entrar, inclusive depois de `mise run db:reset`:
 
-- e-mail: `aluno@allgenda.test`
-- senha: `senha-de-teste-123`
+- e-mail: `aluno@gmail.com`
+- senha: `12345678`
 
 As credenciais vêm das variáveis `DEV_USUARIO_*` do `mise.toml`. Sem elas, o usuário não é
 criado; os testes e qualquer outro ambiente não o recebem.
@@ -106,7 +128,7 @@ Enquanto as telas de login e cadastro não estão ligadas à API, o front pode u
 teste nas chamadas à API: quando não há token, ele obtém um com o usuário de teste. Nenhuma
 tela muda, e a tela de login continua aparecendo. Isso fica **desligado por padrão**.
 
-**Para ligar** só na sua máquina, rode `mise set -E local API_COM_USUARIO_DE_TESTE=true`, ou
+**Para ligar** só na sua máquina, rode `mise set --file mise.local.toml API_COM_USUARIO_DE_TESTE=true`, ou
 coloque no `mise.local.toml`:
 
 ```toml
@@ -124,7 +146,7 @@ o front. Assim vale de novo o `false` do `mise.toml`. Não esqueça o `--file`: 
 (`http://localhost:3000/`) não chama a API e continua aparecendo normalmente. Então:
 
 - entre direto em http://localhost:3000/disciplinas ou http://localhost:3000/agenda; ou
-- use o login simulado (`admin@gmail.com` / `123`), que leva à agenda.
+- use o login simulado (`aluno@gmail.com` / `12345678`), que leva à agenda.
 
 Daí em diante, o front cuida do token: obtém um com o usuário de teste quando não há token e
 obtém outro quando ele expira (1 hora).

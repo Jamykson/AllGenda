@@ -16,8 +16,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestPropertySource(properties = {
         "spring.datasource.url=jdbc:h2:mem:usuario-teste;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
         "app.dev.usuario.nome=Aluno Teste",
-        "app.dev.usuario.email=aluno@allgenda.test",
-        "app.dev.usuario.senha=senha-de-teste-123"
+        "app.dev.usuario.email=aluno@gmail.com",
+        "app.dev.usuario.senha=12345678"
 })
 class UsuarioTesteIntegrationTest {
 
@@ -27,10 +27,10 @@ class UsuarioTesteIntegrationTest {
 
     @Test
     void usuarioDeTesteEhCriadoNaInicializacaoEConsegueEntrar() {
-        var usuario = usuarios.findByEmail("aluno@allgenda.test").orElseThrow();
+        var usuario = usuarios.findByEmail("aluno@gmail.com").orElseThrow();
         assertThat(usuario.getNome()).isEqualTo("Aluno Teste");
 
-        var login = auth.login(new LoginRequestDTO("aluno@allgenda.test", "senha-de-teste-123"));
+        var login = auth.login(new LoginRequestDTO("aluno@gmail.com", "12345678"));
         assertThat(login.usuario().id()).isEqualTo(usuario.getId());
     }
 
@@ -41,6 +41,6 @@ class UsuarioTesteIntegrationTest {
         inicializador.run(null);
 
         assertThat(usuarios.count()).isEqualTo(antes);
-        assertThat(usuarios.existsByEmail("aluno@allgenda.test")).isTrue();
+        assertThat(usuarios.existsByEmail("aluno@gmail.com")).isTrue();
     }
 }
