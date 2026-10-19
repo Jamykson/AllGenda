@@ -12,6 +12,8 @@ import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
 import com.allgenda.model.ImagemAnotacao;
+import com.allgenda.model.StatusParticipacao;
+import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
@@ -32,6 +34,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     private final AnotacaoRepository anotacaoRepository;
     private final AulaRepository aulaRepository;
     private final DisciplinaRepository disciplinaRepository;
+    private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
     private final TagService tagService;
     private final RemocaoArquivos remocaoArquivos;
@@ -40,6 +43,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     public AnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
                                 AulaRepository aulaRepository,
                                 DisciplinaRepository disciplinaRepository,
+                                ParticipacaoRepository participacaoRepository,
                                 UsuarioAutenticado usuarioAutenticado,
                                 TagService tagService,
                                 RemocaoArquivos remocaoArquivos,
@@ -47,6 +51,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         this.anotacaoRepository = anotacaoRepository;
         this.aulaRepository = aulaRepository;
         this.disciplinaRepository = disciplinaRepository;
+        this.participacaoRepository = participacaoRepository;
         this.usuarioAutenticado = usuarioAutenticado;
         this.tagService = tagService;
         this.remocaoArquivos = remocaoArquivos;
@@ -98,18 +103,19 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     @Override
     @Transactional(readOnly = true) // mantém a sessão aberta enquanto o mapper lê as tags (carregadas sob demanda)
     public List<AnotacaoResponseDTO> listarPorAula(UUID aulaId) {
-        if (!aulaRepository.existsById(aulaId)) {
-            throw new AulaNaoEncontradaException(aulaId);
-        }
+        Aula aula = aulaRepository.findById(aulaId)
+                .orElseThrow(() -> new AulaNaoEncontradaException(aulaId));  
+        exigirParticipanteAceito(aula.getDisciplina().getId());     //403
         return mapper.toDtoList(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AnotacaoResponseDTO> listarPorDisciplina(UUID disciplinaId, String tag) {
-        if (!disciplinaRepository.existsById(disciplinaId)) {
+        if (!disciplinaRepository.existsById(disciplinaId)) {    //404
             throw new DisciplinaNaoEncontradaException(disciplinaId);
         }
+        exigirParticipanteAceito(disciplinaId);
         if (tag == null || tag.isBlank()) {
             return mapper.toDtoList(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId));
         }
@@ -123,8 +129,18 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         if (tag == null || tag.isBlank()) {
             throw new RequisicaoInvalidaException("O nome da tag é obrigatório.");
         }
+        // sem disciplina informada, a busca vale só para as disciplinas em que o usuário participa (ACEITO)
+        List<UUID> disciplinasDoUsuario = participacaoRepository
+                .findByUsuarioIdAndStatus(usuarioAutenticado.id(), StatusParticipacao.ACEITO)
+                .stream()
+                .map(participacao -> participacao.getDisciplina().getId())
+                .toList();
+        if (disciplinasDoUsuario.isEmpty()) {
+            return List.of();
+        }
         // tag que não existe não é erro: só não há anotações com ela
-        return mapper.toDtoList(anotacaoRepository.findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(tag.trim()));
+        return mapper.toDtoList(anotacaoRepository
+                .findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc(tag.trim(), disciplinasDoUsuario));
     }
 
     // acao completa a mensagem de erro, ex.: "editar a anotação" -> "Somente o autor pode editar a anotação."
@@ -166,5 +182,26 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         // os vínculos em anotacao_tag saem junto, pois a anotação é dona da relação; as tags continuam existindo
         anotacaoRepository.delete(anotacao);
         remocaoArquivos.removerAoConfirmar(chavesDasImagens);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnotacaoResponseDTO> listarDosColegas(UUID disciplinaId) {
+        if (!disciplinaRepository.existsById(disciplinaId)) {    // 404
+            throw new DisciplinaNaoEncontradaException(disciplinaId);
+    }
+    exigirParticipanteAceito(disciplinaId);    // 403
+        return mapper.toDtoList(anotacaoRepository
+                .findByAulaDisciplinaIdAndAutorIdNotOrderByAulaDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id()));
+
+    }
+
+    // dono e membro têm participação ACEITO; sem participação, pendente ou recusada: sem acesso
+    private void exigirParticipanteAceito(UUID disciplinaId) {
+        boolean participa = participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(
+                usuarioAutenticado.id(), disciplinaId, StatusParticipacao.ACEITO);
+        if (!participa) {
+            throw new AcessoNegadoException("Somente participantes da disciplina veem as anotações.");
+        }
     }
 }

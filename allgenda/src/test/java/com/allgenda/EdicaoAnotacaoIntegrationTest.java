@@ -56,6 +56,8 @@ class EdicaoAnotacaoIntegrationTest {
         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();
 
         String disciplinaId = criar("/api/disciplinas", "{\"nome\":\"PDS\"}");
+        String conviteId = criar("/api/disciplinas/" + disciplinaId + "/convites", "{\"email\":\"" + colega.email() + "\"}");
+        mvc.perform(comToken(patch("/api/convites/{id}/aceitar", conviteId), tokenColega)).andExpect(status().isOk());
         aulaId = criar("/api/aulas", "{\"disciplinaId\":\"" + disciplinaId + "\",\"data\":\"2026-10-19\",\"horario\":\"08:00\",\"topico\":\"Padrões de projeto\"}");
         anotacaoId = criar("/api/anotacoes", "{\"aulaId\":\"" + aulaId + "\",\"conteudo\":\"Texto original\",\"tags\":[\"java\"]}");
     }

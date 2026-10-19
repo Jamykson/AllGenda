@@ -5,6 +5,9 @@ import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
 import com.allgenda.model.Disciplina;
+import com.allgenda.model.PapelParticipacao;
+import com.allgenda.model.Participacao;
+import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
@@ -77,6 +80,11 @@ class ImagemAnotacaoIntegrationTest {
 
         var disciplina = new Disciplina();
         disciplina.setNome("PDS");
+        var participacao = new Participacao();
+        participacao.setUsuario(usuarios.findById(autor.id()).orElseThrow());
+        participacao.setPapel(PapelParticipacao.DONO);
+        participacao.setStatus(StatusParticipacao.ACEITO);
+        disciplina.addParticipacao(participacao);
         disciplina = disciplinas.save(disciplina);
         var aula = new Aula();
         aula.setDisciplina(disciplina);
