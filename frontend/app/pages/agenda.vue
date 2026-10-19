@@ -90,6 +90,22 @@ ref<Aula[]>([])
 const aulaSelecionada =
 ref<Aula | null>(null)
 
+// anotar numa aula recorrente cadastra a aula no backend; ao fechar o modal, a agenda
+// recarrega para trocar a aula recorrente pela aula cadastrada
+const aulaCadastradaNoModal =
+ref(false)
+
+function fecharAula(){
+
+aulaSelecionada.value = null
+
+if(aulaCadastradaNoModal.value){
+aulaCadastradaNoModal.value = false
+carregarAgenda()
+}
+
+}
+
 
 
 const horariosRecorrentes =
@@ -759,7 +775,8 @@ onMounted(() => {
 <AulaModal
   v-if="aulaSelecionada"
   :aula="aulaSelecionada"
-  @fechar="aulaSelecionada = null"
+  @fechar="fecharAula"
+  @aula-cadastrada="aulaCadastradaNoModal = true"
 />
 
 
