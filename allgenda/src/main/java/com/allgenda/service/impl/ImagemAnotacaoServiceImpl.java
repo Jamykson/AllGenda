@@ -14,9 +14,8 @@ import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemAnotacaoService;
 import com.allgenda.service.RemocaoArquivos;
+import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.unit.DataSize;
@@ -40,6 +39,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
     private final AnotacaoMapper mapper;
+    private final UsuarioAutenticado usuarioAutenticado;
     private final DataSize tamanhoMaximo;
     private final int maximoPorAnotacao;
 
@@ -48,6 +48,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
                                      ArmazenamentoService armazenamento,
                                      RemocaoArquivos remocaoArquivos,
                                      AnotacaoMapper mapper,
+                                     UsuarioAutenticado usuarioAutenticado,
                                      @Value("${app.uploads.tamanho-maximo}") DataSize tamanhoMaximo,
                                      @Value("${app.uploads.maximo-por-anotacao}") int maximoPorAnotacao) {
         this.anotacaoRepository = anotacaoRepository;
@@ -55,6 +56,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
         this.armazenamento = armazenamento;
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
+        this.usuarioAutenticado = usuarioAutenticado;
         this.tamanhoMaximo = tamanhoMaximo;
         this.maximoPorAnotacao = maximoPorAnotacao;
     }
@@ -125,12 +127,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     }
 
     private void exigirAutor(Anotacao anotacao) {
-        var autenticacao = SecurityContextHolder.getContext().getAuthentication();
-        if (autenticacao == null || !autenticacao.isAuthenticated()) {
-            throw new AuthenticationCredentialsNotFoundException("Autenticação obrigatória.");
-        }
-        UUID usuarioId = UUID.fromString(autenticacao.getName());
-        if (!usuarioId.equals(anotacao.getAutor().getId())) {
+        if (!usuarioAutenticado.id().equals(anotacao.getAutor().getId())) {
             throw new AcessoNegadoException("Somente o autor da anotação pode alterar as imagens dela.");
         }
     }
