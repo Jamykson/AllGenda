@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft } from '@lucide/vue'
 import type { RouteLocationNormalized } from 'vue-router'
-import type { Anotacao, AulaDaPagina, ImagemAula, ModoPainel } from '~/types/anotacao'
+import type { Anotacao, AulaDaPagina, ImagemAula, ModoPainel, Tag } from '~/types/anotacao'
 
 // Página de uma aula: lista de anotações à esquerda, da altura toda (recolhível), e, ao lado dela,
 // a galeria de imagens avulsas no topo (painel ajustável) e o editor da anotação selecionada.
@@ -23,7 +23,15 @@ const FRACAO_MAXIMA = 0.85
 
 const route = useRoute()
 const router = useRouter()
-const { buscarAula, cadastrarAulaRecorrente, listarPorAula, listarImagensDaAula, listarTags } = useAnotacoes()
+const {
+  buscarAula,
+  cadastrarAulaRecorrente,
+  listarPorAula,
+  listarImagensDaAula,
+  listarTags,
+  renomearTag,
+  excluirTag
+} = useAnotacoes()
 const { listar: listarDisciplinas } = useDisciplinas()
 
 const aula = ref<AulaDaPagina | null>(null)
@@ -33,7 +41,7 @@ const anotacoes = ref<Anotacao[]>([])
 const imagens = ref<ImagemAula[]>([])
 const carregandoConteudo = ref(false)
 const erroConteudo = ref('')
-const tagsDisponiveis = ref<string[]>([])
+const tagsDaDisciplina = ref<Tag[]>([]) // em ordem alfabética, como a API devolve
 
 // null: o editor está com uma anotação nova; a chave só muda quando a pessoa troca de anotação,
 // para que a anotação nova, ao ser salva, continue no mesmo editor
@@ -79,6 +87,7 @@ async function carregar() {
   carregandoAula.value = true
   anotacoes.value = []
   imagens.value = []
+  tagsDaDisciplina.value = []
   selecionadaId.value = null
 
   try {
@@ -123,7 +132,10 @@ async function carregar() {
     if (chave === chaveCarregada) carregandoAula.value = false
   }
 
-  if (chave === chaveCarregada) await carregarConteudo(chave)
+  if (chave === chaveCarregada) {
+    void carregarTags()
+    await carregarConteudo(chave)
+  }
 }
 
 async function carregarConteudo(chave: string) {
@@ -153,14 +165,39 @@ async function carregarConteudo(chave: string) {
   chaveEditor.value++
 }
 
+// as tags são da disciplina; uma aula recorrente já sabe a disciplina, então também tem a lista
 async function carregarTags() {
+  if (!aula.value) return
   try {
-    tagsDisponiveis.value = await listarTags()
+    tagsDaDisciplina.value = await listarTags(aula.value.disciplinaId)
   }
   catch (erro) {
     // sem a lista, ainda dá para digitar tags novas
     console.error('[aula] erro ao carregar tags:', erro)
   }
+}
+
+function ordenarTags(tags: Tag[]) {
+  return [...tags].sort((tagA, tagB) => tagA.nome.localeCompare(tagB.nome, 'pt-BR', { sensitivity: 'base' }))
+}
+
+// o nome muda em todas as anotações da disciplina; as da página são atualizadas sem recarregar
+async function renomearTagDaDisciplina(tag: Tag, nome: string) {
+  const renomeada = await renomearTag(tag.id, nome)
+  tagsDaDisciplina.value = ordenarTags(tagsDaDisciplina.value.map(item => (item.id === tag.id ? renomeada : item)))
+  anotacoes.value = anotacoes.value.map(anotacao => ({
+    ...anotacao,
+    tags: anotacao.tags.map(nomeAtual => (nomeAtual === tag.nome ? renomeada.nome : nomeAtual))
+  }))
+}
+
+async function excluirTagDaDisciplina(tag: Tag) {
+  await excluirTag(tag.id)
+  tagsDaDisciplina.value = tagsDaDisciplina.value.filter(item => item.id !== tag.id)
+  anotacoes.value = anotacoes.value.map(anotacao => ({
+    ...anotacao,
+    tags: anotacao.tags.filter(nomeAtual => nomeAtual !== tag.nome)
+  }))
 }
 
 // garante que a aula exista no backend; anotações e fotos enviadas juntas esperam o mesmo cadastro
@@ -189,6 +226,11 @@ async function selecionar(anotacaoId: string | null) {
 }
 
 function aoSalvarAnotacao(anotacao: Anotacao) {
+  // uma tag que a página ainda não conhecia acabou de ser criada na disciplina
+  if (anotacao.tags.some(nome => !tagsDaDisciplina.value.some(tag => tag.nome.toLowerCase() === nome.toLowerCase()))) {
+    void carregarTags()
+  }
+
   const indice = anotacoes.value.findIndex(item => item.id === anotacao.id)
   if (indice >= 0) {
     anotacoes.value = anotacoes.value.map(item => (item.id === anotacao.id ? anotacao : item))
@@ -197,11 +239,6 @@ function aoSalvarAnotacao(anotacao: Anotacao) {
   // a anotação nova acabou de ser criada: entra no fim da lista e continua no editor
   anotacoes.value = [...anotacoes.value, anotacao]
   if (selecionadaId.value === null) selecionadaId.value = anotacao.id
-  for (const tag of anotacao.tags) {
-    if (!tagsDisponiveis.value.some(item => item.toLowerCase() === tag.toLowerCase())) {
-      tagsDisponiveis.value = [...tagsDisponiveis.value, tag]
-    }
-  }
 }
 
 function aoExcluirAnotacao(anotacaoId: string) {
@@ -270,7 +307,6 @@ onBeforeRouteLeave(async () => (editor.value ? await editor.value.prepararSaida(
 onMounted(() => {
   window.addEventListener('beforeunload', avisarAoFecharAba)
   void carregar()
-  void carregarTags()
 })
 
 onBeforeUnmount(() => {
@@ -354,7 +390,9 @@ useHead(() => ({ title: aula.value ? `${aula.value.disciplinaNome} · ${formatar
             :key="chaveEditor"
             ref="editor"
             :anotacao="anotacaoSelecionada"
-            :tags-disponiveis="tagsDisponiveis"
+            :tags-da-disciplina="tagsDaDisciplina"
+            :renomear-tag="renomearTagDaDisciplina"
+            :excluir-tag="excluirTagDaDisciplina"
             :obter-aula-id="obterAulaId"
             @salva="aoSalvarAnotacao"
             @excluida="aoExcluirAnotacao"

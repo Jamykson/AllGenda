@@ -39,9 +39,11 @@ export interface ImagemAula {
   posicao: number // ordem na galeria da aula, a mesma para todos
 }
 
+// Cada disciplina tem as suas tags: o mesmo nome em duas disciplinas são duas tags.
 export interface Tag {
   id: string
   nome: string
+  disciplinaId: string
 }
 
 // Aula exibida na página da aula. Aulas recorrentes são geradas no navegador a partir dos horários

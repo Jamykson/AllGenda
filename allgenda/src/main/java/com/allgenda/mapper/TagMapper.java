@@ -12,7 +12,8 @@ public class TagMapper {
     public TagResponseDTO toDto(Tag tag) {
         return new TagResponseDTO(
             tag.getId(),
-            tag.getNome()
+            tag.getNome(),
+            tag.getDisciplina() != null ? tag.getDisciplina().getId() : null
         );
     }
 

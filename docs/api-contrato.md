@@ -118,11 +118,37 @@ Corpo:
 ```json
 ["java","spring"]
 ```
-Qualquer participante da disciplina (participação `ACEITO`) acrescenta tags, inclusive em anotações de outros autores; o autor da anotação não muda. Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplicação. Erros: `400` lista sem tags válidas/JSON inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` anotação inexistente.
+Qualquer participante da disciplina (participação `ACEITO`) acrescenta tags, inclusive em anotações de outros autores; o autor da anotação não muda. As tags são da disciplina da aula (ver [Tags](#tags)): um nome que a disciplina já tem, sem diferenciar maiúsculas, reaproveita a tag dela; um nome novo cria a tag na disciplina. Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplicação. Erros: `400` lista sem tags válidas/JSON inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` anotação inexistente.
 
 ### DELETE /anotacoes/{id}/tags?nome={nome} — implementado
 
 Sem corpo. Tira a tag `nome` da anotação (o nome vai na query porque pode ter `/`, como em `C/C++`), sem diferenciar maiúsculas; a tag continua existindo para as demais anotações. Como acrescentar, é permitido a qualquer participante da disciplina (participação `ACEITO`), inclusive em anotações de outros autores. Uma tag que a anotação não tem não é erro. Sucesso `200`: objeto de anotação do POST, sem a tag. Erros: `400` parâmetro `nome` ausente ou vazio; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` anotação inexistente.
+
+## Tags
+
+Cada disciplina tem as suas tags: "Prova" em duas disciplinas são duas tags, e renomear ou excluir uma não afeta a outra. Dentro da disciplina, o nome não se repete, sem diferenciar maiúsculas. Uma tag é criada ao ser atribuída a uma anotação (`POST /anotacoes/{id}/tags` ou `tags` no `POST /anotacoes`). A busca de anotações por tag (`GET /anotacoes?tag=`) continua pelo nome, então encontra a tag de mesmo nome em todas as disciplinas do usuário.
+
+Bancos criados quando as tags eram globais são migrados ao iniciar o back-end: cada tag antiga vai para as disciplinas das anotações que a usam (uma cópia por disciplina), as tags antigas sem uso são apagadas, e a restrição única antiga em `tags(nome)` é removida no PostgreSQL.
+
+### GET /tags?disciplinaId={id} — implementado
+
+Sem corpo. Com `disciplinaId`, lista as tags da disciplina e exige participação `ACEITO`; sem o filtro, lista as tags de todas as disciplinas em que o usuário participa. Em ordem alfabética, sem diferenciar maiúsculas. Sucesso `200`:
+```json
+[{"id":"77777777-7777-4777-8777-777777777777","nome":"Prova","disciplinaId":"33333333-3333-4333-8333-333333333333"}]
+```
+Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente.
+
+### PATCH /tags/{id} — implementado
+
+Corpo:
+```json
+{"nome":"Prova 1"}
+```
+Renomeia a tag em todas as anotações da disciplina. Qualquer participante da disciplina renomeia. Mudar só maiúsculas e minúsculas é permitido. Sucesso `200` com a tag. Erros: `400` nome vazio ou com mais de 255 caracteres; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` tag inexistente; `409` outra tag da disciplina já tem esse nome.
+
+### DELETE /tags/{id} — implementado
+
+Sem corpo. Tira a tag de todas as anotações da disciplina e a apaga; as anotações continuam existindo. Qualquer participante da disciplina exclui. Sucesso `204`. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` tag inexistente.
 
 ## Imagens de anotação
 
