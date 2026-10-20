@@ -44,7 +44,7 @@ public class AuthServiceImpl implements AuthService {
         if (usuario == null || usuario.getSenhaHash() == null || dto.senha() == null
                 || dto.senha().getBytes(StandardCharsets.UTF_8).length > 72
                 || !senhas.matches(dto.senha(), usuario.getSenhaHash())) {
-            throw new CredenciaisInvalidasException();
+            throw new CredenciaisInvalidasException();      // 401
         }
 
         // O subject identifica o usuário autenticado nos endpoints protegidos.
@@ -64,7 +64,7 @@ public class AuthServiceImpl implements AuthService {
 
     private String normalizarEmail(String email) {
         if (email == null || email.length() > 254 || !email.trim().matches("[^\\s@]+@[^\\s@]+\\.[^\\s@]+")) {
-            throw new RequisicaoInvalidaException("Informe um e-mail válido.");
+            throw new RequisicaoInvalidaException("Informe um e-mail válido.");    // 400
         }
         return email.trim().toLowerCase(Locale.ROOT);
     }

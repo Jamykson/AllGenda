@@ -1,0 +1,138 @@
+diff --git a/docs/api-contrato.md b/docs/api-contrato.md
+index 5825c83..d0a4e95 100644
+--- a/docs/api-contrato.md
++++ b/docs/api-contrato.md
+@@ -5,7 +5,21 @@ Todos os endpoints exigem `Authorization: Bearer <token>`, exceto os POSTs de lo
+ 
+ ## Estado da implementação
+ 
+-Login, cadastro e endpoints de anotações abaixo estão implementados. Convites estão implementados, incluindo permissões de dono e destinatário. A leitura exclusiva de anotações de colegas está implementada. Avaliações: veja [contrato de avaliações e telas](api-telas-colaboracao.md). A leitura de anotações exige participação ACEITO na disciplina; buscas por tag retornam somente anotações das disciplinas em que o usuário tem participação aceita. Editar o conteúdo, excluir a anotação e anexar ou remover imagens exigem ser o autor dela; acrescentar e remover tags é permitido a qualquer participante com participação ACEITO na disciplina.
++Login, cadastro, disciplinas, aulas, convites, anotações (inclusive as dos colegas), tags, imagens e o assistente da aula estão implementados. Avaliações: veja [contrato de avaliações e telas](api-telas-colaboracao.md).
++
++### Regra geral de acesso
++
++Quase tudo o que pertence a uma disciplina exige **participação `ACEITO`** nela (dono ou membro). Quem não participa, ou tem convite pendente ou recusado, recebe `403`. A checagem é feita num só lugar do back-end, a classe `AcessoDisciplina`, e vem **depois** da verificação de existência: um id que não existe dá `404`, e um que existe mas é de uma disciplina alheia dá `403`.
++
++| Operação | Quem pode |
++|---|---|
++| Listar disciplinas (`GET /disciplinas`) | Qualquer usuário autenticado, mas só vê as disciplinas em que participa (`ACEITO`) |
++| Ver disciplina, aulas, anotações, tags, avaliações e imagens da aula | Participante `ACEITO` |
++| Criar aula, criar anotação, acrescentar/remover tags, renomear/excluir tag, reordenar imagens da aula | Participante `ACEITO` |
++| Baixar imagem de uma anotação | Participante `ACEITO` da disciplina da anotação |
++| Excluir disciplina, enviar convite | Somente o dono (`DONO` com `ACEITO`) |
++| Editar ou excluir uma anotação, anexar ou remover suas imagens, editar ou excluir uma imagem da aula | Somente o autor |
++| Aceitar ou recusar convite | Somente o destinatário |
+ 
+ ## Cadastro e login
+ 
+@@ -33,6 +47,32 @@ Sucesso `200` (token ilustrativo):
+ ```
+ Erros: `400` e-mail/JSON inválido; `401` e-mail ou senha incorretos. Usuários legados sem credenciais não conseguem fazer login.
+ 
++## Disciplinas — implementado
++
++### POST /disciplinas
++
++Corpo (a descrição é opcional):
++```json
++{"nome":"PDS","descricao":"Projeto e desenvolvimento de software"}
++```
++Quem cria a disciplina passa a ser o **dono**: o back-end grava, na mesma transação, a participação `DONO/ACEITO` dele. Sucesso `201`:
++```json
++{"id":"33333333-3333-4333-8333-333333333333","nome":"PDS","descricao":"Projeto e desenvolvimento de software"}
++```
++O nome é obrigatório e é salvo sem os espaços das pontas. A descrição tem no máximo 500 caracteres; vazia, fica `null`. Erros: `400` nome ausente/vazio, descrição com mais de 500 caracteres ou JSON inválido; `401` sem token válido.
++
++### GET /disciplinas
++
++Sem corpo. Devolve **somente as disciplinas em que o usuário autenticado tem participação `ACEITO`** (as que ele criou e as de convites aceitos). Convites pendentes ou recusados e disciplinas de outras pessoas não aparecem. Sucesso `200` com uma lista no formato acima, ou `[]`. Erro: `401` sem token válido.
++
++### GET /disciplinas/{id}
++
++Sem corpo. Sucesso `200` com a disciplina, no formato do POST. Erros: `400` UUID inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente.
++
++### DELETE /disciplinas/{id}
++
++Sem corpo. **Somente o dono** exclui. Apaga também as aulas, as avaliações, as tags, as participações e os arquivos das imagens da disciplina. A checagem de permissão vem antes de qualquer remoção. Sucesso `204`. Erros: `400` UUID inválido; `401` sem token válido; `403` solicitante não é o dono; `404` disciplina inexistente (inclusive se já foi excluída).
++
+ ## Convites — implementado
+ 
+ Participação associa um usuário e uma disciplina, com papel `DONO` ou `MEMBRO` e status `PENDENTE`, `ACEITO` ou `RECUSADO`. Um par usuário/disciplina possui no máximo uma participação. Donos são participações `DONO/ACEITO`. Convites são enviados a usuários já cadastrados.
+@@ -90,7 +130,7 @@ Sucesso `201`:
+ ```json
+ {"id":"66666666-6666-4666-8666-666666666666","titulo":"Padrões comportamentais","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}
+ ```
+-`titulo` e `conteudo` são opcionais, mas é preciso informar ao menos um dos dois; o que vier vazio ou só com espaços fica `null` na resposta. O título tem no máximo 150 caracteres e é salvo sem os espaços das pontas. Tags são opcionais; sua ordem não é garantida. `autorId` é o `id` do autor, o mesmo `usuario.id` da resposta do login; o front compara os dois para saber se a anotação é do usuário logado. `imagens` lista as imagens anexadas (ver [Imagens de anotação](#imagens-de-anotação)); vem vazia numa anotação nova. Erros: `400` aulaId ausente, título e conteúdo ausentes, título com mais de 150 caracteres ou JSON inválido; `401` token ausente, inválido ou expirado; `404` aula ou usuário do token não existe.
++`titulo` e `conteudo` são opcionais, mas é preciso informar ao menos um dos dois; o que vier vazio ou só com espaços fica `null` na resposta. O título tem no máximo 150 caracteres e é salvo sem os espaços das pontas. Tags são opcionais; sua ordem não é garantida. `autorId` é o `id` do autor, o mesmo `usuario.id` da resposta do login; o front compara os dois para saber se a anotação é do usuário logado. `imagens` lista as imagens anexadas (ver [Imagens de anotação](#imagens-de-anotação)); vem vazia numa anotação nova. Erros: `400` aulaId ausente, título e conteúdo ausentes, título com mais de 150 caracteres ou JSON inválido; `401` token ausente, inválido ou expirado; `403` o usuário não tem participação `ACEITO` na disciplina da aula; `404` aula ou usuário do token não existe.
+ 
+ ### GET /anotacoes?aulaId={id} — implementado
+ 
+@@ -98,7 +138,7 @@ Sem corpo. Alternativas: `?disciplinaId={id}` com `&tag=java` opcional, ou `?tag
+ ```json
+ [{"id":"66666666-6666-4666-8666-666666666666","titulo":"Padrões comportamentais","conteudo":"Strategy e Observer","dataCriacao":"2026-10-14T10:00:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","tags":["java","poo"],"disciplinaNome":"PDS","aulaId":"55555555-5555-4555-8555-555555555555","aulaData":"2026-10-14","aulaTopico":"Padrões de projeto","imagens":[]}]
+ ```
+-Pode retornar `[]`. Inclui anotações próprias e de outros usuários. Erros: `400` filtro ausente/incompatível, tag vazia ou UUID inválido; `401` sem token válido; `404` aula/disciplina inexistente.
++Pode retornar `[]`. Inclui anotações próprias e de outros usuários. Com `aulaId` ou `disciplinaId`, exige participação `ACEITO` na disciplina; só com `tag`, devolve apenas anotações das disciplinas em que o usuário participa. Erros: `400` filtro ausente/incompatível, tag vazia ou UUID inválido; `401` sem token válido; `403` participação ausente/pendente/recusada na disciplina do filtro; `404` aula/disciplina inexistente.
+ 
+ ### PATCH /anotacoes/{id} — implementado
+ 
+@@ -168,7 +208,7 @@ Sucesso `201`, com `Location` apontando para a imagem:
+ 
+ ### GET /anotacoes/{id}/imagens/{imagemId} — implementado
+ 
+-Sem corpo. Sucesso `200` com os bytes da imagem, `Content-Type` do formato detectado e `Content-Disposition: inline`. Qualquer usuário autenticado pode baixar; a restrição por participação virá com a A-BE6 (#40). Erros: `401` sem token válido; `404` imagem inexistente ou de outra anotação.
++Sem corpo. Sucesso `200` com os bytes da imagem, `Content-Type` do formato detectado e `Content-Disposition: inline`. Exige participação `ACEITO` na disciplina da anotação (a checagem vem antes de procurar a imagem, para quem está de fora não descobrir quais ids existem). Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` anotação inexistente, ou imagem inexistente ou de outra anotação.
+ 
+ Como `<img src>` não envia o header `Authorization`, o front deve baixar a imagem com axios (`responseType: 'blob'`) e exibi-la com `URL.createObjectURL`, liberando a URL com `URL.revokeObjectURL` quando não precisar mais dela.
+ 
+@@ -178,13 +218,27 @@ Sem corpo. Sucesso `204`; o arquivo é apagado do disco depois que a remoção 
+ 
+ ## Aulas
+ 
++Todas as operações de aula exigem participação `ACEITO` na disciplina.
++
++### POST /aulas — implementado
++
++Corpo (todos os campos são obrigatórios):
++```json
++{"disciplinaId":"33333333-3333-4333-8333-333333333333","data":"2026-10-14","horario":"08:00 – 09:40","topico":"Padrões de projeto"}
++```
++Sucesso `201`: objeto de aula, no formato do `GET /aulas/{id}` abaixo. Erros: `400` campo ausente/vazio, data inválida ou JSON inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente.
++
++### GET /aulas?disciplinaId={id} — implementado
++
++Sem corpo. Lista as aulas da disciplina, no formato do `GET /aulas/{id}`, ou `[]`. Erros: `400` `disciplinaId` ausente ou UUID inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente.
++
+ ### GET /aulas/{id} — implementado
+ 
+ Sem corpo. Sucesso `200`:
+ ```json
+ {"id":"55555555-5555-4555-8555-555555555555","data":"2026-10-14","horario":"08:00 – 09:40","topico":"Padrões de projeto","disciplinaId":"33333333-3333-4333-8333-333333333333","disciplinaNome":"PDS"}
+ ```
+-A página da aula usa `disciplinaId` para reconhecer a disciplina. `GET /aulas?disciplinaId={id}` devolve a lista de aulas da disciplina no mesmo formato. Erros: `400` UUID inválido; `401` sem token válido; `404` aula inexistente.
++A página da aula usa `disciplinaId` para reconhecer a disciplina. Erros: `400` UUID inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente.
+ 
+ ## Imagens da aula
+ 
+diff --git a/docs/api-telas-colaboracao.md b/docs/api-telas-colaboracao.md
+index 10157db..5c893d7 100644
+--- a/docs/api-telas-colaboracao.md
++++ b/docs/api-telas-colaboracao.md
+@@ -7,7 +7,7 @@
+ 
+ ## API de avaliações
+ 
+-A dependência de avaliações não estava na main atualizada; foi reintegrada para atender à tela. Segue as camadas já usadas para aulas: controller → service (interface + implementação) → repository, com mapper e DTOs.
++Segue as camadas já usadas para aulas: controller → service (interface + implementação) → repository, com mapper e DTOs.
+ 
+ Requisição de cadastro autenticada:
+ ```json
+@@ -19,7 +19,7 @@ Resposta `201`:
+ ```
+ O tipo aceita `PROVA` ou `ENTREGA`. Todos os campos são obrigatórios; descrição é aparada e limitada a 500 caracteres. Datas passadas são permitidas. Listagem retorna `200` com objetos no mesmo formato, ordenados por data e ID, ou `[]` para disciplina sem avaliações.
+ 
+-Erros: `400` para campos ausentes, enum/UUID/data inválidos ou descrição vazia/longa; `401` para token ausente/inválido; `403` para quem não tem participação aceita na disciplina; `404` para disciplina inexistente. `403` para quem não tem participação aceita. A avaliação referencia a disciplina por FK obrigatória. `Disciplina.avaliacoes` segue as cascatas usadas para aulas: apagar uma disciplina apaga suas avaliações. A lista não é embutida no DTO de disciplina.
++Erros: `400` para campos ausentes, enum/UUID/data inválidos ou descrição vazia/longa; `401` para token ausente/inválido; `403` para quem não tem participação aceita na disciplina; `404` para disciplina inexistente. A avaliação referencia a disciplina por FK obrigatória. `Disciplina.avaliacoes` tem cascata (como `aulas` e `tags`): apagar uma disciplina apaga suas avaliações. Isso difere da associação com `participacoes`, que não tem cascata e é gravada e removida explicitamente pelo service. A lista não é embutida no DTO de disciplina.
+ 
+ ## Validação
+ 

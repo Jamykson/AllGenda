@@ -8,10 +8,13 @@ import com.allgenda.exception.ImagemNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
+import com.allgenda.model.Aula;
+import com.allgenda.model.Disciplina;
 import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemArquivo;
 import com.allgenda.service.RecebimentoImagem;
@@ -39,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,12 +61,15 @@ class ImagemAnotacaoServiceImplTest {
     @Mock
     private ArmazenamentoService armazenamento;
     @Mock
+    private AcessoDisciplina acessoDisciplina; // quem decide é o AcessoDisciplina (testado à parte); aqui só vemos se é chamado
+    @Mock
     private UsuarioRepository usuarioRepository; // o UsuarioAutenticado só precisa dele para obter(); aqui basta o id()
 
     private ImagemAnotacaoServiceImpl service;
 
     private final UUID anotacaoId = UUID.randomUUID();
     private final UUID autorId = UUID.randomUUID();
+    private final UUID disciplinaId = UUID.randomUUID();
     private Anotacao anotacao;
 
     @BeforeEach
@@ -76,6 +83,11 @@ class ImagemAnotacaoServiceImplTest {
         anotacao.setConteudo("Strategy e Observer");
         anotacao.setAutor(autor);
         ReflectionTestUtils.setField(anotacao, "id", anotacaoId);
+        Disciplina disciplina = new Disciplina();
+        ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
+        Aula aula = new Aula();
+        aula.setDisciplina(disciplina);
+        anotacao.setAula(aula);
 
         autenticar(autorId);
     }
@@ -87,7 +99,7 @@ class ImagemAnotacaoServiceImplTest {
         RemocaoArquivos remocaoArquivos = new RemocaoArquivos(armazenamento);
         return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository,
                 new RecebimentoImagem(armazenamento, remocaoArquivos, tamanhoMaximo), armazenamento,
-                remocaoArquivos, new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository), maximoPorAnotacao);
+                remocaoArquivos, new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository), acessoDisciplina, maximoPorAnotacao);
     }
 
     private static void autenticar(UUID usuarioId) {
@@ -200,6 +212,7 @@ class ImagemAnotacaoServiceImplTest {
     void carregaConteudoETipoDaImagem() {
         UUID imagemId = UUID.randomUUID();
         ImagemAnotacao imagem = imagemSalva("chave.png");
+        anotacaoExiste();
         when(imagemRepository.findByIdAndAnotacaoId(imagemId, anotacaoId)).thenReturn(Optional.of(imagem));
         when(armazenamento.carregar("chave.png")).thenReturn(Optional.of(new ByteArrayResource(PNG)));
 
@@ -210,8 +223,32 @@ class ImagemAnotacaoServiceImplTest {
     }
 
     @Test
+    void quemNaoParticipaDaDisciplinaNaoBaixaAImagem() {
+        UUID imagemId = UUID.randomUUID();
+        anotacaoExiste();
+        doThrow(new AcessoNegadoException("sem acesso"))
+                .when(acessoDisciplina).exigirParticipanteAceito(any(), anyString());
+
+        assertThatThrownBy(() -> service.carregar(anotacaoId, imagemId))
+                .isInstanceOf(AcessoNegadoException.class);
+
+        // a checagem vem antes de procurar a imagem: quem está de fora não descobre se o id existe
+        verify(imagemRepository, never()).findByIdAndAnotacaoId(any(), any());
+        verify(armazenamento, never()).carregar(any());
+    }
+
+    @Test
+    void baixarImagemDeAnotacaoInexistenteLancaNaoEncontrada() {
+        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.carregar(anotacaoId, UUID.randomUUID()))
+                .isInstanceOf(AnotacaoNaoEncontradaException.class);
+    }
+
+    @Test
     void imagemDeOutraAnotacaoNaoEhEncontrada() {
         UUID imagemId = UUID.randomUUID();
+        anotacaoExiste();
         when(imagemRepository.findByIdAndAnotacaoId(imagemId, anotacaoId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.carregar(anotacaoId, imagemId))
@@ -221,6 +258,7 @@ class ImagemAnotacaoServiceImplTest {
     @Test
     void arquivoAusenteNoArmazenamentoLancaNaoEncontrada() {
         UUID imagemId = UUID.randomUUID();
+        anotacaoExiste();
         when(imagemRepository.findByIdAndAnotacaoId(imagemId, anotacaoId)).thenReturn(Optional.of(imagemSalva("sumiu.png")));
         when(armazenamento.carregar("sumiu.png")).thenReturn(Optional.empty());
 
