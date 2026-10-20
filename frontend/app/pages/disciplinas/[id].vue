@@ -9,6 +9,15 @@
         {{ disciplina?.nome ?? 'Carregando...' }}
       </h1>
 
+      <nav class="links-anotacoes" aria-label="Anotações da disciplina">
+        <NuxtLink :to="{ path: '/pesquisar', query: { disciplinaId } }" class="link-anotacoes">
+          Ver anotações
+        </NuxtLink>
+        <NuxtLink :to="{ path: '/pesquisar', query: { disciplinaId, autor: 'colegas' } }" class="link-anotacoes">
+          Anotações dos colegas
+        </NuxtLink>
+      </nav>
+
       <form @submit.prevent="cadastrar" class="formulario-aula">
         <div class="campo-formulario">
           <label class="campo-label">Data</label>
@@ -188,6 +197,32 @@ onMounted(() => {
   overflow-wrap: anywhere;
 }
 
+.links-anotacoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.link-anotacoes {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 7px;
+  background: #fff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.link-anotacoes:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #1d4ed8;
+}
+
 .formulario-aula,
 .lista-aulas {
   display: grid;
@@ -296,6 +331,7 @@ onMounted(() => {
 
 .link-aula:focus-visible,
 .voltar-disciplinas:focus-visible,
+.link-anotacoes:focus-visible,
 .botao-salvar:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;

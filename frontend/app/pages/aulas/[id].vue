@@ -165,8 +165,10 @@ async function carregarConteudo(chave: string) {
     }
   }
 
-  // abre a primeira anotação; sem anotações, o editor já começa uma nova
-  selecionadaId.value = anotacoes.value[0]?.id ?? null
+  // abre a anotação pedida na URL (ex: vinda da pesquisa) ou a primeira; sem anotações, o editor
+  // já começa uma nova
+  const pedida = texto(route.query.anotacao)
+  selecionadaId.value = anotacoes.value.find(anotacao => anotacao.id === pedida)?.id ?? anotacoes.value[0]?.id ?? null
   chaveEditor.value++
 }
 

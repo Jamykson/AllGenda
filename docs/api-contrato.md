@@ -120,6 +120,8 @@ Erros: `401` sem token válido; `403` outro destinatário; `404` convite inexist
 
 Sem corpo. Participação `ACEITO` obrigatória. Retorna anotações da disciplina cujos autores são outros usuários; exclui as do solicitante. Sucesso `200` com lista no formato abaixo, ou `[]`. Ordenação: data da aula e data de criação crescentes. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente.
 
+No front-end, a página Pesquisar usa este endpoint no filtro de autor "Dos colegas" (`/pesquisar?disciplinaId=…&autor=colegas`, link "Anotações dos colegas" na página da disciplina). Os resultados vêm agrupados por aula, e um `403` ou `404` mostra uma mensagem própria, com link para os convites no caso do `403`.
+
 ### POST /anotacoes — implementado
 
 Corpo (o autor vem exclusivamente do JWT; não enviar `autorId`):
