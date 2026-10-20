@@ -9,6 +9,8 @@ import type { Tag } from '~/types/anotacao'
 
 type ItemDaLista = { tipo: 'tag', tag: Tag } | { tipo: 'criar', nome: string }
 
+const LARGURA_CAIXA = 300
+
 const props = defineProps<{
   selecionadas: string[]
   opcoes: Tag[] // as tags da disciplina, em ordem alfabética
@@ -161,12 +163,13 @@ function fechar() {
   document.removeEventListener('pointerdown', aoClicarFora)
 }
 
-// a caixa cobre o campo, como no Notion; se não couber abaixo, sobe até caber
+// a caixa flutua sobre o começo do campo, como no Notion, com largura própria e compacta
+// (não acompanha a largura do campo); se não couber abaixo, sobe até caber
 function posicionarCaixa() {
   if (!campo.value || !caixa.value) return
   const ancora = campo.value.getBoundingClientRect()
   const margem = 8
-  const largura = Math.min(Math.max(ancora.width, 320), window.innerWidth - margem * 2)
+  const largura = Math.min(LARGURA_CAIXA, window.innerWidth - margem * 2)
   const altura = caixa.value.offsetHeight
   const left = Math.max(margem, Math.min(ancora.left, window.innerWidth - largura - margem))
   const top = Math.max(margem, Math.min(ancora.top, window.innerHeight - altura - margem))
