@@ -69,6 +69,8 @@ class ImagemAnotacaoIntegrationTest {
     private MockMvc mvc;
     private String tokenAutor;
     private String tokenColega;
+    private UUID colegaId;
+    private UUID disciplinaId;
     private UUID aulaId;
     private UUID anotacaoId;
 
@@ -81,6 +83,7 @@ class ImagemAnotacaoIntegrationTest {
         var colega = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
         tokenAutor = auth.login(new LoginRequestDTO(autor.email(), "senha-forte-123")).token();
         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();
+        colegaId = colega.id();
 
         var disciplina = new Disciplina();
         disciplina.setNome("PDS");
@@ -92,6 +95,7 @@ class ImagemAnotacaoIntegrationTest {
         disciplina = disciplinas.save(disciplina);
         participacao.setDisciplina(disciplina);
         participacoes.save(participacao);
+        disciplinaId = disciplina.getId();
         var aula = new Aula();
         aula.setDisciplina(disciplina);
         aula.setData(LocalDate.now());
@@ -154,6 +158,29 @@ class ImagemAnotacaoIntegrationTest {
         assertThat(armazenamento.carregar(chave)).isEmpty();
         mvc.perform(comToken(get("/api/anotacoes/{a}/imagens/{i}", anotacaoId, imagemId), tokenAutor))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void quemNaoParticipaDaDisciplinaNaoBaixaImagemDeAnotacao() throws Exception {
+        String imagemId = anexarComoAutor();
+
+        mvc.perform(comToken(get("/api/anotacoes/{a}/imagens/{i}", anotacaoId, imagemId), tokenColega))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void colegaComParticipacaoAceitaBaixaImagemDeAnotacaoDoAutor() throws Exception {
+        String imagemId = anexarComoAutor();
+        var membro = new Participacao();
+        membro.setUsuario(usuarios.findById(colegaId).orElseThrow());
+        membro.setDisciplina(disciplinas.findById(disciplinaId).orElseThrow());
+        membro.setPapel(PapelParticipacao.MEMBRO);
+        membro.setStatus(StatusParticipacao.ACEITO);
+        participacoes.save(membro);
+
+        mvc.perform(comToken(get("/api/anotacoes/{a}/imagens/{i}", anotacaoId, imagemId), tokenColega))
+                .andExpect(status().isOk())
+                .andExpect(content().bytes(PNG));
     }
 
     @Test

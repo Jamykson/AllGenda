@@ -10,6 +10,7 @@ import com.allgenda.model.Anotacao;
 import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemAnotacaoService;
 import com.allgenda.service.ImagemArquivo;
@@ -36,6 +37,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     private final RemocaoArquivos remocaoArquivos;
     private final AnotacaoMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
+    private final AcessoDisciplina acesso;
     private final int maximoPorAnotacao;
 
     public ImagemAnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
@@ -45,6 +47,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
                                      RemocaoArquivos remocaoArquivos,
                                      AnotacaoMapper mapper,
                                      UsuarioAutenticado usuarioAutenticado,
+                                     AcessoDisciplina acesso,
                                      @Value("${app.uploads.maximo-por-anotacao}") int maximoPorAnotacao) {
         this.anotacaoRepository = anotacaoRepository;
         this.imagemRepository = imagemRepository;
@@ -53,6 +56,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
         this.usuarioAutenticado = usuarioAutenticado;
+        this.acesso = acesso;
         this.maximoPorAnotacao = maximoPorAnotacao;
     }
 
@@ -83,6 +87,9 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     @Override
     @Transactional(readOnly = true)
     public ImagemArquivo carregar(UUID anotacaoId, UUID imagemId) {
+        Anotacao anotacao = buscarAnotacao(anotacaoId);                       // 404
+        acesso.exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId(),
+                "Somente participantes da disciplina veem as imagens das anotações."); // 403
         ImagemAnotacao imagem = buscarImagem(anotacaoId, imagemId);
         return armazenamento.carregar(imagem.getChaveArmazenamento())
                 .map(conteudo -> new ImagemArquivo(conteudo, imagem.getContentType(), imagem.getNomeOriginal()))

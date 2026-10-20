@@ -1,0 +1,218 @@
+diff --git a/allgenda/src/main/java/com/allgenda/service/impl/ImagemAnotacaoServiceImpl.java b/allgenda/src/main/java/com/allgenda/service/impl/ImagemAnotacaoServiceImpl.java
+index 338a636..836b91c 100644
+--- a/allgenda/src/main/java/com/allgenda/service/impl/ImagemAnotacaoServiceImpl.java
++++ b/allgenda/src/main/java/com/allgenda/service/impl/ImagemAnotacaoServiceImpl.java
+@@ -10,6 +10,7 @@ import com.allgenda.model.Anotacao;
+ import com.allgenda.model.ImagemAnotacao;
+ import com.allgenda.repository.AnotacaoRepository;
+ import com.allgenda.repository.ImagemAnotacaoRepository;
++import com.allgenda.service.AcessoDisciplina;
+ import com.allgenda.service.ArmazenamentoService;
+ import com.allgenda.service.ImagemAnotacaoService;
+ import com.allgenda.service.ImagemArquivo;
+@@ -36,6 +37,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
+     private final RemocaoArquivos remocaoArquivos;
+     private final AnotacaoMapper mapper;
+     private final UsuarioAutenticado usuarioAutenticado;
++    private final AcessoDisciplina acesso;
+     private final int maximoPorAnotacao;
+ 
+     public ImagemAnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
+@@ -45,6 +47,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
+                                      RemocaoArquivos remocaoArquivos,
+                                      AnotacaoMapper mapper,
+                                      UsuarioAutenticado usuarioAutenticado,
++                                     AcessoDisciplina acesso,
+                                      @Value("${app.uploads.maximo-por-anotacao}") int maximoPorAnotacao) {
+         this.anotacaoRepository = anotacaoRepository;
+         this.imagemRepository = imagemRepository;
+@@ -53,6 +56,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
+         this.remocaoArquivos = remocaoArquivos;
+         this.mapper = mapper;
+         this.usuarioAutenticado = usuarioAutenticado;
++        this.acesso = acesso;
+         this.maximoPorAnotacao = maximoPorAnotacao;
+     }
+ 
+@@ -83,6 +87,9 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
+     @Override
+     @Transactional(readOnly = true)
+     public ImagemArquivo carregar(UUID anotacaoId, UUID imagemId) {
++        Anotacao anotacao = buscarAnotacao(anotacaoId);                       // 404
++        acesso.exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId(),
++                "Somente participantes da disciplina veem as imagens das anotações."); // 403
+         ImagemAnotacao imagem = buscarImagem(anotacaoId, imagemId);
+         return armazenamento.carregar(imagem.getChaveArmazenamento())
+                 .map(conteudo -> new ImagemArquivo(conteudo, imagem.getContentType(), imagem.getNomeOriginal()))
+diff --git a/allgenda/src/test/java/com/allgenda/ImagemAnotacaoIntegrationTest.java b/allgenda/src/test/java/com/allgenda/ImagemAnotacaoIntegrationTest.java
+index 26d093d..94962fb 100644
+--- a/allgenda/src/test/java/com/allgenda/ImagemAnotacaoIntegrationTest.java
++++ b/allgenda/src/test/java/com/allgenda/ImagemAnotacaoIntegrationTest.java
+@@ -69,6 +69,8 @@ class ImagemAnotacaoIntegrationTest {
+     private MockMvc mvc;
+     private String tokenAutor;
+     private String tokenColega;
++    private UUID colegaId;
++    private UUID disciplinaId;
+     private UUID aulaId;
+     private UUID anotacaoId;
+ 
+@@ -81,6 +83,7 @@ class ImagemAnotacaoIntegrationTest {
+         var colega = cadastroUsuarios.cadastrar(new UsuarioRequestDTO("Colega " + sufixo, "colega-" + sufixo + "@example.com", "senha-forte-123"));
+         tokenAutor = auth.login(new LoginRequestDTO(autor.email(), "senha-forte-123")).token();
+         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();
++        colegaId = colega.id();
+ 
+         var disciplina = new Disciplina();
+         disciplina.setNome("PDS");
+@@ -92,6 +95,7 @@ class ImagemAnotacaoIntegrationTest {
+         disciplina = disciplinas.save(disciplina);
+         participacao.setDisciplina(disciplina);
+         participacoes.save(participacao);
++        disciplinaId = disciplina.getId();
+         var aula = new Aula();
+         aula.setDisciplina(disciplina);
+         aula.setData(LocalDate.now());
+@@ -156,6 +160,29 @@ class ImagemAnotacaoIntegrationTest {
+                 .andExpect(status().isNotFound());
+     }
+ 
++    @Test
++    void quemNaoParticipaDaDisciplinaNaoBaixaImagemDeAnotacao() throws Exception {
++        String imagemId = anexarComoAutor();
++
++        mvc.perform(comToken(get("/api/anotacoes/{a}/imagens/{i}", anotacaoId, imagemId), tokenColega))
++                .andExpect(status().isForbidden());
++    }
++
++    @Test
++    void colegaComParticipacaoAceitaBaixaImagemDeAnotacaoDoAutor() throws Exception {
++        String imagemId = anexarComoAutor();
++        var membro = new Participacao();
++        membro.setUsuario(usuarios.findById(colegaId).orElseThrow());
++        membro.setDisciplina(disciplinas.findById(disciplinaId).orElseThrow());
++        membro.setPapel(PapelParticipacao.MEMBRO);
++        membro.setStatus(StatusParticipacao.ACEITO);
++        participacoes.save(membro);
++
++        mvc.perform(comToken(get("/api/anotacoes/{a}/imagens/{i}", anotacaoId, imagemId), tokenColega))
++                .andExpect(status().isOk())
++                .andExpect(content().bytes(PNG));
++    }
++
+     @Test
+     void colegaNaoAnexaNemRemoveImagensDoAutor() throws Exception {
+         String imagemId = anexarComoAutor();
+diff --git a/allgenda/src/test/java/com/allgenda/service/impl/ImagemAnotacaoServiceImplTest.java b/allgenda/src/test/java/com/allgenda/service/impl/ImagemAnotacaoServiceImplTest.java
+index 7f8a91b..1f3f197 100644
+--- a/allgenda/src/test/java/com/allgenda/service/impl/ImagemAnotacaoServiceImplTest.java
++++ b/allgenda/src/test/java/com/allgenda/service/impl/ImagemAnotacaoServiceImplTest.java
+@@ -8,10 +8,13 @@ import com.allgenda.exception.ImagemNaoEncontradaException;
+ import com.allgenda.exception.RequisicaoInvalidaException;
+ import com.allgenda.mapper.AnotacaoMapper;
+ import com.allgenda.model.Anotacao;
++import com.allgenda.model.Aula;
++import com.allgenda.model.Disciplina;
+ import com.allgenda.model.ImagemAnotacao;
+ import com.allgenda.model.Usuario;
+ import com.allgenda.repository.AnotacaoRepository;
+ import com.allgenda.repository.ImagemAnotacaoRepository;
++import com.allgenda.service.AcessoDisciplina;
+ import com.allgenda.service.ArmazenamentoService;
+ import com.allgenda.service.ImagemArquivo;
+ import com.allgenda.service.RecebimentoImagem;
+@@ -39,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.anyString;
++import static org.mockito.Mockito.doThrow;
+ import static org.mockito.Mockito.never;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+@@ -57,12 +61,15 @@ class ImagemAnotacaoServiceImplTest {
+     @Mock
+     private ArmazenamentoService armazenamento;
+     @Mock
++    private AcessoDisciplina acessoDisciplina; // quem decide é o AcessoDisciplina (testado à parte); aqui só vemos se é chamado
++    @Mock
+     private UsuarioRepository usuarioRepository; // o UsuarioAutenticado só precisa dele para obter(); aqui basta o id()
+ 
+     private ImagemAnotacaoServiceImpl service;
+ 
+     private final UUID anotacaoId = UUID.randomUUID();
+     private final UUID autorId = UUID.randomUUID();
++    private final UUID disciplinaId = UUID.randomUUID();
+     private Anotacao anotacao;
+ 
+     @BeforeEach
+@@ -76,6 +83,11 @@ class ImagemAnotacaoServiceImplTest {
+         anotacao.setConteudo("Strategy e Observer");
+         anotacao.setAutor(autor);
+         ReflectionTestUtils.setField(anotacao, "id", anotacaoId);
++        Disciplina disciplina = new Disciplina();
++        ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
++        Aula aula = new Aula();
++        aula.setDisciplina(disciplina);
++        anotacao.setAula(aula);
+ 
+         autenticar(autorId);
+     }
+@@ -87,7 +99,7 @@ class ImagemAnotacaoServiceImplTest {
+         RemocaoArquivos remocaoArquivos = new RemocaoArquivos(armazenamento);
+         return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository,
+                 new RecebimentoImagem(armazenamento, remocaoArquivos, tamanhoMaximo), armazenamento,
+-                remocaoArquivos, new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository), maximoPorAnotacao);
++                remocaoArquivos, new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository), acessoDisciplina, maximoPorAnotacao);
+     }
+ 
+     private static void autenticar(UUID usuarioId) {
+@@ -200,6 +212,7 @@ class ImagemAnotacaoServiceImplTest {
+     void carregaConteudoETipoDaImagem() {
+         UUID imagemId = UUID.randomUUID();
+         ImagemAnotacao imagem = imagemSalva("chave.png");
++        anotacaoExiste();
+         when(imagemRepository.findByIdAndAnotacaoId(imagemId, anotacaoId)).thenReturn(Optional.of(imagem));
+         when(armazenamento.carregar("chave.png")).thenReturn(Optional.of(new ByteArrayResource(PNG)));
+ 
+@@ -209,9 +222,33 @@ class ImagemAnotacaoServiceImplTest {
+         assertThat(arquivo.nome()).isEqualTo("quadro.png");
+     }
+ 
++    @Test
++    void quemNaoParticipaDaDisciplinaNaoBaixaAImagem() {
++        UUID imagemId = UUID.randomUUID();
++        anotacaoExiste();
++        doThrow(new AcessoNegadoException("sem acesso"))
++                .when(acessoDisciplina).exigirParticipanteAceito(any(), anyString());
++
++        assertThatThrownBy(() -> service.carregar(anotacaoId, imagemId))
++                .isInstanceOf(AcessoNegadoException.class);
++
++        // a checagem vem antes de procurar a imagem: quem está de fora não descobre se o id existe
++        verify(imagemRepository, never()).findByIdAndAnotacaoId(any(), any());
++        verify(armazenamento, never()).carregar(any());
++    }
++
++    @Test
++    void baixarImagemDeAnotacaoInexistenteLancaNaoEncontrada() {
++        when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.empty());
++
++        assertThatThrownBy(() -> service.carregar(anotacaoId, UUID.randomUUID()))
++                .isInstanceOf(AnotacaoNaoEncontradaException.class);
++    }
++
+     @Test
+     void imagemDeOutraAnotacaoNaoEhEncontrada() {
+         UUID imagemId = UUID.randomUUID();
++        anotacaoExiste();
+         when(imagemRepository.findByIdAndAnotacaoId(imagemId, anotacaoId)).thenReturn(Optional.empty());
+ 
+         assertThatThrownBy(() -> service.carregar(anotacaoId, imagemId))
+@@ -221,6 +258,7 @@ class ImagemAnotacaoServiceImplTest {
+     @Test
+     void arquivoAusenteNoArmazenamentoLancaNaoEncontrada() {
+         UUID imagemId = UUID.randomUUID();
++        anotacaoExiste();
+         when(imagemRepository.findByIdAndAnotacaoId(imagemId, anotacaoId)).thenReturn(Optional.of(imagemSalva("sumiu.png")));
+         when(armazenamento.carregar("sumiu.png")).thenReturn(Optional.empty());
+ 
