@@ -230,6 +230,37 @@ Apenas o autor edita. A legenda é substituída; ausente ou vazia, a imagem fica
 
 Sem corpo. Apenas o autor exclui. Sucesso `204`; o arquivo é apagado do disco depois que a remoção é confirmada no banco. Erros: `401` sem token válido; `403` solicitante não é o autor; `404` imagem inexistente ou de outra aula.
 
+## Assistente da aula
+
+Assistente de IA da página da aula: responde perguntas usando as anotações (de todos os participantes) e as imagens (avulsas e anexadas) da aula. Usa a API da Anthropic, configurada no back-end pela variável `ANTHROPIC_API_KEY` (e, opcionalmente, `ASSISTENTE_MODELO`); sem a chave, o back-end sobe normalmente e o endpoint responde `503`. **O material da aula é enviado à Anthropic** a cada pergunta, e a tela avisa isso.
+
+O servidor não guarda as conversas: o cliente envia a conversa inteira a cada pergunta. As imagens são numeradas como na tela: primeiro as avulsas, na ordem da galeria; depois as anexadas, na ordem das anotações. Cada pergunta leva no máximo 20 imagens (`app.assistente.maximo-imagens`); a imagem em foco sempre entra. Imagens grandes são reduzidas para 1568 px no maior lado antes do envio. Cada usuário faz no máximo 30 perguntas por hora (`app.assistente.perguntas-por-hora`).
+
+### POST /aulas/{aulaId}/assistente — implementado
+
+Corpo: a conversa, alternando `USUARIO` e `ASSISTENTE`, começando e terminando com uma pergunta. `foco` é opcional e indica a anotação (`ANOTACAO`) ou a imagem avulsa ou anexada (`IMAGEM`) da aula sobre a qual é a pergunta.
+```json
+{"mensagens":[
+  {"papel":"USUARIO","texto":"Faça um resumo da aula."},
+  {"papel":"ASSISTENTE","texto":"A aula tratou dos padrões Observer e Strategy..."},
+  {"papel":"USUARIO","texto":"O que esta imagem mostra?","foco":{"tipo":"IMAGEM","id":"99999999-9999-4999-8999-999999999999"}}
+]}
+```
+Envie `Accept: text/event-stream, application/problem+json`. Sucesso `200` com `Content-Type: text/event-stream` (Server-Sent Events, em UTF-8). A resposta chega em pedaços, à medida que o modelo a gera:
+```text
+event:texto
+data:{"texto":"A aula tratou "}
+
+event:texto
+data:{"texto":"dos padrões Observer e Strategy."}
+
+event:fim
+data:{}
+```
+Se o modelo falhar depois que a resposta começou (serviço sobrecarregado, erro de rede), o stream termina com `event:erro` e `data:{"mensagem":"..."}`, sem `fim`. Fechar a conexão interrompe a geração. Como o `EventSource` do navegador não faz POST nem envia o cabeçalho `Authorization`, o front lê o stream com `fetch` (`composables/useAssistente.ts`).
+
+Os erros abaixo saem antes do stream, como Problem Details em JSON: `400` conversa vazia, fora de ordem, com mais de 40 mensagens, pergunta com mais de 4000 caracteres ou `foco` que não pertence à aula; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente; `429` limite de perguntas por hora atingido; `503` assistente não configurado no servidor.
+
 ## Erros e exemplos para mocks
 
 Erros de aplicação usam Problem Detail (`application/problem+json`), com `instance` podendo conter o caminho. Exemplo:

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, PencilLine, Trash2, X } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, PencilLine, Sparkles, Trash2, X } from '@lucide/vue'
 import type { ImagemAula } from '~/types/anotacao'
 
 // Imagem da galeria em tamanho grande, com a legenda. As setas passam para a imagem anterior ou
-// seguinte e Esc fecha. O autor edita a legenda e exclui a imagem por aqui.
+// seguinte e Esc fecha. O autor edita a legenda e exclui a imagem por aqui, e qualquer participante
+// pode perguntar sobre ela ao assistente.
 
 const props = defineProps<{
   imagens: ImagemAula[]
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   'update:indice': [indice: number]
   salva: [imagem: ImagemAula]
   excluida: [imagemId: string]
+  perguntar: [imagem: ImagemAula]
 }>()
 
 const { editarLegenda, removerImagemAula } = useAnotacoes()
@@ -120,6 +122,16 @@ onBeforeUnmount(() => {
     <header class="barra">
       <span class="posicao">{{ indice + 1 }} de {{ imagens.length }}</span>
       <div class="acoes">
+        <button
+          v-if="!editando"
+          type="button"
+          class="acao acao-assistente"
+          title="Perguntar ao assistente sobre esta imagem"
+          @click="emit('perguntar', imagem)"
+        >
+          <Sparkles :size="17" :stroke-width="1.8" aria-hidden="true" />
+          Perguntar ao assistente
+        </button>
         <template v-if="ehDoUsuario && !editando">
           <button type="button" class="acao" title="Editar legenda" aria-label="Editar legenda" :disabled="ocupado" @click="iniciarEdicao">
             <PencilLine :size="18" :stroke-width="1.8" aria-hidden="true" />
@@ -224,6 +236,16 @@ onBeforeUnmount(() => {
 
 .acao:hover {
   background: rgb(255 255 255 / 18%);
+}
+
+.acao-assistente {
+  display: inline-flex;
+  width: auto;
+  gap: 7px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .palco {

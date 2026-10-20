@@ -31,6 +31,11 @@ DEV_USUARIO_SENHA = "12345678"
 # API_COM_USUARIO_DE_TESTE = "true" em mise.local.toml.
 API_COM_USUARIO_DE_TESTE = "false"
 
+# O assistente de IA da página da aula usa a API da Anthropic. Sem chave, o back-end sobe
+# normalmente e o assistente responde que não está configurado. A chave é pessoal: defina
+# ANTHROPIC_API_KEY em mise.local.toml, nunca aqui. ASSISTENTE_MODELO troca o modelo
+# (padrão: claude-sonnet-5-5).
+
 # Esconde as barras de progresso de download do Maven (poluem a saída das tarefas)
 MAVEN_ARGS = "--no-transfer-progress"
 

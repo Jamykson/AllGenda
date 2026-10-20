@@ -2,9 +2,11 @@
 import { ArrowLeft } from '@lucide/vue'
 import type { RouteLocationNormalized } from 'vue-router'
 import type { Anotacao, AulaDaPagina, ImagemAula, ModoPainel, Tag } from '~/types/anotacao'
+import type { FocoAssistente } from '~/types/assistente'
 
 // Página de uma aula: lista de anotações à esquerda, da altura toda (recolhível), e, ao lado dela,
 // a galeria de imagens avulsas no topo (painel ajustável) e o editor da anotação selecionada.
+// À direita, o assistente de IA (recolhível), que responde perguntas sobre as anotações e imagens.
 //
 // Uma aula recorrente ainda não existe no backend e chega como /aulas/recorrente?disciplinaId=&data=&horario=.
 // Ela é cadastrada quando recebe a primeira anotação ou imagem, e então a URL passa a ser /aulas/{id}.
@@ -52,6 +54,8 @@ const editor = ref<EditorExposto | null>(null)
 const modoPainel = ref<ModoPainel>('normal')
 const fracaoPainel = ref(FRACAO_INICIAL)
 const listaRecolhida = ref(false)
+const assistenteRecolhido = ref(true)
+const focoAssistente = ref<FocoAssistente | null>(null)
 const colunaPrincipal = ref<HTMLElement | null>(null)
 let redimensionando = false
 
@@ -89,6 +93,7 @@ async function carregar() {
   imagens.value = []
   tagsDaDisciplina.value = []
   selecionadaId.value = null
+  focoAssistente.value = null
 
   try {
     // a lista de disciplinas traz o nome personalizado; sem ela, fica o nome do backend
@@ -249,6 +254,30 @@ function aoExcluirAnotacao(anotacaoId: string) {
   chaveEditor.value++
 }
 
+// "Perguntar ao assistente" numa imagem ou anotação abre o assistente com ela em foco
+function perguntarSobre(foco: FocoAssistente) {
+  focoAssistente.value = foco
+  assistenteRecolhido.value = false
+}
+
+// a numeração é a mesma do material que o assistente recebe: a ordem da galeria
+function perguntarSobreImagem(imagem: ImagemAula) {
+  const numero = imagens.value.findIndex(item => item.id === imagem.id) + 1
+  perguntarSobre({
+    tipo: 'IMAGEM',
+    id: imagem.id,
+    rotulo: imagem.legenda ? `imagem ${numero} (${imagem.legenda})` : `imagem ${numero}`
+  })
+}
+
+function perguntarSobreAnotacao(anotacaoId: string) {
+  const anotacao = anotacoes.value.find(item => item.id === anotacaoId)
+  if (!anotacao) return
+  const trecho = (anotacao.conteudo ?? '').trim().replace(/\s+/g, ' ')
+  const nome = anotacao.titulo ?? (trecho.length > 40 ? `${trecho.slice(0, 40)}…` : trecho)
+  perguntarSobre({ tipo: 'ANOTACAO', id: anotacao.id, rotulo: `anotação "${nome}"` })
+}
+
 function voltar() {
   // sem histórico (link aberto direto), volta para a agenda
   if (window.history.state?.back) router.back()
@@ -337,7 +366,11 @@ useHead(() => ({ title: aula.value ? `${aula.value.disciplinaNome} · ${formatar
     <div
       v-else-if="aula"
       class="area-aula"
-      :class="{ 'com-lista-recolhida': listaRecolhida, 'galeria-maximizada': modoPainel === 'maximizado' }"
+      :class="{
+        'com-lista-recolhida': listaRecolhida,
+        'com-assistente-recolhido': assistenteRecolhido,
+        'galeria-maximizada': modoPainel === 'maximizado'
+      }"
     >
       <!-- com a galeria maximizada, ela ocupa todo o espaço abaixo do cabeçalho -->
       <ListaAnotacoes
@@ -359,6 +392,7 @@ useHead(() => ({ title: aula.value ? `${aula.value.disciplinaNome} · ${formatar
             :aula-id="aulaIdNoBackend"
             :obter-aula-id="obterAulaId"
             :carregando="carregandoConteudo"
+            @perguntar="perguntarSobreImagem"
           />
         </div>
 
@@ -396,9 +430,18 @@ useHead(() => ({ title: aula.value ? `${aula.value.disciplinaNome} · ${formatar
             :obter-aula-id="obterAulaId"
             @salva="aoSalvarAnotacao"
             @excluida="aoExcluirAnotacao"
+            @perguntar="perguntarSobreAnotacao"
           />
         </div>
       </div>
+
+      <PainelAssistente
+        v-show="modoPainel !== 'maximizado'"
+        v-model:foco="focoAssistente"
+        :aula-id="aulaIdNoBackend"
+        :recolhida="assistenteRecolhido"
+        @alternar="assistenteRecolhido = !assistenteRecolhido"
+      />
     </div>
   </div>
 </template>
@@ -472,14 +515,20 @@ h1 {
 }
 
 .area-aula {
+  --largura-lista: 300px;
+  --largura-assistente: 360px;
   display: grid;
   flex: 1;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: var(--largura-lista) minmax(0, 1fr) var(--largura-assistente);
   min-height: 0;
 }
 
 .area-aula.com-lista-recolhida {
-  grid-template-columns: 52px minmax(0, 1fr);
+  --largura-lista: 52px;
+}
+
+.area-aula.com-assistente-recolhido {
+  --largura-assistente: 52px;
 }
 
 .area-aula.galeria-maximizada {
@@ -551,7 +600,7 @@ h1 {
   outline-offset: 2px;
 }
 
-/* em telas estreitas, a lista fica acima da galeria e do editor */
+/* em telas estreitas, a lista fica acima da galeria e do editor, e o assistente vira uma gaveta */
 @media (max-width: 900px) {
   .area-aula,
   .area-aula.com-lista-recolhida {

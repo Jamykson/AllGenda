@@ -76,6 +76,16 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(LimiteDePerguntasException.class)
+    public ProblemDetail tratarLimiteDePerguntas(LimiteDePerguntasException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+    }
+
+    @ExceptionHandler(AssistenteIndisponivelException.class)
+    public ProblemDetail tratarAssistenteIndisponivel(AssistenteIndisponivelException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class) // UUID ou status inválido na URL
     public ProblemDetail tratarParametroInvalido(MethodArgumentTypeMismatchException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Valor inválido para '" + ex.getName() + "'.");
