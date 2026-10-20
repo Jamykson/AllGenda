@@ -19,7 +19,8 @@ public class ImagemAulaMapper {
             imagem.getDataCriacao(),
             imagem.getAutor().getId(),
             imagem.getAutor().getNome(),
-            imagem.getAula().getId()
+            imagem.getAula().getId(),
+            imagem.getPosicao()
         );
     }
 

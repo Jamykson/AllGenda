@@ -14,5 +14,6 @@ public record ImagemAulaResponseDTO(
     LocalDateTime dataCriacao,
     UUID autorId, // o front compara com o id do usuário logado para saber se a imagem é dele
     String autorNome,
-    UUID aulaId
+    UUID aulaId,
+    int posicao // ordem na galeria da aula
 ) {}

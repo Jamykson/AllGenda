@@ -51,6 +51,10 @@ public class ImagemAula implements Serializable {
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
 
+    // ordem na galeria da aula, a mesma para todos; o default permite criar a coluna numa tabela com linhas
+    @Column(name = "posicao", nullable = false, columnDefinition = "integer default 0")
+    private int posicao;
+
     public UUID getId() {
         return id;
     }
@@ -117,5 +121,13 @@ public class ImagemAula implements Serializable {
 
     public void setDataCriacao(LocalDateTime dataCriacao) {
         this.dataCriacao = dataCriacao;
+    }
+
+    public int getPosicao() {
+        return posicao;
+    }
+
+    public void setPosicao(int posicao) {
+        this.posicao = posicao;
     }
 }

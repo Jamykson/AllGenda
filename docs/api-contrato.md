@@ -5,7 +5,7 @@ Todos os endpoints exigem `Authorization: Bearer <token>`, exceto os POSTs de lo
 
 ## Estado da implementação
 
-Login, cadastro e endpoints de anotações abaixo estão implementados. Convites estão implementados, incluindo permissões de dono e destinatário. A leitura exclusiva de anotações de colegas está implementada. Avaliações: veja [contrato de avaliações e telas](api-telas-colaboracao.md). A leitura de anotações exige participação ACEITO na disciplina; buscas por tag retornam somente anotações das disciplinas em que o usuário tem participação aceita. Editar o conteúdo, excluir a anotação e anexar ou remover imagens exigem ser o autor dela; acrescentar tags é permitido a qualquer usuário logado.
+Login, cadastro e endpoints de anotações abaixo estão implementados. Convites estão implementados, incluindo permissões de dono e destinatário. A leitura exclusiva de anotações de colegas está implementada. Avaliações: veja [contrato de avaliações e telas](api-telas-colaboracao.md). A leitura de anotações exige participação ACEITO na disciplina; buscas por tag retornam somente anotações das disciplinas em que o usuário tem participação aceita. Editar o conteúdo, excluir a anotação e anexar ou remover imagens exigem ser o autor dela; acrescentar e remover tags é permitido a qualquer participante com participação ACEITO na disciplina.
 
 ## Cadastro e login
 
@@ -118,7 +118,11 @@ Corpo:
 ```json
 ["java","spring"]
 ```
-Qualquer usuário logado acrescenta tags, inclusive em anotações de outros autores; o autor da anotação não muda. Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplicação. Erros: `400` lista sem tags válidas/JSON inválido; `401` sem token válido; `404` anotação inexistente.
+Qualquer participante da disciplina (participação `ACEITO`) acrescenta tags, inclusive em anotações de outros autores; o autor da anotação não muda. Sucesso `200`: objeto de anotação do POST, com tags acrescentadas sem duplicação. Erros: `400` lista sem tags válidas/JSON inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` anotação inexistente.
+
+### DELETE /anotacoes/{id}/tags?nome={nome} — implementado
+
+Sem corpo. Tira a tag `nome` da anotação (o nome vai na query porque pode ter `/`, como em `C/C++`), sem diferenciar maiúsculas; a tag continua existindo para as demais anotações. Como acrescentar, é permitido a qualquer participante da disciplina (participação `ACEITO`), inclusive em anotações de outros autores. Uma tag que a anotação não tem não é erro. Sucesso `200`: objeto de anotação do POST, sem a tag. Erros: `400` parâmetro `nome` ausente ou vazio; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` anotação inexistente.
 
 ## Imagens de anotação
 
@@ -146,9 +150,19 @@ Como `<img src>` não envia o header `Authorization`, o front deve baixar a imag
 
 Sem corpo. Sucesso `204`; o arquivo é apagado do disco depois que a remoção é confirmada no banco. Erros: `401` sem token válido; `403` solicitante não é o autor da anotação; `404` anotação ou imagem inexistente.
 
+## Aulas
+
+### GET /aulas/{id} — implementado
+
+Sem corpo. Sucesso `200`:
+```json
+{"id":"55555555-5555-4555-8555-555555555555","data":"2026-10-14","horario":"08:00 – 09:40","topico":"Padrões de projeto","disciplinaId":"33333333-3333-4333-8333-333333333333","disciplinaNome":"PDS"}
+```
+A página da aula usa `disciplinaId` para reconhecer a disciplina. `GET /aulas?disciplinaId={id}` devolve a lista de aulas da disciplina no mesmo formato. Erros: `400` UUID inválido; `401` sem token válido; `404` aula inexistente.
+
 ## Imagens da aula
 
-Imagens avulsas, que pertencem à aula e não a uma anotação, com legenda opcional. Aceitam os mesmos formatos e o mesmo tamanho máximo das [imagens de anotação](#imagens-de-anotação), sem limite de quantidade por aula. Enviar, listar e baixar exigem participação `ACEITO` na disciplina da aula; editar a legenda e excluir exigem ser o autor da imagem. Excluir a disciplina (`DELETE /disciplinas/{id}`) também apaga os arquivos dessas imagens. A busca de anotações (`GET /anotacoes`) não inclui imagens avulsas.
+Imagens avulsas, que pertencem à aula e não a uma anotação, com legenda opcional. Aceitam os mesmos formatos e o mesmo tamanho máximo das [imagens de anotação](#imagens-de-anotação), sem limite de quantidade por aula. Enviar, listar, baixar e reordenar exigem participação `ACEITO` na disciplina da aula; editar a legenda e excluir exigem ser o autor da imagem. As imagens têm uma ordem manual, a mesma para todos os participantes: `posicao` começa em 0, e uma imagem nova entra no fim. Excluir a disciplina (`DELETE /disciplinas/{id}`) também apaga os arquivos dessas imagens. A busca de anotações (`GET /anotacoes`) não inclui imagens avulsas.
 
 ### POST /aulas/{aulaId}/imagens — implementado
 
@@ -158,13 +172,21 @@ curl -F arquivo=@slide.png -F legenda="Diagrama de classes" -H "Authorization: B
 ```
 Sucesso `201`, com `Location` apontando para a imagem:
 ```json
-{"id":"99999999-9999-4999-8999-999999999999","legenda":"Diagrama de classes","nome":"slide.png","contentType":"image/png","tamanho":48213,"url":"/api/aulas/55555555-5555-4555-8555-555555555555/imagens/99999999-9999-4999-8999-999999999999","dataCriacao":"2026-10-14T10:05:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","aulaId":"55555555-5555-4555-8555-555555555555"}
+{"id":"99999999-9999-4999-8999-999999999999","legenda":"Diagrama de classes","nome":"slide.png","contentType":"image/png","tamanho":48213,"url":"/api/aulas/55555555-5555-4555-8555-555555555555/imagens/99999999-9999-4999-8999-999999999999","dataCriacao":"2026-10-14T10:05:00","autorId":"11111111-1111-4111-8111-111111111111","autorNome":"Maria","aulaId":"55555555-5555-4555-8555-555555555555","posicao":0}
 ```
 A legenda tem no máximo 300 caracteres e é salva sem os espaços das pontas; vazia, fica `null`. `autorId` serve, como nas anotações, para o front saber se a imagem é do usuário logado. Erros: `400` campo `arquivo` ausente, arquivo vazio, formato não suportado ou legenda com mais de 300 caracteres; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente; `413` arquivo acima de 5 MB.
 
 ### GET /aulas/{aulaId}/imagens — implementado
 
-Sem corpo. Sucesso `200` com a lista de imagens avulsas da aula, no formato do POST, em ordem de criação. Pode retornar `[]`. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente.
+Sem corpo. Sucesso `200` com a lista de imagens avulsas da aula, no formato do POST, na ordem da galeria (`posicao`; em caso de empate, data de criação). Pode retornar `[]`. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente.
+
+### PUT /aulas/{aulaId}/imagens/ordem — implementado
+
+Corpo: os ids de todas as imagens da aula, na nova ordem.
+```json
+["99999999-9999-4999-8999-999999999999","88888888-8888-4888-8888-888888888888"]
+```
+Qualquer participante reordena, não só os autores das imagens. A lista precisa ter cada imagem da aula exatamente uma vez; uma lista diferente (por exemplo, de uma tela desatualizada) é recusada sem mudar nada. Sucesso `200` com a lista de imagens na nova ordem, no formato do GET. Erros: `400` lista com imagem faltando, repetida ou de outra aula, ou JSON inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente.
 
 ### GET /aulas/{aulaId}/imagens/{imagemId} — implementado
 

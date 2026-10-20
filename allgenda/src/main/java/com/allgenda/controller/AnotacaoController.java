@@ -53,6 +53,13 @@ public class AnotacaoController {
         return service.associarTags(id, tags);
     }
 
+    // remove só o vínculo com a anotação; a tag continua existindo para as demais.
+    // O nome vai na query, e não no caminho, porque uma tag pode ter "/" (ex.: "C/C++").
+    @DeleteMapping("/{id}/tags")
+    public AnotacaoResponseDTO removerTag(@PathVariable UUID id, @RequestParam String nome) {
+        return service.removerTag(id, nome);
+    }
+
     @PatchMapping("/{id}")
     public AnotacaoResponseDTO editar(@PathVariable UUID id, @RequestBody AnotacaoUpdateDTO dto) {
         return service.editar(id, dto);

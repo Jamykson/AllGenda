@@ -9,7 +9,9 @@ import java.util.UUID;
 
 public interface AnotacaoService {
     AnotacaoResponseDTO cadastrar(AnotacaoRequestDTO dto);
+    // acrescentar e remover tags é permitido a qualquer participante da disciplina, não só ao autor
     AnotacaoResponseDTO associarTags(UUID anotacaoId, List<String> nomesTags);
+    AnotacaoResponseDTO removerTag(UUID anotacaoId, String nomeTag);
     List<AnotacaoResponseDTO> listarPorAula(UUID aulaId);
     List<AnotacaoResponseDTO> listarPorDisciplina(UUID disciplinaId, String tag); // tag opcional: null = todas
     List<AnotacaoResponseDTO> listarPorTag(String tag);

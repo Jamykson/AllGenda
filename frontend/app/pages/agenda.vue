@@ -87,23 +87,9 @@ ref<Disciplina[]>([])
 const aulas =
 ref<Aula[]>([])
 
-const aulaSelecionada =
-ref<Aula | null>(null)
-
-// anotar numa aula recorrente cadastra a aula no backend; ao fechar o modal, a agenda
-// recarrega para trocar a aula recorrente pela aula cadastrada
-const aulaCadastradaNoModal =
-ref(false)
-
-function fecharAula(){
-
-aulaSelecionada.value = null
-
-if(aulaCadastradaNoModal.value){
-aulaCadastradaNoModal.value = false
-carregarAgenda()
-}
-
+// as anotações e imagens da aula ficam na página dela; voltar de lá remonta a agenda, que recarrega
+function abrirAula(aula: Aula){
+navigateTo(rotaDaAula(aula))
 }
 
 
@@ -772,12 +758,6 @@ onMounted(() => {
 <template>
 
 <div class="agenda-container">
-<AulaModal
-  v-if="aulaSelecionada"
-  :aula="aulaSelecionada"
-  @fechar="fecharAula"
-  @aula-cadastrada="aulaCadastradaNoModal = true"
-/>
 
 
 <header class="agenda-header">
@@ -982,9 +962,9 @@ class="evento"
 role="button"
 tabindex="0"
 :aria-label="'Abrir anotações de ' + aula.disciplinaNome"
-@click="aulaSelecionada = aula"
-@keydown.enter.prevent="aulaSelecionada = aula"
-@keydown.space.prevent="aulaSelecionada = aula"
+@click="abrirAula(aula)"
+@keydown.enter.prevent="abrirAula(aula)"
+@keydown.space.prevent="abrirAula(aula)"
 
 :style="{
 
@@ -1109,9 +1089,9 @@ corTextoParaFundo(aula.cor || '#2563eb')
         role="button"
         tabindex="0"
         :aria-label="'Abrir anotações de ' + aula.disciplinaNome"
-        @click="aulaSelecionada = aula"
-        @keydown.enter.prevent="aulaSelecionada = aula"
-        @keydown.space.prevent="aulaSelecionada = aula"
+        @click="abrirAula(aula)"
+        @keydown.enter.prevent="abrirAula(aula)"
+        @keydown.space.prevent="abrirAula(aula)"
         :style="{
           ...estiloEventoSemana(aula)
         }"

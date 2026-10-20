@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -214,7 +215,65 @@ class ImagemAulaIntegrationTest {
         mvc.perform(comToken(envio(PNG), tokenDeFora))
                 .andExpect(status().isForbidden());
 
-        assertThat(imagens.findByAulaIdOrderByDataCriacaoAsc(aulaId)).hasSize(1);
+        assertThat(imagens.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId)).hasSize(1);
+    }
+
+    private RequestBuilder reordenacao(String json, String token) {
+        return comToken(put("/api/aulas/{id}/imagens/ordem", aulaId)
+                .contentType(MediaType.APPLICATION_JSON).content(json), token);
+    }
+
+    @Test
+    void imagensNovasEntramNoFimEUmParticipanteReordenaParaTodos() throws Exception {
+        String primeira = enviarComoAutor();
+        String segunda = enviarComoAutor();
+        String terceira = enviarComoAutor();
+
+        mvc.perform(comToken(get("/api/aulas/{id}/imagens", aulaId), tokenAutor))
+                .andExpect(jsonPath("$[0].id").value(primeira))
+                .andExpect(jsonPath("$[0].posicao").value(0))
+                .andExpect(jsonPath("$[2].id").value(terceira))
+                .andExpect(jsonPath("$[2].posicao").value(2));
+
+        // o colega não é autor de nenhuma imagem, mas participa da disciplina
+        mvc.perform(reordenacao("[\"" + terceira + "\",\"" + primeira + "\",\"" + segunda + "\"]", tokenColega))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(terceira))
+                .andExpect(jsonPath("$[1].id").value(primeira))
+                .andExpect(jsonPath("$[2].id").value(segunda));
+
+        // a nova ordem vale para todos e as imagens enviadas depois continuam entrando no fim
+        String quarta = enviarComoAutor();
+        mvc.perform(comToken(get("/api/aulas/{id}/imagens", aulaId), tokenAutor))
+                .andExpect(jsonPath("$[0].id").value(terceira))
+                .andExpect(jsonPath("$[3].id").value(quarta));
+    }
+
+    @Test
+    void ordemQueNaoListaExatamenteAsImagensDaAulaRecebe400() throws Exception {
+        String primeira = enviarComoAutor();
+        String segunda = enviarComoAutor();
+        String mensagem = "A nova ordem deve listar exatamente as imagens da aula.";
+
+        mvc.perform(reordenacao("[\"" + primeira + "\"]", tokenAutor))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(mensagem));
+        mvc.perform(reordenacao("[\"" + primeira + "\",\"" + primeira + "\"]", tokenAutor))
+                .andExpect(status().isBadRequest());
+        mvc.perform(reordenacao("[\"" + primeira + "\",\"" + UUID.randomUUID() + "\"]", tokenAutor))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(comToken(get("/api/aulas/{id}/imagens", aulaId), tokenAutor))
+                .andExpect(jsonPath("$[0].id").value(primeira))
+                .andExpect(jsonPath("$[1].id").value(segunda));
+    }
+
+    @Test
+    void quemNaoParticipaNaoReordena() throws Exception {
+        String imagemId = enviarComoAutor();
+
+        mvc.perform(reordenacao("[\"" + imagemId + "\"]", tokenDeFora))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -234,7 +293,7 @@ class ImagemAulaIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("A legenda deve ter no máximo 300 caracteres."));
 
-        assertThat(imagens.findByAulaIdOrderByDataCriacaoAsc(aulaId)).isEmpty();
+        assertThat(imagens.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId)).isEmpty();
     }
 
     @Test

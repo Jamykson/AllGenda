@@ -36,6 +36,7 @@ export interface ImagemAula {
   autorId: string
   autorNome: string
   aulaId: string
+  posicao: number // ordem na galeria da aula, a mesma para todos
 }
 
 export interface Tag {
@@ -43,8 +44,8 @@ export interface Tag {
   nome: string
 }
 
-// Aula exibida na área de anotações. Aulas recorrentes são geradas no navegador a partir dos
-// horários da disciplina e ainda não existem no backend: são cadastradas ao receber a primeira anotação.
+// Aula exibida na página da aula. Aulas recorrentes são geradas no navegador a partir dos horários
+// da disciplina e ainda não existem no backend: são cadastradas ao receber a primeira anotação ou imagem.
 export interface AulaDaAnotacao {
   id: string
   data: string
@@ -53,3 +54,12 @@ export interface AulaDaAnotacao {
   recorrente?: boolean
   disciplinaId?: string
 }
+
+// Aula como a página da aula a mostra: a do backend (GET /api/aulas/{id}) ou uma recorrente montada pela URL.
+export interface AulaDaPagina extends AulaDaAnotacao {
+  disciplinaId: string
+  disciplinaNome: string
+}
+
+// Painel de imagens da página da aula: altura ajustável, recolhido (só a barra) ou ocupando tudo.
+export type ModoPainel = 'normal' | 'recolhido' | 'maximizado'

@@ -1,5 +1,8 @@
 <script setup lang="ts">
 const route = useRoute()
+
+// a agenda e a página da aula ocupam toda a área, sem margem, e cuidam da própria rolagem
+const telaCheia = computed(() => route.path === '/agenda' || route.path.startsWith('/aulas/'))
 </script>
 
 <template>
@@ -8,7 +11,7 @@ const route = useRoute()
 
     <main
       class="conteudo"
-      :class="{ 'conteudo-agenda': route.path === '/agenda' }"
+      :class="{ 'conteudo-agenda': telaCheia }"
     >
       <slot />
     </main>
