@@ -61,8 +61,8 @@ public class ConviteServiceImpl implements ConviteService {
     public ConviteResponseDTO enviar(UUID disciplinaId, ConviteRequestDTO dto) {
         String email = normalizarEmail(dto.email());   // 400
 
-        Disciplina disciplina = disciplinaRepository.findById(disciplinaId)   // 404
-          .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId));
+        Disciplina disciplina = disciplinaRepository.findById(disciplinaId)   
+          .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId)); // 404
 
     UUID solicitanteId = usuarioAutenticado.id();
     acesso.exigirDono(disciplinaId, "Apenas o dono pode enviar convites.");   // 403
@@ -70,11 +70,11 @@ public class ConviteServiceImpl implements ConviteService {
     Usuario destinatario = usuarioRepository.findByEmail(email)   // 404
         .orElseThrow(() -> new UsuarioNaoEncontradoException(email));
 
-        if (destinatario.getId().equals(solicitanteId)) {                       // 409
-            throw new ConflitoException("Você não pode convidar a si mesmo.");
+        if (destinatario.getId().equals(solicitanteId)) {
+            throw new ConflitoException("Você não pode convidar a si mesmo."); // 409
         }
         if (participacaoRepository.findByUsuarioIdAndDisciplinaId(destinatario.getId(), disciplinaId).isPresent()) {
-            throw new ConflitoException("Este usuário já tem uma participação nesta disciplina.");
+            throw new ConflitoException("Este usuário já tem uma participação nesta disciplina.");   // 409
         }
 
         // convite = participação de membro ainda pendente; grava-se pelo lado dono (Participacao)

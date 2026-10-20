@@ -24,7 +24,7 @@ public class UsuarioAutenticado {
     public UUID id() {
         var autenticacao = SecurityContextHolder.getContext().getAuthentication();
         if (autenticacao == null || !autenticacao.isAuthenticated()) {
-            throw new AuthenticationCredentialsNotFoundException("Autenticação de usuário obrigatória");
+            throw new AuthenticationCredentialsNotFoundException("Autenticação de usuário obrigatória");  // 401
         }
         return UUID.fromString(autenticacao.getName());
     }
