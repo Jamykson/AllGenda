@@ -12,6 +12,7 @@ import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.TagRepository;
 import com.allgenda.repository.UsuarioRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.UsuarioAutenticado;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,8 +62,9 @@ class TagServiceImplTest {
 
     @BeforeEach
     void setUp() {
+        UsuarioAutenticado autenticado = new UsuarioAutenticado(usuarioRepository);
         service = new TagServiceImpl(repository, anotacaoRepository, disciplinaRepository, participacaoRepository,
-                new UsuarioAutenticado(usuarioRepository), new TagMapper());
+                autenticado, new AcessoDisciplina(participacaoRepository, autenticado), new TagMapper());
         disciplina = new Disciplina();
         ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
         SecurityContextHolder.getContext().setAuthentication(

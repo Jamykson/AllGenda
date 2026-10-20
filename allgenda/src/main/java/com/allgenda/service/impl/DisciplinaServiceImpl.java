@@ -20,6 +20,7 @@ import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.DisciplinaService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
@@ -34,6 +35,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     private final RemocaoArquivos remocaoArquivos;
     private final DisciplinaMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
+    private final AcessoDisciplina acesso;
 
     public DisciplinaServiceImpl(DisciplinaRepository repository,
                                  ParticipacaoRepository participacaoRepository,
@@ -41,7 +43,8 @@ public class DisciplinaServiceImpl implements DisciplinaService {
                                  ImagemAulaRepository imagemAulaRepository,
                                  RemocaoArquivos remocaoArquivos,
                                  DisciplinaMapper mapper,
-                                 UsuarioAutenticado usuarioAutenticado){
+                                 UsuarioAutenticado usuarioAutenticado,
+                                 AcessoDisciplina acesso){
         this.repository = repository;
         this.participacaoRepository = participacaoRepository;
         this.imagemRepository = imagemRepository;
@@ -49,6 +52,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
         this.usuarioAutenticado = usuarioAutenticado;
+        this.acesso = acesso;
     }
 
     @Override
@@ -83,15 +87,22 @@ public class DisciplinaServiceImpl implements DisciplinaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<DisciplinaResponseDTO> listarTodas() {
-        return mapper.toDtoList(repository.findAll());
+    public List<DisciplinaResponseDTO> listarDoUsuario() {
+        // só as disciplinas em que a pessoa participa com status ACEITO (dono ou membro)
+        List<Disciplina> disciplinasDoUsuario = participacaoRepository
+            .findByUsuarioIdAndStatus(usuarioAutenticado.id(), StatusParticipacao.ACEITO)
+            .stream()
+            .map(Participacao::getDisciplina)
+            .toList();
+        return mapper.toDtoList(disciplinasDoUsuario);
     }
 
     @Override
     @Transactional(readOnly = true)
     public DisciplinaResponseDTO buscarPorId(UUID id) {
         Disciplina disciplina = repository.findById(id)
-            .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));
+            .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));   // 404
+        acesso.exigirParticipanteAceito(id);                                 // 403
         return mapper.toDto(disciplina);
     }
 
@@ -99,7 +110,8 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     @Transactional
     public void excluir(UUID id) {
         Disciplina disciplina = repository.findById(id)
-            .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));
+            .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));   // 404
+        acesso.exigirDono(id, "Somente o dono pode excluir a disciplina."); // 403, antes de apagar qualquer coisa
 
         // a cascata disciplina -> aulas -> anotações -> imagens (e aulas -> imagens avulsas) apaga os registros,
         // mas não os arquivos; as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada

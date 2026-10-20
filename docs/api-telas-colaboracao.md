@@ -19,7 +19,7 @@ Resposta `201`:
 ```
 O tipo aceita `PROVA` ou `ENTREGA`. Todos os campos são obrigatórios; descrição é aparada e limitada a 500 caracteres. Datas passadas são permitidas. Listagem retorna `200` com objetos no mesmo formato, ordenados por data e ID, ou `[]` para disciplina sem avaliações.
 
-Erros: `400` para campos ausentes, enum/UUID/data inválidos ou descrição vazia/longa; `401` para token ausente/inválido; `404` para disciplina inexistente. A avaliação referencia a disciplina por FK obrigatória. `Disciplina.avaliacoes` segue as cascatas usadas para aulas: apagar uma disciplina apaga suas avaliações. A lista não é embutida no DTO de disciplina.
+Erros: `400` para campos ausentes, enum/UUID/data inválidos ou descrição vazia/longa; `401` para token ausente/inválido; `403` para quem não tem participação aceita na disciplina; `404` para disciplina inexistente. `403` para quem não tem participação aceita. A avaliação referencia a disciplina por FK obrigatória. `Disciplina.avaliacoes` segue as cascatas usadas para aulas: apagar uma disciplina apaga suas avaliações. A lista não é embutida no DTO de disciplina.
 
 ## Validação
 

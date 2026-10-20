@@ -26,6 +26,7 @@ import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.ConviteService;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.UsuarioAutenticado;
 
 @Service
@@ -38,17 +39,20 @@ public class ConviteServiceImpl implements ConviteService {
     private final DisciplinaRepository disciplinaRepository;
     private final UsuarioRepository usuarioRepository;
     private final UsuarioAutenticado usuarioAutenticado;
+    private final AcessoDisciplina acesso;
     private final ConviteMapper mapper;
 
     public ConviteServiceImpl(ParticipacaoRepository participacaoRepository,
                               DisciplinaRepository disciplinaRepository,
                               UsuarioRepository usuarioRepository,
                               UsuarioAutenticado usuarioAutenticado,
+                              AcessoDisciplina acesso,
                               ConviteMapper mapper) {
         this.participacaoRepository = participacaoRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.usuarioRepository = usuarioRepository;
         this.usuarioAutenticado = usuarioAutenticado;
+        this.acesso = acesso;
         this.mapper = mapper;
     }
 
@@ -61,7 +65,7 @@ public class ConviteServiceImpl implements ConviteService {
           .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId));
 
     UUID solicitanteId = usuarioAutenticado.id();
-    exigirDonoAceito(solicitanteId, disciplinaId);   // 403
+    acesso.exigirDono(disciplinaId, "Apenas o dono pode enviar convites.");   // 403
 
     Usuario destinatario = usuarioRepository.findByEmail(email)   // 404
         .orElseThrow(() -> new UsuarioNaoEncontradoException(email));
@@ -119,15 +123,6 @@ public class ConviteServiceImpl implements ConviteService {
         return mapper.toDto(participacaoRepository.save(convite));
     }
 
-    // regra do contrato: só o dono (com participação aceita) envia convites
-    private void exigirDonoAceito(UUID usuarioId, UUID disciplinaId) {
-        boolean donoAceito = participacaoRepository.findByUsuarioIdAndDisciplinaId(usuarioId, disciplinaId)
-            .filter(p -> p.getPapel() == PapelParticipacao.DONO && p.getStatus() == StatusParticipacao.ACEITO)
-            .isPresent();
-        if (!donoAceito) {
-            throw new AcessoNegadoException("Apenas o dono pode enviar convites.");
-        }
-    }
 
     private String normalizarEmail(String email) {
         if (email == null || !EMAIL.matcher(email.trim()).matches()) {

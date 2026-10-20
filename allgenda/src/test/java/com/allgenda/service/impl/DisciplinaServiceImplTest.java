@@ -20,17 +20,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import com.allgenda.dto.request.DisciplinaRequestDTO;
+import com.allgenda.dto.response.DisciplinaResponseDTO;
+import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.mapper.DisciplinaMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.PapelParticipacao;
+import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
@@ -50,12 +54,14 @@ class DisciplinaServiceImplTest {
     private ArmazenamentoService armazenamento;
     @Mock
     private UsuarioAutenticado usuarioAutenticado;
+    @Mock
+    private AcessoDisciplina acessoDisciplina;
 
     private DisciplinaServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, participacaoRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado);
+        service = new DisciplinaServiceImpl(repository, participacaoRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado, acessoDisciplina);
     }
 
     @Test
@@ -107,6 +113,44 @@ class DisciplinaServiceImplTest {
             assertThat(p.getPapel()).isEqualTo(PapelParticipacao.DONO);
             assertThat(p.getStatus()).isEqualTo(StatusParticipacao.ACEITO);
         });
+    }
+
+    @Test
+    void listaSomenteAsDisciplinasDeParticipacaoAceita() {
+        var usuarioId = java.util.UUID.randomUUID();
+        var disciplina = new Disciplina();
+        disciplina.setNome("PDS");
+        var participacao = new Participacao();
+        participacao.setDisciplina(disciplina);
+        when(usuarioAutenticado.id()).thenReturn(usuarioId);
+        when(participacaoRepository.findByUsuarioIdAndStatus(usuarioId, StatusParticipacao.ACEITO))
+            .thenReturn(List.of(participacao));
+
+        assertThat(service.listarDoUsuario()).extracting(DisciplinaResponseDTO::nome).containsExactly("PDS");
+        verify(repository, never()).findAll();
+    }
+
+    @Test
+    void quemNaoEhDonoNaoExcluiADisciplina() {
+        var id = java.util.UUID.randomUUID();
+        when(repository.findById(id)).thenReturn(java.util.Optional.of(new Disciplina()));
+        doThrow(new AcessoNegadoException("Somente o dono pode excluir a disciplina."))
+            .when(acessoDisciplina).exigirDono(id, "Somente o dono pode excluir a disciplina.");
+
+        assertThatThrownBy(() -> service.excluir(id)).isInstanceOf(AcessoNegadoException.class);
+
+        verify(participacaoRepository, never()).deleteByDisciplinaId(any());
+        verify(repository, never()).delete(any(Disciplina.class));
+    }
+
+    @Test
+    void quemNaoParticipaNaoBuscaADisciplinaPeloId() {
+        var id = java.util.UUID.randomUUID();
+        when(repository.findById(id)).thenReturn(java.util.Optional.of(new Disciplina()));
+        doThrow(new AcessoNegadoException("Somente participantes da disciplina têm acesso a ela."))
+            .when(acessoDisciplina).exigirParticipanteAceito(id);
+
+        assertThatThrownBy(() -> service.buscarPorId(id)).isInstanceOf(AcessoNegadoException.class);
     }
 
     @Test

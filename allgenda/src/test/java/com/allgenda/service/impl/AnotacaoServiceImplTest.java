@@ -26,6 +26,7 @@ import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
@@ -82,8 +83,10 @@ class AnotacaoServiceImplTest {
     @BeforeEach
     void setUp() {
         // UsuarioAutenticado real: lê o usuário do SecurityContext preparado abaixo e o busca no repositório simulado
+        UsuarioAutenticado autenticado = new UsuarioAutenticado(usuarioRepository);
         service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, disciplinaRepository, participacaoRepository,
-                new UsuarioAutenticado(usuarioRepository), tagService, new RemocaoArquivos(armazenamento), new AnotacaoMapper());
+                autenticado, new AcessoDisciplina(participacaoRepository, autenticado), tagService,
+                new RemocaoArquivos(armazenamento), new AnotacaoMapper());
 
         Disciplina disciplina = new Disciplina();
         disciplina.setNome("PDS");
@@ -121,6 +124,7 @@ class AnotacaoServiceImplTest {
 
     @Test
     void cadastraAnotacaoComUsuarioAutenticadoETags() {
+        participantesDaDisciplinaDaAula();
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
         when(tagService.buscarOuCriar(aula.getDisciplina(), List.of("java", "poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("java"), tag("poo"))));
@@ -138,6 +142,7 @@ class AnotacaoServiceImplTest {
 
     @Test
     void cadastraAnotacaoSemTags() {
+        participantesDaDisciplinaDaAula();
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
         when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
@@ -150,6 +155,7 @@ class AnotacaoServiceImplTest {
 
     @Test
     void usaAutorAutenticadoQuandoExiste() {
+        participantesDaDisciplinaDaAula();
         UUID autorId = usuarioId;
         Usuario autor = new Usuario();
         autor.setNome("Maria");
@@ -165,12 +171,22 @@ class AnotacaoServiceImplTest {
 
     @Test
     void autorInexistenteLancaErroTratado() {
+        participantesDaDisciplinaDaAula();
         UUID autorId = usuarioId;
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(autorId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Texto", null)))
                 .isInstanceOf(UsuarioNaoEncontradoException.class);
+        verify(anotacaoRepository, never()).save(any());
+    }
+
+    @Test
+    void cadastrarSemParticipacaoAceitaLancaAcessoNegado() {
+        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+
+        assertThatThrownBy(() -> service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Texto", null)))
+                .isInstanceOf(AcessoNegadoException.class);
         verify(anotacaoRepository, never()).save(any());
     }
 
@@ -193,6 +209,7 @@ class AnotacaoServiceImplTest {
 
     @Test
     void cadastraAnotacaoSoComTitulo() {
+        participantesDaDisciplinaDaAula();
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
         when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
@@ -206,6 +223,7 @@ class AnotacaoServiceImplTest {
 
     @Test
     void cadastraAnotacaoComTituloEConteudo() {
+        participantesDaDisciplinaDaAula();
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
         when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
@@ -219,6 +237,7 @@ class AnotacaoServiceImplTest {
 
     @Test
     void tituloEmBrancoFicaNulo() {
+        participantesDaDisciplinaDaAula();
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
         when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());

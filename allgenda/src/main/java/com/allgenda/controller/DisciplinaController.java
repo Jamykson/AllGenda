@@ -27,8 +27,8 @@ public class DisciplinaController {
     }
 
     @GetMapping // responde a requisições GET (buscar dado, sem alterar nada no servidor)
-    public List<DisciplinaResponseDTO> listarTodas() {
-        return service.listarTodas();
+    public List<DisciplinaResponseDTO> listarDoUsuario() {
+        return service.listarDoUsuario();
     }
 
     @GetMapping("/{id}") // sufixo específico desse endpoint

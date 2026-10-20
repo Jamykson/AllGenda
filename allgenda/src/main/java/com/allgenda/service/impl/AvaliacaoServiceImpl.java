@@ -10,6 +10,7 @@ import com.allgenda.model.Disciplina;
 import com.allgenda.repository.AvaliacaoRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.service.AvaliacaoService;
+import com.allgenda.service.AcessoDisciplina;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -18,14 +19,20 @@ import java.util.UUID;
 @Service
 public class AvaliacaoServiceImpl implements AvaliacaoService {
 
+    private static final String SEM_ACESSO = "Somente participantes da disciplina acessam as avaliações.";
+
     private final AvaliacaoRepository avaliacoes;
     private final DisciplinaRepository disciplinas;
+    private final AcessoDisciplina acesso;
     private final AvaliacaoMapper mapper;
 
     public AvaliacaoServiceImpl(AvaliacaoRepository avaliacoes,
-                               DisciplinaRepository disciplinas, AvaliacaoMapper mapper) {
+                               DisciplinaRepository disciplinas,
+                               AcessoDisciplina acesso,
+                               AvaliacaoMapper mapper) {
         this.avaliacoes = avaliacoes;
         this.disciplinas = disciplinas;
+        this.acesso = acesso;
         this.mapper = mapper;
     }
 
@@ -34,8 +41,8 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
     public AvaliacaoResponseDTO cadastrar(AvaliacaoRequestDTO dto) {
         validar(dto);
         Disciplina disciplina = disciplinas.findById(dto.disciplinaId())
-                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));
-
+                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));  //404
+        acesso.exigirParticipanteAceito(disciplina.getId(), SEM_ACESSO);
         // A referência garante que a avaliação pertença a uma disciplina existente.
         Avaliacao avaliacao = new Avaliacao();
         avaliacao.setDisciplina(disciplina);
@@ -55,6 +62,7 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
         if (!disciplinas.existsById(disciplinaId)) {
             throw new DisciplinaNaoEncontradaException(disciplinaId);
         }
+        acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
         return mapper.toDtoList(avaliacoes.findByDisciplinaIdOrderByDataAscIdAsc(disciplinaId));
     }
 
@@ -72,4 +80,5 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
             throw new RequisicaoInvalidaException("O tipo da avaliação é obrigatório: PROVA ou ENTREGA.");
         }
     }
+
 }

@@ -9,16 +9,15 @@ import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.mapper.ImagemAulaMapper;
 import com.allgenda.model.Aula;
 import com.allgenda.model.ImagemAula;
-import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.ImagemAulaRepository;
-import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemArquivo;
 import com.allgenda.service.ImagemAulaService;
 import com.allgenda.service.RecebimentoImagem;
 import com.allgenda.service.RecebimentoImagem.ImagemRecebida;
 import com.allgenda.service.RemocaoArquivos;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,7 +37,7 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
 
     private final AulaRepository aulaRepository;
     private final ImagemAulaRepository imagemRepository;
-    private final ParticipacaoRepository participacaoRepository;
+    private final AcessoDisciplina acesso;
     private final RecebimentoImagem recebimento;
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
@@ -47,7 +46,7 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
 
     public ImagemAulaServiceImpl(AulaRepository aulaRepository,
                                  ImagemAulaRepository imagemRepository,
-                                 ParticipacaoRepository participacaoRepository,
+                                 AcessoDisciplina acesso,
                                  RecebimentoImagem recebimento,
                                  ArmazenamentoService armazenamento,
                                  RemocaoArquivos remocaoArquivos,
@@ -55,7 +54,7 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
                                  UsuarioAutenticado usuarioAutenticado) {
         this.aulaRepository = aulaRepository;
         this.imagemRepository = imagemRepository;
-        this.participacaoRepository = participacaoRepository;
+        this.acesso = acesso;
         this.recebimento = recebimento;
         this.armazenamento = armazenamento;
         this.remocaoArquivos = remocaoArquivos;
@@ -159,13 +158,8 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
         }
     }
 
-    // dono e membro têm participação ACEITO; sem participação, pendente ou recusada: sem acesso
     private void exigirParticipanteAceito(Aula aula) {
-        boolean participa = participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(
-                usuarioAutenticado.id(), aula.getDisciplina().getId(), StatusParticipacao.ACEITO);
-        if (!participa) {
-            throw new AcessoNegadoException("Somente participantes da disciplina veem as imagens.");
-        }
+        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), "Somente participantes da disciplina veem as imagens.");
     }
 
     // legenda em branco vira null; o limite acompanha a coluna legenda de ImagemAula

@@ -182,4 +182,11 @@ class VisibilidadeAnotacoesIntegrationTest {
         mvc.perform(get("/api/anotacoes").param("aulaId", aulaId))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void quemNaoParticipaNaoCriaAnotacaoNaAula() throws Exception {
+        mvc.perform(comToken(post("/api/anotacoes").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"aulaId\":\"" + aulaId + "\",\"conteudo\":\"Intruso\",\"tags\":[]}"), estranho))
+                .andExpect(status().isForbidden());
+    }
 }
