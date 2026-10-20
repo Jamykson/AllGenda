@@ -23,6 +23,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:imagens': [imagens: ImagemAula[]]
   'update:modo': [modo: ModoPainel]
+  // perguntar ao assistente sobre a imagem
+  perguntar: [imagem: ImagemAula]
 }>()
 
 const { adicionarImagemAula, reordenarImagensDaAula } = useAnotacoes()
@@ -170,6 +172,12 @@ function aoExcluirImagem(imagemId: string) {
   if (!restantes.length) indiceAberto.value = null
   else if (indiceAberto.value !== null) indiceAberto.value = Math.min(indiceAberto.value, restantes.length - 1)
 }
+
+// o visualizador cobre a tela toda, então fecha para mostrar o assistente
+function perguntarSobre(imagem: ImagemAula) {
+  indiceAberto.value = null
+  emit('perguntar', imagem)
+}
 </script>
 
 <template>
@@ -300,6 +308,7 @@ function aoExcluirImagem(imagemId: string) {
       @fechar="indiceAberto = null"
       @salva="aoSalvarImagem"
       @excluida="aoExcluirImagem"
+      @perguntar="perguntarSobre"
     />
   </section>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Image as ImageIcon, Trash2, X } from '@lucide/vue'
+import { Image as ImageIcon, Sparkles, Trash2, X } from '@lucide/vue'
 import type { Anotacao, ImagemAnotacao, Tag } from '~/types/anotacao'
 
 // Editor de uma anotação da página da aula. Título e texto são do autor e se salvam sozinhos pouco
@@ -24,6 +24,8 @@ const emit = defineEmits<{
   // a anotação foi criada ou mudou no backend (título, texto, tags ou imagens)
   salva: [anotacao: Anotacao]
   excluida: [anotacaoId: string]
+  // perguntar ao assistente sobre esta anotação
+  perguntar: [anotacaoId: string]
 }>()
 
 const { criar, editar, excluir, acrescentarTags, removerTag, anexarImagem, removerImagem } = useAnotacoes()
@@ -138,6 +140,13 @@ async function prepararSaida() {
 }
 
 defineExpose({ salvarAgora, temPendencia, prepararSaida })
+
+// o assistente lê a anotação do backend, então o texto pendente é salvo antes
+async function perguntarAoAssistente() {
+  if (!anotacaoId.value) return
+  if (ehDoUsuario.value) await salvarAgora()
+  emit('perguntar', anotacaoId.value)
+}
 
 // o SeletorTags mostra os erros destas ações
 async function acrescentarTag(nome: string) {
@@ -261,14 +270,26 @@ onBeforeUnmount(() => {
         <span v-if="formatarDataHora(anotacao.dataCriacao)">· criada em {{ formatarDataHora(anotacao.dataCriacao) }}</span>
       </template>
       <span v-else>Nova anotação</span>
-      <span
-        v-if="ehDoUsuario"
-        class="estado-salvamento"
-        :class="`estado-${estado}`"
-        role="status"
-      >
-        {{ textoDoEstado }}
-        <button v-if="estado === 'erro'" type="button" class="link-acao" @click="salvarAgora">Tentar de novo</button>
+      <span class="acoes-meta">
+        <span
+          v-if="ehDoUsuario"
+          class="estado-salvamento"
+          :class="`estado-${estado}`"
+          role="status"
+        >
+          {{ textoDoEstado }}
+          <button v-if="estado === 'erro'" type="button" class="link-acao" @click="salvarAgora">Tentar de novo</button>
+        </span>
+        <button
+          v-if="salvaNoBackend"
+          type="button"
+          class="perguntar-assistente"
+          title="Perguntar ao assistente sobre esta anotação"
+          @click="perguntarAoAssistente"
+        >
+          <Sparkles :size="13" :stroke-width="2" aria-hidden="true" />
+          Perguntar ao assistente
+        </button>
       </span>
     </p>
 
@@ -381,9 +402,34 @@ onBeforeUnmount(() => {
   font-size: 12px;
 }
 
-.estado-salvamento {
+.acoes-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
   margin-left: auto;
+}
+
+.estado-salvamento {
   color: #64748b;
+}
+
+.perguntar-assistente {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1px solid #ddd6fe;
+  border-radius: 999px;
+  background: #fff;
+  color: #6d28d9;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.perguntar-assistente:hover {
+  background: #f5f3ff;
 }
 
 .estado-salvo {
@@ -564,6 +610,7 @@ onBeforeUnmount(() => {
 .botao-excluir:focus-visible,
 .remover-imagem:focus-visible,
 .link-acao:focus-visible,
+.perguntar-assistente:focus-visible,
 .anexar:focus-within {
   outline: 2px solid rgb(37 99 235 / 55%);
   outline-offset: 2px;
