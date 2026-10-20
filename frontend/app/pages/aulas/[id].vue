@@ -3,8 +3,8 @@ import { ArrowLeft } from '@lucide/vue'
 import type { RouteLocationNormalized } from 'vue-router'
 import type { Anotacao, AulaDaPagina, ImagemAula, ModoPainel } from '~/types/anotacao'
 
-// Página de uma aula: galeria de imagens avulsas no topo (painel ajustável), lista de anotações à
-// esquerda e editor da anotação selecionada no centro.
+// Página de uma aula: lista de anotações à esquerda, da altura toda (recolhível), e, ao lado dela,
+// a galeria de imagens avulsas no topo (painel ajustável) e o editor da anotação selecionada.
 //
 // Uma aula recorrente ainda não existe no backend e chega como /aulas/recorrente?disciplinaId=&data=&horario=.
 // Ela é cadastrada quando recebe a primeira anotação ou imagem, e então a URL passa a ser /aulas/{id}.
@@ -43,7 +43,8 @@ const editor = ref<EditorExposto | null>(null)
 
 const modoPainel = ref<ModoPainel>('normal')
 const fracaoPainel = ref(FRACAO_INICIAL)
-const areaAula = ref<HTMLElement | null>(null)
+const listaRecolhida = ref(false)
+const colunaPrincipal = ref<HTMLElement | null>(null)
 let redimensionando = false
 
 let chaveCarregada = ''
@@ -227,8 +228,8 @@ function iniciarRedimensionamento(evento: PointerEvent) {
 }
 
 function redimensionar(evento: PointerEvent) {
-  if (!redimensionando || !areaAula.value) return
-  const caixa = areaAula.value.getBoundingClientRect()
+  if (!redimensionando || !colunaPrincipal.value) return
+  const caixa = colunaPrincipal.value.getBoundingClientRect()
   definirFracao((evento.clientY - caixa.top) / caixa.height)
 }
 
@@ -297,47 +298,56 @@ useHead(() => ({ title: aula.value ? `${aula.value.disciplinaNome} · ${formatar
 
     <p v-if="erroAula" class="mensagem-erro erro-pagina" role="alert">{{ erroAula }}</p>
 
-    <div v-else-if="aula" ref="areaAula" class="area-aula">
-      <div class="painel-imagens" :class="`painel-${modoPainel}`" :style="estiloPainel">
-        <PainelGaleria
-          v-model:imagens="imagens"
-          v-model:modo="modoPainel"
-          :aula-id="aulaIdNoBackend"
-          :obter-aula-id="obterAulaId"
-          :carregando="carregandoConteudo"
-        />
-      </div>
+    <div
+      v-else-if="aula"
+      class="area-aula"
+      :class="{ 'com-lista-recolhida': listaRecolhida, 'galeria-maximizada': modoPainel === 'maximizado' }"
+    >
+      <!-- com a galeria maximizada, ela ocupa todo o espaço abaixo do cabeçalho -->
+      <ListaAnotacoes
+        v-show="modoPainel !== 'maximizado'"
+        :anotacoes="anotacoes"
+        :selecionada-id="selecionadaId"
+        :carregando="carregandoConteudo"
+        :recolhida="listaRecolhida"
+        @selecionar="selecionar"
+        @nova="selecionar(null)"
+        @alternar="listaRecolhida = !listaRecolhida"
+      />
 
-      <div
-        v-if="modoPainel === 'normal'"
-        class="alca"
-        role="separator"
-        tabindex="0"
-        aria-orientation="horizontal"
-        aria-label="Ajustar altura da galeria"
-        :aria-valuenow="Math.round(fracaoPainel * 100)"
-        :aria-valuemin="Math.round(FRACAO_MINIMA * 100)"
-        :aria-valuemax="Math.round(FRACAO_MAXIMA * 100)"
-        title="Arraste para ajustar a altura da galeria (duplo clique volta ao tamanho inicial)"
-        @pointerdown="iniciarRedimensionamento"
-        @pointermove="redimensionar"
-        @pointerup="terminarRedimensionamento"
-        @pointercancel="terminarRedimensionamento"
-        @dblclick="fracaoPainel = FRACAO_INICIAL"
-        @keydown="ajustarComTeclado"
-      >
-        <span class="pegador" aria-hidden="true" />
-      </div>
+      <div ref="colunaPrincipal" class="coluna-principal">
+        <div class="painel-imagens" :class="`painel-${modoPainel}`" :style="estiloPainel">
+          <PainelGaleria
+            v-model:imagens="imagens"
+            v-model:modo="modoPainel"
+            :aula-id="aulaIdNoBackend"
+            :obter-aula-id="obterAulaId"
+            :carregando="carregandoConteudo"
+          />
+        </div>
 
-      <div v-show="modoPainel !== 'maximizado'" class="area-anotacoes">
-        <ListaAnotacoes
-          :anotacoes="anotacoes"
-          :selecionada-id="selecionadaId"
-          :carregando="carregandoConteudo"
-          @selecionar="selecionar"
-          @nova="selecionar(null)"
-        />
-        <div class="area-editor">
+        <div
+          v-if="modoPainel === 'normal'"
+          class="alca"
+          role="separator"
+          tabindex="0"
+          aria-orientation="horizontal"
+          aria-label="Ajustar altura da galeria"
+          :aria-valuenow="Math.round(fracaoPainel * 100)"
+          :aria-valuemin="Math.round(FRACAO_MINIMA * 100)"
+          :aria-valuemax="Math.round(FRACAO_MAXIMA * 100)"
+          title="Arraste para ajustar a altura da galeria (duplo clique volta ao tamanho inicial)"
+          @pointerdown="iniciarRedimensionamento"
+          @pointermove="redimensionar"
+          @pointerup="terminarRedimensionamento"
+          @pointercancel="terminarRedimensionamento"
+          @dblclick="fracaoPainel = FRACAO_INICIAL"
+          @keydown="ajustarComTeclado"
+        >
+          <span class="pegador" aria-hidden="true" />
+        </div>
+
+        <div v-show="modoPainel !== 'maximizado'" class="area-editor">
           <p v-if="erroConteudo" class="mensagem-erro erro-conteudo" role="alert">{{ erroConteudo }}</p>
           <EditorAnotacao
             v-else-if="!carregandoConteudo"
@@ -424,10 +434,24 @@ h1 {
 }
 
 .area-aula {
-  position: relative;
-  display: flex;
+  display: grid;
   flex: 1;
+  grid-template-columns: 300px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.area-aula.com-lista-recolhida {
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+
+.area-aula.galeria-maximizada {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.coluna-principal {
+  display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -466,17 +490,11 @@ h1 {
   background: #94a3b8;
 }
 
-.area-anotacoes {
-  display: grid;
-  flex: 1;
-  grid-template-columns: 300px minmax(0, 1fr);
-  min-height: 0;
-  background: #fff;
-}
-
 .area-editor {
+  flex: 1;
   min-width: 0;
   min-height: 0;
+  background: #fff;
 }
 
 .mensagem-erro {
@@ -495,10 +513,20 @@ h1 {
   outline-offset: 2px;
 }
 
+/* em telas estreitas, a lista fica acima da galeria e do editor */
 @media (max-width: 900px) {
-  .area-anotacoes {
+  .area-aula,
+  .area-aula.com-lista-recolhida {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 35%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 30%) minmax(0, 1fr);
+  }
+
+  .area-aula.com-lista-recolhida {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .area-aula.galeria-maximizada {
+    grid-template-rows: minmax(0, 1fr);
   }
 }
 </style>

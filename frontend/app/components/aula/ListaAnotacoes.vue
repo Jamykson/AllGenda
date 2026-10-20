@@ -1,20 +1,23 @@
 <script setup lang="ts">
-import { Image as ImageIcon, Plus } from '@lucide/vue'
+import { Image as ImageIcon, PanelLeftClose, PanelLeftOpen, Plus } from '@lucide/vue'
 import type { Anotacao } from '~/types/anotacao'
 
 // Barra lateral da página da aula: um item grande por anotação. Com título, mostra o título e o
-// começo do texto; sem título, só o texto, com mais linhas.
+// começo do texto; sem título, só o texto, com mais linhas. Recolhida, vira uma faixa estreita
+// com os botões de expandir e de nova anotação.
 
 defineProps<{
   anotacoes: Anotacao[]
   // null quando o editor está com uma anotação nova, ainda não salva
   selecionadaId: string | null
   carregando: boolean
+  recolhida: boolean
 }>()
 
 const emit = defineEmits<{
   selecionar: [anotacaoId: string]
   nova: []
+  alternar: []
 }>()
 
 const { usuario } = useAuth()
@@ -27,9 +30,45 @@ function ehDoUsuario(anotacao: Anotacao) {
 </script>
 
 <template>
-  <nav class="lista-anotacoes" aria-label="Anotações da aula">
+  <nav v-if="recolhida" class="lista-anotacoes recolhida" aria-label="Anotações da aula">
+    <button
+      type="button"
+      class="botao-icone"
+      aria-label="Expandir lista de anotações"
+      title="Expandir lista de anotações"
+      aria-expanded="false"
+      @click="emit('alternar')"
+    >
+      <PanelLeftOpen :size="18" :stroke-width="1.8" aria-hidden="true" />
+    </button>
+    <span class="contagem" :title="`${anotacoes.length} anotação(ões)`">{{ anotacoes.length }}</span>
+    <button
+      type="button"
+      class="botao-icone"
+      aria-label="Nova anotação"
+      title="Nova anotação"
+      :aria-pressed="selecionadaId === null"
+      @click="emit('nova')"
+    >
+      <Plus :size="18" :stroke-width="2" aria-hidden="true" />
+    </button>
+  </nav>
+
+  <nav v-else class="lista-anotacoes" aria-label="Anotações da aula">
     <div class="topo-lista">
-      <h2>Anotações <span class="contagem">{{ anotacoes.length }}</span></h2>
+      <div class="linha-titulo">
+        <h2>Anotações <span class="contagem">{{ anotacoes.length }}</span></h2>
+        <button
+          type="button"
+          class="botao-icone"
+          aria-label="Recolher lista de anotações"
+          title="Recolher lista de anotações"
+          aria-expanded="true"
+          @click="emit('alternar')"
+        >
+          <PanelLeftClose :size="18" :stroke-width="1.8" aria-hidden="true" />
+        </button>
+      </div>
       <button
         type="button"
         class="botao-nova"
@@ -92,8 +131,41 @@ function ehDoUsuario(anotacao: Anotacao) {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px 14px 12px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.linha-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recolhida {
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.botao-icone {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+.botao-icone:hover,
+.botao-icone[aria-pressed='true'] {
+  border-color: #e2e8f0;
+  background: #fff;
+  color: #1d4ed8;
 }
 
 h2 {
@@ -254,8 +326,22 @@ h2 {
 }
 
 .botao-nova:focus-visible,
+.botao-icone:focus-visible,
 .item:focus-visible {
   outline: 2px solid rgb(37 99 235 / 55%);
   outline-offset: 2px;
+}
+
+/* em telas estreitas a lista fica acima do editor, então a faixa recolhida é horizontal */
+@media (max-width: 900px) {
+  .lista-anotacoes {
+    border-right: 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .recolhida {
+    flex-direction: row;
+    padding: 6px 12px;
+  }
 }
 </style>
