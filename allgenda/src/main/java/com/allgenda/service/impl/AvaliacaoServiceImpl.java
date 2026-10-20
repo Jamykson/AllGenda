@@ -4,12 +4,16 @@ import com.allgenda.dto.request.AvaliacaoRequestDTO;
 import com.allgenda.dto.response.AvaliacaoResponseDTO;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
+import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.mapper.AvaliacaoMapper;
 import com.allgenda.model.Avaliacao;
 import com.allgenda.model.Disciplina;
+import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.AvaliacaoRepository;
 import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.service.AvaliacaoService;
+import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -20,12 +24,19 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
 
     private final AvaliacaoRepository avaliacoes;
     private final DisciplinaRepository disciplinas;
+    private final ParticipacaoRepository participacoes;
+    private final UsuarioAutenticado usuarioAutenticado;
     private final AvaliacaoMapper mapper;
 
     public AvaliacaoServiceImpl(AvaliacaoRepository avaliacoes,
-                               DisciplinaRepository disciplinas, AvaliacaoMapper mapper) {
+                               DisciplinaRepository disciplinas,
+                               ParticipacaoRepository participacoes,
+                               UsuarioAutenticado usuarioAutenticado,
+                               AvaliacaoMapper mapper) {
         this.avaliacoes = avaliacoes;
         this.disciplinas = disciplinas;
+        this.participacoes = participacoes;
+        this.usuarioAutenticado = usuarioAutenticado;
         this.mapper = mapper;
     }
 
@@ -34,8 +45,8 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
     public AvaliacaoResponseDTO cadastrar(AvaliacaoRequestDTO dto) {
         validar(dto);
         Disciplina disciplina = disciplinas.findById(dto.disciplinaId())
-                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));
-
+                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));  //404
+        exigirParticipanteAceito(disciplina.getId()); 
         // A referência garante que a avaliação pertença a uma disciplina existente.
         Avaliacao avaliacao = new Avaliacao();
         avaliacao.setDisciplina(disciplina);
@@ -55,6 +66,7 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
         if (!disciplinas.existsById(disciplinaId)) {
             throw new DisciplinaNaoEncontradaException(disciplinaId);
         }
+        exigirParticipanteAceito(disciplinaId); 
         return mapper.toDtoList(avaliacoes.findByDisciplinaIdOrderByDataAscIdAsc(disciplinaId));
     }
 
@@ -70,6 +82,15 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
         }
         if (dto.tipo() == null) {
             throw new RequisicaoInvalidaException("O tipo da avaliação é obrigatório: PROVA ou ENTREGA.");
+        }
+    }
+
+    // dono e membro têm participação ACEITO; sem participação, pendente ou recusada: sem acesso
+    private void exigirParticipanteAceito(UUID disciplinaId) {
+        boolean participa = participacoes.existsByUsuarioIdAndDisciplinaIdAndStatus(
+                usuarioAutenticado.id(), disciplinaId, StatusParticipacao.ACEITO);
+        if (!participa) {
+            throw new AcessoNegadoException("Somente participantes da disciplina acessam as avaliações.");
         }
     }
 }
