@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface DisciplinaService {
     DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto);
-    List<DisciplinaResponseDTO> listarTodas();
+    List<DisciplinaResponseDTO> listarDoUsuario();
     DisciplinaResponseDTO buscarPorId(UUID id);
     void excluir(UUID id);
 }

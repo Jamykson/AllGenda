@@ -9,6 +9,7 @@ import com.allgenda.model.Aula;
 import com.allgenda.model.Disciplina;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.AulaService;
 import org.springframework.stereotype.Service;
 import com.allgenda.exception.RequisicaoInvalidaException;
@@ -23,11 +24,14 @@ public class AulaServiceImpl implements AulaService {
     private final AulaRepository aulaRepository;
     private final DisciplinaRepository disciplinaRepository;
     private final AulaMapper mapper;
+    private final AcessoDisciplina acesso;
 
-    public AulaServiceImpl(AulaRepository aulaRepository, DisciplinaRepository disciplinaRepository, AulaMapper mapper) {
+    public AulaServiceImpl(AulaRepository aulaRepository, DisciplinaRepository disciplinaRepository, AulaMapper mapper,
+                           AcessoDisciplina acesso) {
         this.aulaRepository = aulaRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.mapper = mapper;
+        this.acesso = acesso;
     }
 
     @Override
@@ -47,6 +51,7 @@ public class AulaServiceImpl implements AulaService {
 
         Disciplina disciplina = disciplinaRepository.findById(dto.disciplinaId())           // checar se o disciplinaId recebido é válido (tal disciplina existe?)
                 .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));
+        acesso.exigirParticipanteAceito(disciplina.getId());   // 403
 
         Aula aula = new Aula();
         aula.setData(dto.data());
@@ -61,6 +66,10 @@ public class AulaServiceImpl implements AulaService {
     @Override
     @Transactional(readOnly = true)
     public List<AulaResponseDTO> listarPorDisciplina(UUID disciplinaId) {
+        if (!disciplinaRepository.existsById(disciplinaId)) {                // 404
+            throw new DisciplinaNaoEncontradaException(disciplinaId);
+        }
+        acesso.exigirParticipanteAceito(disciplinaId);                       // 403
         return mapper.toDtoList(aulaRepository.findByDisciplinaId(disciplinaId));
     }
 
@@ -68,7 +77,8 @@ public class AulaServiceImpl implements AulaService {
     @Transactional(readOnly = true)
     public AulaResponseDTO buscarPorId(UUID id) {
         Aula aula = aulaRepository.findById(id)
-                .orElseThrow(() -> new AulaNaoEncontradaException(id));
+                .orElseThrow(() -> new AulaNaoEncontradaException(id));      // 404
+        acesso.exigirParticipanteAceito(aula.getDisciplina().getId());       // 403
         return mapper.toDto(aula);
     }
 }

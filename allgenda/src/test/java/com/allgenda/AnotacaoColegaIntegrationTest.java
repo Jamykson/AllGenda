@@ -56,6 +56,9 @@ class AnotacaoColegaIntegrationTest {
         String aulaId = criar("/api/aulas", "{\"disciplinaId\":\"" + disciplinaId
                 + "\",\"data\":\"2026-10-19\",\"horario\":\"08:00\",\"topico\":\"Strategy\"}", dono);
         anotacaoDoDono = criar("/api/anotacoes", "{\"aulaId\":\"" + aulaId + "\",\"conteudo\":\"Do dono\",\"tags\":[\"java\"]}", dono);
+        // o colega só escreve na aula depois de entrar na disciplina (quem não participa recebe 403)
+        String conviteId = convidar(colega);
+        mvc.perform(comToken(patch("/api/convites/{id}/aceitar", conviteId), colega)).andExpect(status().isOk());
         anotacaoDoColega = criar("/api/anotacoes", "{\"aulaId\":\"" + aulaId + "\",\"conteudo\":\"Do colega\",\"tags\":[]}", colega);
     }
 
@@ -88,9 +91,6 @@ class AnotacaoColegaIntegrationTest {
 
     @Test
     void participanteAceitoVeSomenteAsAnotacoesDosOutros() throws Exception {
-        String conviteId = convidar(colega);
-        mvc.perform(comToken(patch("/api/convites/{id}/aceitar", conviteId), colega)).andExpect(status().isOk());
-
         mvc.perform(comToken(get("/api/disciplinas/{id}/anotacoes/colegas", disciplinaId), colega))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))

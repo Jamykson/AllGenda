@@ -1,7 +1,6 @@
 package com.allgenda.service.impl;
 
 import com.allgenda.dto.response.TagResponseDTO;
-import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.ConflitoException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
@@ -14,6 +13,7 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.TagRepository;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.TagService;
 import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
@@ -33,12 +33,14 @@ import java.util.UUID;
 public class TagServiceImpl implements TagService {
 
     private static final int TAMANHO_MAXIMO_NOME = 255;
+    private static final String SEM_ACESSO = "Somente participantes da disciplina gerenciam as tags dela.";
 
     private final TagRepository repository;
     private final AnotacaoRepository anotacaoRepository;
     private final DisciplinaRepository disciplinaRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
+    private final AcessoDisciplina acesso;
     private final TagMapper mapper;
 
     public TagServiceImpl(TagRepository repository,
@@ -46,12 +48,14 @@ public class TagServiceImpl implements TagService {
                           DisciplinaRepository disciplinaRepository,
                           ParticipacaoRepository participacaoRepository,
                           UsuarioAutenticado usuarioAutenticado,
+                          AcessoDisciplina acesso,
                           TagMapper mapper) {
         this.repository = repository;
         this.anotacaoRepository = anotacaoRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.participacaoRepository = participacaoRepository;
         this.usuarioAutenticado = usuarioAutenticado;
+        this.acesso = acesso;
         this.mapper = mapper;
     }
 
@@ -98,7 +102,7 @@ public class TagServiceImpl implements TagService {
             if (!disciplinaRepository.existsById(disciplinaId)) {
                 throw new DisciplinaNaoEncontradaException(disciplinaId);
             }
-            exigirParticipanteAceito(disciplinaId);
+            acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
             disciplinas = List.of(disciplinaId);
         }
         else {
@@ -158,18 +162,10 @@ public class TagServiceImpl implements TagService {
         if (tag.getDisciplina() == null) {
             throw new TagNaoEncontradaException(tagId);
         }
-        exigirParticipanteAceito(tag.getDisciplina().getId());
+        acesso.exigirParticipanteAceito(tag.getDisciplina().getId(), SEM_ACESSO);
         return tag;
     }
 
-    // dono e membro têm participação ACEITO; sem participação, pendente ou recusada: sem acesso
-    private void exigirParticipanteAceito(UUID disciplinaId) {
-        boolean participa = participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(
-            usuarioAutenticado.id(), disciplinaId, StatusParticipacao.ACEITO);
-        if (!participa) {
-            throw new AcessoNegadoException("Somente participantes da disciplina gerenciam as tags dela.");
-        }
-    }
 
     private static void validarTamanho(String nome) {
         if (nome.length() > TAMANHO_MAXIMO_NOME) {

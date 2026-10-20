@@ -18,6 +18,7 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.service.AnotacaoService;
+import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
 import com.allgenda.service.UsuarioAutenticado;
@@ -32,12 +33,14 @@ import java.util.UUID;
 public class AnotacaoServiceImpl implements AnotacaoService {
 
     private static final int TAMANHO_MAXIMO_TITULO = 150;
+    private static final String SEM_ACESSO = "Somente participantes da disciplina veem as anotações.";
 
     private final AnotacaoRepository anotacaoRepository;
     private final AulaRepository aulaRepository;
     private final DisciplinaRepository disciplinaRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
+    private final AcessoDisciplina acesso;
     private final TagService tagService;
     private final RemocaoArquivos remocaoArquivos;
     private final AnotacaoMapper mapper;
@@ -47,6 +50,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
                                 DisciplinaRepository disciplinaRepository,
                                 ParticipacaoRepository participacaoRepository,
                                 UsuarioAutenticado usuarioAutenticado,
+                                AcessoDisciplina acesso,
                                 TagService tagService,
                                 RemocaoArquivos remocaoArquivos,
                                 AnotacaoMapper mapper) {
@@ -55,6 +59,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         this.disciplinaRepository = disciplinaRepository;
         this.participacaoRepository = participacaoRepository;
         this.usuarioAutenticado = usuarioAutenticado;
+        this.acesso = acesso;
         this.tagService = tagService;
         this.remocaoArquivos = remocaoArquivos;
         this.mapper = mapper;
@@ -71,7 +76,8 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         exigirTituloOuConteudo(titulo, conteudo);
 
         Aula aula = aulaRepository.findById(dto.aulaId())
-                .orElseThrow(() -> new AulaNaoEncontradaException(dto.aulaId()));
+                .orElseThrow(() -> new AulaNaoEncontradaException(dto.aulaId()));   // 404
+        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), SEM_ACESSO);   // 403
 
         Anotacao anotacao = new Anotacao();
         anotacao.setTitulo(titulo);
@@ -95,7 +101,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         Anotacao anotacao = anotacaoRepository.findById(anotacaoId)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(anotacaoId));
         // qualquer participante da disciplina pode acrescentar tags, não só o autor (decisão do grupo, #64)
-        exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId());
+        acesso.exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId(), SEM_ACESSO);
 
         // as tags são acrescentadas às existentes; como tags é um Set, uma tag já associada não é duplicada
         tagService.buscarOuCriar(anotacao.getAula().getDisciplina(), nomesTags).forEach(anotacao::addTag);
@@ -114,7 +120,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         Anotacao anotacao = anotacaoRepository.findById(anotacaoId)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(anotacaoId));
         // como acrescentar, remover é permitido a qualquer participante da disciplina
-        exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId());
+        acesso.exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId(), SEM_ACESSO);
 
         // a busca ignora maiúsculas, como a criação de tags; uma tag que a anotação não tem não é erro
         String nome = nomeTag.strip();
@@ -132,7 +138,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     public List<AnotacaoResponseDTO> listarPorAula(UUID aulaId) {
         Aula aula = aulaRepository.findById(aulaId)
                 .orElseThrow(() -> new AulaNaoEncontradaException(aulaId));  
-        exigirParticipanteAceito(aula.getDisciplina().getId());     //403
+        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), SEM_ACESSO);     //403
         return mapper.toDtoList(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId));
     }
 
@@ -142,7 +148,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         if (!disciplinaRepository.existsById(disciplinaId)) {    //404
             throw new DisciplinaNaoEncontradaException(disciplinaId);
         }
-        exigirParticipanteAceito(disciplinaId);
+        acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
         if (tag == null || tag.isBlank()) {
             return mapper.toDtoList(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId));
         }
@@ -241,18 +247,10 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         if (!disciplinaRepository.existsById(disciplinaId)) {    // 404
             throw new DisciplinaNaoEncontradaException(disciplinaId);
     }
-    exigirParticipanteAceito(disciplinaId);    // 403
+    acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);    // 403
         return mapper.toDtoList(anotacaoRepository
                 .findByAulaDisciplinaIdAndAutorIdNotOrderByAulaDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id()));
 
     }
 
-    // dono e membro têm participação ACEITO; sem participação, pendente ou recusada: sem acesso
-    private void exigirParticipanteAceito(UUID disciplinaId) {
-        boolean participa = participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(
-                usuarioAutenticado.id(), disciplinaId, StatusParticipacao.ACEITO);
-        if (!participa) {
-            throw new AcessoNegadoException("Somente participantes da disciplina veem as anotações.");
-        }
-    }
 }
