@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public record TagResponseDTO(
     UUID id,
-    String nome
+    String nome,
+    UUID disciplinaId // cada disciplina tem as suas tags
 ) {}

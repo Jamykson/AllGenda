@@ -79,7 +79,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         anotacao.setDataCriacao(LocalDateTime.now());
         anotacao.setAula(aula);
         anotacao.setAutor(usuarioAutenticado.obter());
-        tagService.buscarOuCriar(dto.tags()).forEach(anotacao::addTag); // tags são opcionais
+        tagService.buscarOuCriar(aula.getDisciplina(), dto.tags()).forEach(anotacao::addTag); // tags são opcionais
 
         Anotacao salva = anotacaoRepository.save(anotacao);
         return mapper.toDto(salva);
@@ -98,7 +98,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId());
 
         // as tags são acrescentadas às existentes; como tags é um Set, uma tag já associada não é duplicada
-        tagService.buscarOuCriar(nomesTags).forEach(anotacao::addTag);
+        tagService.buscarOuCriar(anotacao.getAula().getDisciplina(), nomesTags).forEach(anotacao::addTag);
 
         Anotacao salva = anotacaoRepository.save(anotacao);
         return mapper.toDto(salva);

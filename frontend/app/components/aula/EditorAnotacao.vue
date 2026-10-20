@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Image as ImageIcon, Trash2, X } from '@lucide/vue'
-import type { Anotacao, ImagemAnotacao } from '~/types/anotacao'
+import type { Anotacao, ImagemAnotacao, Tag } from '~/types/anotacao'
 
 // Editor de uma anotação da página da aula. Título e texto são do autor e se salvam sozinhos pouco
-// depois da digitação; tags são salvas na hora e qualquer participante pode mexer nelas.
+// depois da digitação; tags são salvas na hora e qualquer participante pode mexer nelas (SeletorTags).
 // Sem `anotacao`, edita uma anotação nova, que só é criada no backend quando ganha título ou texto.
 
 type EstadoSalvamento = 'salvo' | 'pendente' | 'salvando' | 'erro' | 'invalido' | 'rascunho'
@@ -12,7 +12,10 @@ const ESPERA_PARA_SALVAR = 800
 
 const props = defineProps<{
   anotacao: Anotacao | null
-  tagsDisponiveis: string[]
+  tagsDaDisciplina: Tag[]
+  // renomear e excluir uma tag afetam todas as anotações da disciplina, então ficam com a página
+  renomearTag: (tag: Tag, nome: string) => Promise<void>
+  excluirTag: (tag: Tag) => Promise<void>
   // garante que a aula exista no backend; uma aula recorrente é cadastrada na primeira anotação
   obterAulaId: () => Promise<string>
 }>()
@@ -31,9 +34,8 @@ const conteudo = ref(props.anotacao?.conteudo ?? '')
 const anotacaoId = ref(props.anotacao?.id ?? null)
 const estado = ref<EstadoSalvamento>(props.anotacao ? 'salvo' : 'rascunho')
 const erroSalvamento = ref('')
-const erroAcao = ref('') // erros de tags, imagens e exclusão
-const novaTag = ref('')
-const ocupado = ref(false) // tag, imagem ou exclusão em andamento
+const erroAcao = ref('') // erros de imagens e exclusão; os de tags aparecem no SeletorTags
+const ocupado = ref(false) // imagem ou exclusão em andamento
 const enviandoImagens = ref(false)
 const campoTitulo = ref<HTMLInputElement | null>(null)
 
@@ -48,9 +50,6 @@ const ehDoUsuario = computed(() =>
 const tags = computed(() => props.anotacao?.tags ?? [])
 const imagens = computed(() => props.anotacao?.imagens ?? [])
 const salvaNoBackend = computed(() => Boolean(anotacaoId.value))
-const sugestoesDeTags = computed(() =>
-  props.tagsDisponiveis.filter(tag => !tags.value.some(atual => mesmaTag(atual, tag)))
-)
 
 const textoDoEstado = computed(() => {
   switch (estado.value) {
@@ -62,10 +61,6 @@ const textoDoEstado = computed(() => {
     default: return 'A anotação será salva quando tiver título ou texto.'
   }
 })
-
-function mesmaTag(tagA: string, tagB: string) {
-  return tagA.toLowerCase() === tagB.toLowerCase()
-}
 
 function formatarDataHora(dataHora: string) {
   const data = new Date(dataHora)
@@ -144,44 +139,15 @@ async function prepararSaida() {
 
 defineExpose({ salvarAgora, temPendencia, prepararSaida })
 
-async function adicionarTag() {
-  const nome = novaTag.value.trim().replace(/\s+/g, ' ')
-  if (!nome || !anotacaoId.value || ocupado.value) return
-  if (tags.value.some(tag => mesmaTag(tag, nome))) {
-    novaTag.value = ''
-    return
-  }
-
-  ocupado.value = true
-  erroAcao.value = ''
-  try {
-    emit('salva', await acrescentarTags(anotacaoId.value, [nome]))
-    novaTag.value = ''
-  }
-  catch (erro) {
-    console.error('[anotacao] erro ao acrescentar tag:', erro)
-    erroAcao.value = mensagemDeErro(erro, 'Não foi possível acrescentar a tag.')
-  }
-  finally {
-    ocupado.value = false
-  }
+// o SeletorTags mostra os erros destas ações
+async function acrescentarTag(nome: string) {
+  if (!anotacaoId.value) return
+  emit('salva', await acrescentarTags(anotacaoId.value, [nome]))
 }
 
 async function tirarTag(nome: string) {
-  if (!anotacaoId.value || ocupado.value) return
-
-  ocupado.value = true
-  erroAcao.value = ''
-  try {
-    emit('salva', await removerTag(anotacaoId.value, nome))
-  }
-  catch (erro) {
-    console.error('[anotacao] erro ao remover tag:', erro)
-    erroAcao.value = mensagemDeErro(erro, 'Não foi possível remover a tag.')
-  }
-  finally {
-    ocupado.value = false
-  }
+  if (!anotacaoId.value) return
+  emit('salva', await removerTag(anotacaoId.value, nome))
 }
 
 // confere tipo, tamanho e quantidade antes de enviar, e envia uma imagem por vez
@@ -314,39 +280,16 @@ onBeforeUnmount(() => {
       :readonly="!ehDoUsuario"
     />
 
-    <div class="secao-tags">
-      <ul v-if="tags.length" class="chips" aria-label="Tags da anotação">
-        <li v-for="tag in tags" :key="tag" class="chip">
-          {{ tag }}
-          <button
-            type="button"
-            class="remover-tag"
-            :aria-label="`Remover tag ${tag}`"
-            :title="`Remover tag ${tag}`"
-            :disabled="ocupado"
-            @click="tirarTag(tag)"
-          >
-            <X :size="12" :stroke-width="2" aria-hidden="true" />
-          </button>
-        </li>
-      </ul>
-      <form class="nova-tag" @submit.prevent="adicionarTag">
-        <input
-          v-model="novaTag"
-          type="text"
-          list="sugestoes-tags-anotacao"
-          aria-label="Nova tag"
-          :placeholder="salvaNoBackend ? 'Acrescentar tag' : 'Escreva um título ou texto antes de acrescentar tags'"
-          :disabled="!salvaNoBackend || ocupado"
-        />
-        <datalist id="sugestoes-tags-anotacao">
-          <option v-for="tag in sugestoesDeTags" :key="tag" :value="tag" />
-        </datalist>
-        <button type="submit" class="botao-secundario" :disabled="!salvaNoBackend || ocupado || !novaTag.trim()">
-          Acrescentar
-        </button>
-      </form>
-    </div>
+    <SeletorTags
+      :selecionadas="tags"
+      :opcoes="tagsDaDisciplina"
+      :desabilitado="!salvaNoBackend"
+      dica-desabilitado="Escreva um título ou texto antes de acrescentar tags."
+      :acrescentar="acrescentarTag"
+      :remover="tirarTag"
+      :renomear="renomearTag"
+      :excluir="excluirTag"
+    />
 
     <div v-if="imagens.length || ehDoUsuario" class="secao-imagens">
       <ul v-if="imagens.length" class="imagens-anexadas" aria-label="Imagens anexadas à anotação">
@@ -488,77 +431,6 @@ onBeforeUnmount(() => {
   cursor: default;
 }
 
-.secao-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 26px;
-  padding: 2px 4px 2px 9px;
-  border: 1px solid #dbeafe;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.remover-tag {
-  display: grid;
-  width: 20px;
-  height: 20px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-}
-
-.remover-tag:hover {
-  background: #dbeafe;
-}
-
-.nova-tag {
-  display: flex;
-  flex: 1 1 260px;
-  gap: 6px;
-}
-
-.nova-tag input {
-  flex: 1;
-  min-width: 0;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  background: #fff;
-  color: #0f172a;
-  font: inherit;
-  font-size: 13px;
-}
-
-.nova-tag input:focus {
-  outline: 2px solid #bfdbfe;
-  outline-offset: 1px;
-}
-
 .botao-secundario {
   display: inline-flex;
   align-items: center;
@@ -683,7 +555,6 @@ onBeforeUnmount(() => {
 }
 
 .botao-excluir:disabled,
-.remover-tag:disabled,
 .remover-imagem:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -691,7 +562,6 @@ onBeforeUnmount(() => {
 
 .botao-secundario:focus-visible,
 .botao-excluir:focus-visible,
-.remover-tag:focus-visible,
 .remover-imagem:focus-visible,
 .link-acao:focus-visible,
 .anexar:focus-within {

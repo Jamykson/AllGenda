@@ -46,6 +46,7 @@ class EdicaoAnotacaoIntegrationTest {
     private String tokenAutor;
     private String tokenColega;
     private String autorId;
+    private String disciplinaId;
     private String aulaId;
     private String anotacaoId;
 
@@ -60,7 +61,7 @@ class EdicaoAnotacaoIntegrationTest {
         tokenAutor = auth.login(new LoginRequestDTO(autor.email(), "senha-forte-123")).token();
         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();
 
-        String disciplinaId = criar("/api/disciplinas", "{\"nome\":\"PDS\"}");
+        disciplinaId = criar("/api/disciplinas", "{\"nome\":\"PDS\"}");
         String conviteId = criar("/api/disciplinas/" + disciplinaId + "/convites", "{\"email\":\"" + colega.email() + "\"}");
         mvc.perform(comToken(patch("/api/convites/{id}/aceitar", conviteId), tokenColega)).andExpect(status().isOk());
         aulaId = criar("/api/aulas", "{\"disciplinaId\":\"" + disciplinaId + "\",\"data\":\"2026-10-19\",\"horario\":\"08:00\",\"topico\":\"Padrões de projeto\"}");
@@ -141,7 +142,7 @@ class EdicaoAnotacaoIntegrationTest {
                 .andExpect(jsonPath("$.autorId").value(autorId));
 
         assertThat(quantidadeDeTagsSalvas()).isZero();
-        assertThat(tags.findByNomeIgnoreCase("java")).isPresent();
+        assertThat(tags.findByDisciplinaIdAndNomeIgnoreCase(UUID.fromString(disciplinaId), "java")).isPresent();
     }
 
     @Test
