@@ -40,6 +40,10 @@ public class Disciplina implements Serializable {
     @OneToMany(mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Avaliacao> avaliacoes = new ArrayList<>();
 
+    // as tags são da disciplina: excluí-la apaga as tags junto
+    @OneToMany(mappedBy = "disciplina", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Tag> tags = new ArrayList<>();
+
     public List<Avaliacao> getAvaliacoes() {
         return avaliacoes;
     }
@@ -70,6 +74,10 @@ public class Disciplina implements Serializable {
 
     public void setDescricao(String descricao) {
         this.descricao = descricao;
+    }
+
+    public List<Tag> getTags() {
+        return tags;
     }
 
     public List<Aula> getAulas() {

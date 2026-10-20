@@ -53,6 +53,7 @@ class ExclusaoAnotacaoIntegrationTest {
     private String tokenAutor;
     private String tokenColega;
     private String tag;
+    private String disciplinaId;
     private String aulaId;
     private String anotacaoId;
     private String imagemId;
@@ -68,7 +69,7 @@ class ExclusaoAnotacaoIntegrationTest {
         tokenAutor = auth.login(new LoginRequestDTO(autor.email(), "senha-forte-123")).token();
         tokenColega = auth.login(new LoginRequestDTO(colega.email(), "senha-forte-123")).token();
 
-        String disciplinaId = criar("/api/disciplinas", "{\"nome\":\"PDS\"}");
+        disciplinaId = criar("/api/disciplinas", "{\"nome\":\"PDS\"}");
         aulaId = criar("/api/aulas", "{\"disciplinaId\":\"" + disciplinaId + "\",\"data\":\"2026-10-17\",\"horario\":\"08:00\",\"topico\":\"Padrões de projeto\"}");
         anotacaoId = criar("/api/anotacoes", "{\"aulaId\":\"" + aulaId + "\",\"conteudo\":\"Quadro\",\"tags\":[\"" + tag + "\"]}");
 
@@ -104,7 +105,7 @@ class ExclusaoAnotacaoIntegrationTest {
         assertThat(anotacoes.existsById(UUID.fromString(anotacaoId))).isFalse();
         assertThat(imagens.existsById(UUID.fromString(imagemId))).isFalse();
         assertThat(armazenamento.carregar(chave)).isEmpty();
-        assertThat(tags.findByNomeIgnoreCase(tag)).isPresent();
+        assertThat(tags.findByDisciplinaIdAndNomeIgnoreCase(UUID.fromString(disciplinaId), tag)).isPresent();
         mvc.perform(comToken(get("/api/anotacoes").param("aulaId", aulaId), tokenAutor))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());

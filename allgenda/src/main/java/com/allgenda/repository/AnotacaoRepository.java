@@ -19,6 +19,9 @@ public interface AnotacaoRepository extends JpaRepository<Anotacao, UUID> {
     // como o nome da tag é único, o join com tags não duplica anotações
     List<Anotacao> findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(String nomeTag);
 
+    // anotações que usam a tag, para tirar o vínculo antes de excluí-la
+    List<Anotacao> findByTagsId(UUID tagId);
+
     List<Anotacao> findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(UUID disciplinaId, String nomeTag);
 
     // anotações da disciplina escritas por outros usuários (exclui as do próprio solicitante)

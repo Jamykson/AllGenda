@@ -197,7 +197,9 @@ export function usePesquisa() {
       // só as tags usadas em alguma anotação ajudam a filtrar
       const tagsDasAnotacoes = Object.values(anotacoesPorAula.value)
         .flatMap(anotacoes => anotacoes.flatMap(anotacao => anotacao.tags))
-      tagsDisponiveis.value = tagsDaApi
+      // cada disciplina tem as suas tags, então o mesmo nome pode vir mais de uma vez
+      const nomesDaApi = [...new Map(tagsDaApi.map(tag => [tag.nome.toLowerCase(), tag.nome])).values()]
+      tagsDisponiveis.value = nomesDaApi
         .filter(tag => tagsDasAnotacoes.includes(tag))
         .sort((tagA, tagB) => tagA.localeCompare(tagB, 'pt-BR'))
     }

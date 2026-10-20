@@ -68,9 +68,20 @@ export function useAnotacoes() {
     return data
   }
 
-  async function listarTags() {
-    const { data } = await $api.get<Tag[]>('/api/tags')
-    return data.map(tag => tag.nome)
+  // com a disciplina, as tags dela; sem, as de todas as disciplinas do usuário (em ordem alfabética)
+  async function listarTags(disciplinaId?: string) {
+    const { data } = await $api.get<Tag[]>('/api/tags', { params: disciplinaId ? { disciplinaId } : {} })
+    return data
+  }
+
+  // vale para todas as anotações da disciplina; qualquer participante renomeia ou exclui
+  async function renomearTag(tagId: string, nome: string) {
+    const { data } = await $api.patch<Tag>(`/api/tags/${tagId}`, { nome })
+    return data
+  }
+
+  async function excluirTag(tagId: string) {
+    await $api.delete(`/api/tags/${tagId}`)
   }
 
   // título e conteúdo vazios vão como null; a API exige ao menos um dos dois
@@ -190,6 +201,8 @@ export function useAnotacoes() {
     listarPorAula,
     listarPorDisciplina,
     listarTags,
+    renomearTag,
+    excluirTag,
     criar,
     editar,
     acrescentarTags,

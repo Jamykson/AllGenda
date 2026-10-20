@@ -123,7 +123,7 @@ class AnotacaoServiceImplTest {
     void cadastraAnotacaoComUsuarioAutenticadoETags() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(List.of("java", "poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("java"), tag("poo"))));
+        when(tagService.buscarOuCriar(aula.getDisciplina(), List.of("java", "poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("java"), tag("poo"))));
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Strategy e Observer", List.of("java", "poo")));
@@ -140,7 +140,7 @@ class AnotacaoServiceImplTest {
     void cadastraAnotacaoSemTags() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Sem tags", null));
@@ -155,7 +155,7 @@ class AnotacaoServiceImplTest {
         autor.setNome("Maria");
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(autor));
-        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, null, "Texto", null));
@@ -195,7 +195,7 @@ class AnotacaoServiceImplTest {
     void cadastraAnotacaoSoComTitulo() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "  Prova 1  ", " ", null));
@@ -208,7 +208,7 @@ class AnotacaoServiceImplTest {
     void cadastraAnotacaoComTituloEConteudo() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "Padrões", "Strategy e Observer", null));
@@ -221,7 +221,7 @@ class AnotacaoServiceImplTest {
     void tituloEmBrancoFicaNulo() {
         when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AnotacaoResponseDTO resposta = service.cadastrar(new AnotacaoRequestDTO(aulaId, "   ", "Texto", null));
@@ -254,7 +254,7 @@ class AnotacaoServiceImplTest {
         anotacao.addTag(tag("java"));
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
         participantesDaDisciplinaDaAula();
-        when(tagService.buscarOuCriar(List.of("poo", "spring"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"), tag("spring"))));
+        when(tagService.buscarOuCriar(aula.getDisciplina(), List.of("poo", "spring"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"), tag("spring"))));
         when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
 
         AnotacaoResponseDTO resposta = service.associarTags(anotacaoId, List.of("poo", "spring"));
@@ -283,7 +283,7 @@ class AnotacaoServiceImplTest {
         Anotacao anotacao = anotacao("Texto", tag("java"));
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
         participantesDaDisciplinaDaAula();
-        when(tagService.buscarOuCriar(List.of("poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"))));
+        when(tagService.buscarOuCriar(aula.getDisciplina(), List.of("poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"))));
         when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
         autenticarOutroUsuario();
 
