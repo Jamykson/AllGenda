@@ -1,5 +1,12 @@
+import type { Ref } from 'vue'
 import type { Anotacao, ImagemAnotacao } from '~/types/anotacao'
 import type { Disciplina } from '~/types/disciplina'
+
+// "minhas" é filtrado na página, pelo autor; "colegas" usa o endpoint das anotações dos colegas
+export type FiltroAutor = 'todos' | 'minhas' | 'colegas'
+
+// por que a disciplina escolhida (ex: vinda de um link) não pode ser pesquisada
+export type ProblemaDisciplina = 'sem-acesso' | 'inexistente'
 
 export interface AulaPesquisa {
   id: string
@@ -19,6 +26,7 @@ export interface AnotacaoPesquisa {
   texto: string // vazio quando a anotação só tem título
   imagens: ImagemAnotacao[]
   tags: string[]
+  autorId: string
   autorNome: string
 }
 
@@ -63,6 +71,7 @@ function paraAnotacaoPesquisa(anotacao: Anotacao): AnotacaoPesquisa {
     texto: anotacao.conteudo ?? '',
     imagens: anotacao.imagens,
     tags: anotacao.tags,
+    autorId: anotacao.autorId,
     autorNome: anotacao.autorNome
   }
 }
@@ -140,27 +149,42 @@ function gerarAulasRecorrentes(
   })
 }
 
-export function usePesquisa() {
+// Dados da página Pesquisar. A disciplina e o autor escolhidos na página decidem de onde vêm as
+// anotações: "Dos colegas" busca o endpoint próprio, e uma disciplina fora da lista do usuário
+// (ex: um link de uma disciplina de que ele não participa) é conferida na API, que responde 403 ou 404.
+export function usePesquisa(filtros: { disciplinaId: Ref<string>, autor: Ref<FiltroAutor> }) {
   const { listar } = useDisciplinas()
-  const { listarPorDisciplina, listarTags } = useAnotacoes()
+  const { listarPorDisciplina, listarDosColegas, listarTags } = useAnotacoes()
   const { $api } = useNuxtApp()
   const disciplinas = ref<Disciplina[]>([])
   const aulas = ref<AulaPesquisa[]>([])
   const anotacoesPorAula = ref<Record<string, AnotacaoPesquisa[]>>({})
+  // anotações dos colegas por disciplina, buscadas só quando o filtro "Dos colegas" pede
+  const dosColegasPorDisciplina = ref<Record<string, Anotacao[]>>({})
   const tagsDisponiveis = ref<string[]>([])
   const carregando = ref(false)
+  const carregandoColegas = ref(false)
   const erro = ref('')
+  const problemaDisciplina = ref<ProblemaDisciplina | null>(null)
+  let dadosCarregados = false
+  let consultaAtual = 0
 
-  const resultados = computed<ResultadoPesquisa[]>(() =>
-    aulas.value.flatMap(aula =>
-      (anotacoesPorAula.value[aula.id] || [])
-        .map(anotacao => ({ aula, anotacao }))
-    )
+  const anotacoesDosColegasPorAula = computed(() =>
+    agruparPorAula(Object.values(dosColegasPorDisciplina.value).flat())
   )
+
+  const resultados = computed<ResultadoPesquisa[]>(() => {
+    const fonte = filtros.autor.value === 'colegas' ? anotacoesDosColegasPorAula.value : anotacoesPorAula.value
+    return aulas.value.flatMap(aula =>
+      (fonte[aula.id] || []).map(anotacao => ({ aula, anotacao }))
+    )
+  })
 
   async function carregar() {
     carregando.value = true
     erro.value = ''
+    dadosCarregados = false
+    dosColegasPorDisciplina.value = {}
 
     try {
       disciplinas.value = await listar()
@@ -195,13 +219,14 @@ export function usePesquisa() {
       anotacoesPorAula.value = agruparPorAula(anotacoesPorDisciplina.flat())
 
       // só as tags usadas em alguma anotação ajudam a filtrar
-      const tagsDasAnotacoes = Object.values(anotacoesPorAula.value)
-        .flatMap(anotacoes => anotacoes.flatMap(anotacao => anotacao.tags))
+      const tagsDasAnotacoes = new Set(Object.values(anotacoesPorAula.value)
+        .flatMap(anotacoes => anotacoes.flatMap(anotacao => anotacao.tags.map(tag => tag.toLowerCase()))))
       // cada disciplina tem as suas tags, então o mesmo nome pode vir mais de uma vez
       const nomesDaApi = [...new Map(tagsDaApi.map(tag => [tag.nome.toLowerCase(), tag.nome])).values()]
       tagsDisponiveis.value = nomesDaApi
-        .filter(tag => tagsDasAnotacoes.includes(tag))
+        .filter(tag => tagsDasAnotacoes.has(tag.toLowerCase()))
         .sort((tagA, tagB) => tagA.localeCompare(tagB, 'pt-BR'))
+      dadosCarregados = true
     }
     catch (error) {
       console.error('[pesquisa] erro ao carregar dados:', error)
@@ -210,13 +235,94 @@ export function usePesquisa() {
     finally {
       carregando.value = false
     }
+
+    await prepararFiltros()
   }
+
+  // 403: sem participação aceita; 404 (ou 400, id inválido na URL): a disciplina não existe
+  function problemaDoErro(falha: unknown): ProblemaDisciplina | null {
+    const status = statusDoErro(falha)
+    if (status === 403) return 'sem-acesso'
+    if (status === 404 || status === 400) return 'inexistente'
+    return null
+  }
+
+  // busca o que a disciplina e o autor escolhidos precisam e ainda não foi carregado
+  async function prepararFiltros() {
+    if (!dadosCarregados) return
+    const consulta = ++consultaAtual
+    const disciplinaId = filtros.disciplinaId.value
+    const colegas = filtros.autor.value === 'colegas'
+    problemaDisciplina.value = null
+    erro.value = ''
+
+    if (disciplinaId && !disciplinas.value.some(disciplina => disciplina.id === disciplinaId)) {
+      await conferirDisciplina(disciplinaId, colegas, consulta)
+      return
+    }
+    if (!colegas) return
+
+    const pendentes = (disciplinaId ? [disciplinaId] : disciplinas.value.map(disciplina => disciplina.id))
+      .filter(id => !(id in dosColegasPorDisciplina.value))
+    if (!pendentes.length) return
+
+    carregandoColegas.value = true
+    try {
+      const respostas = await Promise.all(pendentes.map(async (id) => {
+        try {
+          return [id, await listarDosColegas(id)] as const
+        }
+        catch (falha) {
+          // a participação pode ter acabado depois de a lista de disciplinas ser carregada
+          const problema = problemaDoErro(falha)
+          if (!problema) throw falha
+          if (consulta === consultaAtual && id === disciplinaId) problemaDisciplina.value = problema
+          return [id, [] as Anotacao[]] as const
+        }
+      }))
+      dosColegasPorDisciplina.value = { ...dosColegasPorDisciplina.value, ...Object.fromEntries(respostas) }
+    }
+    catch (falha) {
+      console.error('[pesquisa] erro ao carregar anotações dos colegas:', falha)
+      if (consulta === consultaAtual) {
+        erro.value = mensagemDeErro(falha, 'Não foi possível carregar as anotações dos colegas.')
+      }
+    }
+    finally {
+      if (consulta === consultaAtual) carregandoColegas.value = false
+    }
+  }
+
+  // a disciplina não está entre as do usuário: a API diz se ela não existe ou se falta participação
+  async function conferirDisciplina(disciplinaId: string, colegas: boolean, consulta: number) {
+    try {
+      // se responder, o usuário passou a participar depois de a página carregar; recarregar a
+      // página traz a disciplina para a lista
+      await (colegas ? listarDosColegas(disciplinaId) : listarPorDisciplina(disciplinaId))
+    }
+    catch (falha) {
+      if (consulta !== consultaAtual) return
+      const problema = problemaDoErro(falha)
+      if (problema) {
+        problemaDisciplina.value = problema
+        return
+      }
+      console.error('[pesquisa] erro ao conferir a disciplina:', falha)
+      erro.value = mensagemDeErro(falha, 'Não foi possível carregar as anotações desta disciplina.')
+    }
+  }
+
+  watch([filtros.disciplinaId, filtros.autor], () => {
+    void prepararFiltros()
+  })
 
   return {
     disciplinas,
     tagsDisponiveis,
     carregando,
+    carregandoColegas,
     erro,
+    problemaDisciplina,
     resultados,
     carregar
   }

@@ -30,6 +30,11 @@ export function mensagemDeErro(erro: unknown, padrao: string): string {
   return padrao
 }
 
+/** Status HTTP de um erro da API, ou undefined quando a falha não teve resposta (ex: rede). */
+export function statusDoErro(erro: unknown): number | undefined {
+  return isAxiosError(erro) ? erro.response?.status : undefined
+}
+
 /**
  * Endereço da página de uma aula. Uma aula recorrente ainda não existe no backend, então a página
  * recebe pela URL o que precisa para mostrá-la e para cadastrá-la quando ela ganhar conteúdo.
@@ -65,6 +70,12 @@ export function useAnotacoes() {
 
   async function listarPorDisciplina(disciplinaId: string) {
     const { data } = await $api.get<Anotacao[]>('/api/anotacoes', { params: { disciplinaId } })
+    return data
+  }
+
+  // as anotações da disciplina escritas por outras pessoas; 403 sem participação aceita
+  async function listarDosColegas(disciplinaId: string) {
+    const { data } = await $api.get<Anotacao[]>(`/api/disciplinas/${disciplinaId}/anotacoes/colegas`)
     return data
   }
 
@@ -200,6 +211,7 @@ export function useAnotacoes() {
   return {
     listarPorAula,
     listarPorDisciplina,
+    listarDosColegas,
     listarTags,
     renomearTag,
     excluirTag,

@@ -1,22 +1,25 @@
 <script setup lang="ts">
-import { BookOpen, CalendarDays, ChevronDown, Clock3, Image as ImageIcon, Search, Tag as TagIcon, X } from '@lucide/vue'
-import type { AulaPesquisa } from '~/composables/usePesquisa'
+import { BookOpen, CalendarDays, ChevronDown, Clock3, Image as ImageIcon, Search, Tag as TagIcon, UserRound, X } from '@lucide/vue'
+import type { LocationQuery } from 'vue-router'
+import type { AnotacaoPesquisa, AulaPesquisa, FiltroAutor } from '~/composables/usePesquisa'
 
 definePageMeta({
   layout: 'default'
 })
 
-const {
-  disciplinas,
-  tagsDisponiveis,
-  carregando,
-  erro,
-  resultados,
-  carregar
-} = usePesquisa()
+const OPCOES_AUTOR: { valor: FiltroAutor, rotulo: string }[] = [
+  { valor: 'todos', rotulo: 'Todos' },
+  { valor: 'minhas', rotulo: 'Minhas' },
+  { valor: 'colegas', rotulo: 'Dos colegas' }
+]
+
+const route = useRoute()
+const router = useRouter()
+const { usuario } = useAuth()
 
 const textoBusca = ref('')
 const disciplinaId = ref('')
+const autor = ref<FiltroAutor>('todos')
 const dataInicial = ref('')
 const dataFinal = ref('')
 const horaInicial = ref('')
@@ -24,7 +27,66 @@ const horaFinal = ref('')
 const tagsSelecionadas = ref<string[]>([])
 const buscaTag = ref('')
 const barraFiltrosRef = ref<HTMLElement | null>(null)
-const filtroAberto = ref<'disciplina' | 'data' | 'horario' | 'tags' | null>(null)
+const filtroAberto = ref<'disciplina' | 'autor' | 'data' | 'horario' | 'tags' | null>(null)
+
+const {
+  disciplinas,
+  tagsDisponiveis,
+  carregando,
+  carregandoColegas,
+  erro,
+  problemaDisciplina,
+  resultados,
+  carregar
+} = usePesquisa({ disciplinaId, autor })
+
+// A disciplina, o autor e as tags ficam na URL: a página da disciplina abre a pesquisa já filtrada,
+// e recarregar a página mantém os filtros.
+function textoDaQuery(valor: LocationQuery[string] | undefined) {
+  const primeiro = Array.isArray(valor) ? valor[0] : valor
+  return typeof primeiro === 'string' ? primeiro : ''
+}
+
+function lerFiltrosDaUrl(query: LocationQuery) {
+  disciplinaId.value = textoDaQuery(query.disciplinaId)
+  const autorDaUrl = textoDaQuery(query.autor)
+  autor.value = OPCOES_AUTOR.some(opcao => opcao.valor === autorDaUrl) ? autorDaUrl as FiltroAutor : 'todos'
+  const tags = Array.isArray(query.tag) ? query.tag : [query.tag]
+  tagsSelecionadas.value = [...new Set(tags.filter((tag): tag is string => typeof tag === 'string' && Boolean(tag.trim())))]
+}
+
+function queryDosFiltros(): LocationQuery {
+  return {
+    ...(disciplinaId.value ? { disciplinaId: disciplinaId.value } : {}),
+    ...(autor.value !== 'todos' ? { autor: autor.value } : {}),
+    ...(tagsSelecionadas.value.length ? { tag: tagsSelecionadas.value } : {})
+  }
+}
+
+// compara por valor, para que escrever a URL a partir dos filtros não os leia de volta
+function mesmaQuery(queryA: LocationQuery, queryB: LocationQuery) {
+  const normalizar = (query: LocationQuery) => JSON.stringify({
+    disciplinaId: textoDaQuery(query.disciplinaId),
+    autor: textoDaQuery(query.autor),
+    tag: (Array.isArray(query.tag) ? query.tag : [query.tag]).filter(Boolean)
+  })
+  return normalizar(queryA) === normalizar(queryB)
+}
+
+lerFiltrosDaUrl(route.query)
+const caminhoDaPesquisa = route.path
+
+// os dois watches só valem enquanto a rota é a da pesquisa: ao abrir uma aula, a rota muda antes
+// de esta página sair da tela
+watch([disciplinaId, autor, tagsSelecionadas], () => {
+  const query = queryDosFiltros()
+  if (route.path === caminhoDaPesquisa && !mesmaQuery(query, route.query)) void router.replace({ query })
+})
+
+// a URL muda por fora quando, por exemplo, o link "Pesquisar" da barra lateral é clicado aqui mesmo
+watch(() => route.query, (query) => {
+  if (route.path === caminhoDaPesquisa && !mesmaQuery(query, queryDosFiltros())) lerFiltrosDaUrl(query)
+})
 
 onMounted(() => {
   void carregar()
@@ -101,6 +163,8 @@ const resultadosFiltrados = computed(() => {
         return false
       }
 
+      if (autor.value === 'minhas' && anotacao.autorId !== usuario.value?.id) return false
+
       if (dataInicial.value && aula.data < dataInicial.value) return false
       if (dataFinal.value && aula.data > dataFinal.value) return false
       if (!correspondeHorario(aula.horario)) return false
@@ -114,9 +178,42 @@ const resultadosFiltrados = computed(() => {
     )
 })
 
+interface GrupoDaAula {
+  aula: AulaPesquisa
+  anotacoes: AnotacaoPesquisa[]
+}
+
+// os resultados já vêm da aula mais recente para a mais antiga, então cada aula é uma sequência
+const gruposFiltrados = computed(() => {
+  const grupos: GrupoDaAula[] = []
+  for (const { aula, anotacao } of resultadosFiltrados.value) {
+    const ultimo = grupos.at(-1)
+    if (ultimo?.aula.id === aula.id) ultimo.anotacoes.push(anotacao)
+    else grupos.push({ aula, anotacoes: [anotacao] })
+  }
+  return grupos
+})
+
+const resumoResultados = computed(() => {
+  const anotacoes = resultadosFiltrados.value.length
+  const aulas = gruposFiltrados.value.length
+  return `${anotacoes} ${anotacoes === 1 ? 'anotação' : 'anotações'} em ${aulas} ${aulas === 1 ? 'aula' : 'aulas'}`
+})
+
+const nomeDisciplinaSelecionada = computed(() => {
+  if (!disciplinaId.value) return 'Todas as disciplinas'
+  return disciplinas.value.find(item => item.id === disciplinaId.value)?.nome
+    ?? (carregando.value ? 'Carregando...' : 'Disciplina indisponível')
+})
+
+const rotuloAutor = computed(() =>
+  autor.value === 'todos' ? 'Autor' : OPCOES_AUTOR.find(opcao => opcao.valor === autor.value)?.rotulo
+)
+
 const filtrosAtivos = computed(() => Boolean(
   textoBusca.value.trim()
   || disciplinaId.value
+  || autor.value !== 'todos'
   || dataInicial.value
   || dataFinal.value
   || horaInicial.value
@@ -143,6 +240,7 @@ function alternarTag(tag: string) {
 function limparFiltros() {
   textoBusca.value = ''
   disciplinaId.value = ''
+  autor.value = 'todos'
   dataInicial.value = ''
   dataFinal.value = ''
   horaInicial.value = ''
@@ -165,6 +263,19 @@ function formatarData(data: string) {
 // voltar da página da aula remonta a pesquisa, que recarrega os resultados
 function abrirAula(aula: AulaPesquisa) {
   navigateTo(rotaDaAula(aula))
+}
+
+// abre a aula já com a anotação selecionada no editor
+function abrirAnotacao(aula: AulaPesquisa, anotacao: AnotacaoPesquisa) {
+  if (aula.recorrente) {
+    abrirAula(aula)
+    return
+  }
+  navigateTo({ path: `/aulas/${aula.id}`, query: { anotacao: anotacao.id } })
+}
+
+function autorDaAnotacao(anotacao: AnotacaoPesquisa) {
+  return usuario.value && anotacao.autorId === usuario.value.id ? 'Você' : `por ${anotacao.autorNome}`
 }
 </script>
 
@@ -195,7 +306,7 @@ function abrirAula(aula: AulaPesquisa) {
           @click="alternarFiltro('disciplina')"
         >
           <BookOpen :size="15" :stroke-width="1.8" aria-hidden="true" />
-          <span>{{ disciplinas.find(item => item.id === disciplinaId)?.nome || 'Todas as disciplinas' }}</span>
+          <span>{{ nomeDisciplinaSelecionada }}</span>
           <ChevronDown :size="14" :stroke-width="1.8" aria-hidden="true" />
         </button>
         <div v-if="filtroAberto === 'disciplina'" id="painel-filtro-disciplina" class="painel-filtro painel-disciplinas">
@@ -218,6 +329,34 @@ function abrirAula(aula: AulaPesquisa) {
             @click="disciplinaId = disciplina.id; filtroAberto = null"
           >
             {{ disciplina.nome }}
+          </button>
+        </div>
+      </div>
+
+      <div class="filtro-wrapper">
+        <button
+          type="button"
+          class="botao-filtro"
+          :aria-expanded="filtroAberto === 'autor'"
+          aria-controls="painel-filtro-autor"
+          @click="alternarFiltro('autor')"
+        >
+          <UserRound :size="15" :stroke-width="1.8" aria-hidden="true" />
+          {{ rotuloAutor }}
+          <ChevronDown :size="14" :stroke-width="1.8" aria-hidden="true" />
+        </button>
+        <div v-if="filtroAberto === 'autor'" id="painel-filtro-autor" class="painel-filtro painel-disciplinas">
+          <button
+            v-for="opcao in OPCOES_AUTOR"
+            :key="opcao.valor"
+            type="button"
+            class="opcao-disciplina"
+            :class="{ ativa: autor === opcao.valor }"
+            :aria-pressed="autor === opcao.valor"
+            :disabled="opcao.valor === 'minhas' && !usuario"
+            @click="autor = opcao.valor; filtroAberto = null"
+          >
+            {{ opcao.rotulo }}
           </button>
         </div>
       </div>
@@ -332,7 +471,7 @@ function abrirAula(aula: AulaPesquisa) {
     <section class="secao-resultados" aria-live="polite">
       <header class="cabecalho-resultados">
         <h2>Resultados</h2>
-        <span v-if="!carregando && !erro">{{ resultadosFiltrados.length }}</span>
+        <span v-if="!carregando && !carregandoColegas && !erro && !problemaDisciplina">{{ resumoResultados }}</span>
       </header>
 
       <p v-if="carregando" class="estado-pesquisa" role="status">
@@ -341,6 +480,28 @@ function abrirAula(aula: AulaPesquisa) {
 
       <p v-else-if="erro" class="estado-erro" role="alert">
         {{ erro }}
+      </p>
+
+      <div v-else-if="problemaDisciplina" class="estado-pesquisa estado-disciplina" role="alert">
+        <template v-if="problemaDisciplina === 'sem-acesso'">
+          <strong>Você não participa desta disciplina.</strong>
+          <span>
+            Só participantes veem as anotações dela. Se você recebeu um convite, aceite-o em
+            <NuxtLink to="/convites">Convites</NuxtLink>.
+          </span>
+        </template>
+        <strong v-else>Esta disciplina não existe ou foi excluída.</strong>
+        <button type="button" class="limpar-filtros" @click="disciplinaId = ''">
+          Ver todas as disciplinas
+        </button>
+      </div>
+
+      <p v-else-if="carregandoColegas" class="estado-pesquisa" role="status">
+        Carregando anotações dos colegas...
+      </p>
+
+      <p v-else-if="!resultadosFiltrados.length && autor === 'colegas'" class="estado-pesquisa">
+        Nenhuma anotação dos colegas encontrada.
       </p>
 
       <p v-else-if="!resultadosFiltrados.length && filtrosAtivos" class="estado-pesquisa">
@@ -352,55 +513,73 @@ function abrirAula(aula: AulaPesquisa) {
         <span>Suas anotações aparecerão aqui quando forem adicionadas às aulas.</span>
       </p>
 
-      <div v-else class="lista-resultados">
-        <button
-          v-for="resultado in resultadosFiltrados"
-          :key="`${resultado.aula.id}-${resultado.anotacao.id}`"
-          type="button"
-          class="resultado"
-          :aria-label="`Abrir aula de ${resultado.aula.disciplinaNome}, ${formatarData(resultado.aula.data)}`"
-          @click="abrirAula(resultado.aula)"
+      <div v-else class="lista-grupos">
+        <section
+          v-for="grupo in gruposFiltrados"
+          :key="grupo.aula.id"
+          class="grupo-aula"
+          :aria-label="`Aula de ${grupo.aula.disciplinaNome}, ${formatarData(grupo.aula.data)}`"
         >
-          <span class="linha-disciplina">
-            <span
-              class="indicador-disciplina"
-              :style="{ '--cor-disciplina': resultado.aula.disciplinaCor || '#94a3b8' }"
-              aria-hidden="true"
-            />
-            <span v-if="resultado.aula.disciplinaIcone" class="icone-disciplina" aria-hidden="true">
-              {{ resultado.aula.disciplinaIcone }}
-            </span>
-            <strong>{{ resultado.aula.disciplinaNome }}</strong>
-          </span>
-
-          <span class="data-horario">
-            {{ formatarData(resultado.aula.data) }} · {{ resultado.aula.horario }}
-          </span>
-
-          <span v-if="resultado.anotacao.titulo" class="titulo-anotacao">
-            {{ resultado.anotacao.titulo }}
-          </span>
-
-          <span v-if="resultado.anotacao.texto.trim()" class="trecho-anotacao">
-            {{ resultado.anotacao.texto }}
-          </span>
-
-          <span class="rodape-resultado">
-            <span v-if="resultado.anotacao.tags.length" class="tags-resultado">
-              <span v-for="tag in resultado.anotacao.tags" :key="tag" class="chip-tag">
-                {{ tag }}
+          <button
+            type="button"
+            class="cabecalho-grupo"
+            :title="`Abrir a aula de ${formatarData(grupo.aula.data)}`"
+            @click="abrirAula(grupo.aula)"
+          >
+            <span class="linha-disciplina">
+              <span
+                class="indicador-disciplina"
+                :style="{ '--cor-disciplina': grupo.aula.disciplinaCor || '#94a3b8' }"
+                aria-hidden="true"
+              />
+              <span v-if="grupo.aula.disciplinaIcone" class="icone-disciplina" aria-hidden="true">
+                {{ grupo.aula.disciplinaIcone }}
               </span>
+              <strong>{{ grupo.aula.disciplinaNome }}</strong>
             </span>
-            <span v-else class="tags-resultado-vazias" />
+            <span class="data-horario">
+              {{ formatarData(grupo.aula.data) }} · {{ grupo.aula.horario }}
+            </span>
+            <span v-if="grupo.aula.topico" class="topico-aula">{{ grupo.aula.topico }}</span>
+          </button>
 
-            <span v-if="resultado.anotacao.imagens.length" class="indicadores-midia">
-              <span :title="`${resultado.anotacao.imagens.length} imagem(ns)`">
-                <ImageIcon :size="14" :stroke-width="1.8" aria-hidden="true" />
-                <span class="visually-hidden">Possui imagem</span>
+          <div class="lista-resultados">
+            <button
+              v-for="anotacao in grupo.anotacoes"
+              :key="anotacao.id"
+              type="button"
+              class="resultado"
+              :aria-label="`Abrir ${anotacao.titulo ? `a anotação ${anotacao.titulo}` : 'a anotação'}, ${autorDaAnotacao(anotacao)}`"
+              @click="abrirAnotacao(grupo.aula, anotacao)"
+            >
+              <span v-if="anotacao.titulo" class="titulo-anotacao">
+                {{ anotacao.titulo }}
               </span>
-            </span>
-          </span>
-        </button>
+
+              <span v-if="anotacao.texto.trim()" class="trecho-anotacao">
+                {{ anotacao.texto }}
+              </span>
+
+              <span class="rodape-resultado">
+                <span v-if="anotacao.tags.length" class="tags-resultado">
+                  <span v-for="tag in anotacao.tags" :key="tag" class="chip-tag">
+                    {{ tag }}
+                  </span>
+                </span>
+                <span v-else class="tags-resultado-vazias" />
+
+                <span class="autor-anotacao">{{ autorDaAnotacao(anotacao) }}</span>
+
+                <span v-if="anotacao.imagens.length" class="indicadores-midia">
+                  <span :title="`${anotacao.imagens.length} imagem(ns)`">
+                    <ImageIcon :size="14" :stroke-width="1.8" aria-hidden="true" />
+                    <span class="visually-hidden">Possui imagem</span>
+                  </span>
+                </span>
+              </span>
+            </button>
+          </div>
+        </section>
       </div>
     </section>
   </main>
@@ -543,10 +722,15 @@ function abrirAula(aula: AulaPesquisa) {
   cursor: pointer;
 }
 
-.opcao-disciplina:hover,
+.opcao-disciplina:hover:not(:disabled),
 .opcao-disciplina.ativa {
   background: #eff6ff;
   color: #1d4ed8;
+}
+
+.opcao-disciplina:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .painel-data label {
@@ -669,6 +853,51 @@ button.chip-tag {
   font-size: 12px;
 }
 
+.lista-grupos {
+  display: grid;
+  gap: 18px;
+}
+
+.grupo-aula {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.cabecalho-grupo {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 2px 4px 4px;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cabecalho-grupo:hover strong,
+.cabecalho-grupo:hover .topico-aula {
+  color: #1d4ed8;
+}
+
+.cabecalho-grupo:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid rgb(37 99 235 / 55%);
+  outline-offset: 2px;
+}
+
+.topico-aula {
+  min-width: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
 .lista-resultados {
   display: grid;
   gap: 8px;
@@ -755,8 +984,16 @@ button.chip-tag {
   margin-top: 2px;
 }
 
+.tags-resultado,
 .tags-resultado-vazias {
   flex: 1;
+  min-width: 0;
+}
+
+.autor-anotacao {
+  flex: none;
+  color: #64748b;
+  font-size: 12px;
 }
 
 .indicadores-midia,
@@ -785,6 +1022,25 @@ button.chip-tag {
 
 .estado-erro {
   color: #b91c1c;
+}
+
+.estado-disciplina {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.estado-disciplina strong {
+  color: #334155;
+}
+
+.estado-disciplina a {
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.estado-disciplina .limpar-filtros {
+  margin-top: 8px;
 }
 
 .visually-hidden {
