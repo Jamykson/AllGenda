@@ -20,10 +20,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-// Assistente de IA da aula. A resposta chega por Server-Sent Events, em pedaços, à medida que o
-// modelo a gera. Os erros de validação e de acesso saem antes do stream, como ProblemDetail.
+// Assistente de IA da disciplina, com duas portas: a da disciplina e a de uma aula (que a põe em
+// destaque). A resposta chega por Server-Sent Events, em pedaços, à medida que o modelo a gera. Os
+// erros de validação e de acesso saem antes do stream, como ProblemDetail.
 @RestController
-@RequestMapping("/api/aulas/{aulaId}/assistente")
+@RequestMapping("/api")
 public class AssistenteController {
 
     private static final Logger log = LoggerFactory.getLogger(AssistenteController.class);
@@ -39,10 +40,18 @@ public class AssistenteController {
 
     // eventos: "texto" ({"texto": "..."}) várias vezes, depois "fim" ({}); ou "erro" ({"mensagem": "..."})
     // se o modelo falhar no meio do caminho
-    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter perguntar(@PathVariable UUID aulaId, @RequestBody PerguntaAssistenteDTO pergunta) {
-        PedidoAoModelo pedido = service.preparar(aulaId, pergunta);
+    @PostMapping(path = "/disciplinas/{disciplinaId}/assistente", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter perguntarSobreADisciplina(@PathVariable UUID disciplinaId, @RequestBody PerguntaAssistenteDTO pergunta) {
+        return iniciar(service.prepararDaDisciplina(disciplinaId, pergunta));
+    }
 
+    // mesmos eventos, com o material da disciplina da aula e a aula em destaque
+    @PostMapping(path = "/aulas/{aulaId}/assistente", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter perguntarSobreAAula(@PathVariable UUID aulaId, @RequestBody PerguntaAssistenteDTO pergunta) {
+        return iniciar(service.prepararDaAula(aulaId, pergunta));
+    }
+
+    private SseEmitter iniciar(PedidoAoModelo pedido) {
         SseEmitter emissor = new SseEmitter(TEMPO_MAXIMO.toMillis());
         Future<?> geracao = geracoes.submit(() -> gerar(pedido, emissor));
         emissor.onTimeout(() -> geracao.cancel(true));

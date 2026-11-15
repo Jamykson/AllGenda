@@ -87,6 +87,7 @@ class AssistenteIntegrationTest {
     private String tokenAutor;
     private String tokenColega;
     private String tokenDeFora;
+    private String disciplinaId;
     private String aulaId;
     private String outraAulaId;
     private String anotacaoId;
@@ -102,7 +103,7 @@ class AssistenteIntegrationTest {
         tokenColega = cadastrarELogar("Colega", sufixo);
         tokenDeFora = cadastrarELogar("Visitante", sufixo);
 
-        String disciplinaId = criar("/api/disciplinas", "{\"nome\":\"PDS\"}", tokenAutor);
+        disciplinaId = criar("/api/disciplinas", "{\"nome\":\"PDS\"}", tokenAutor);
         String conviteId = criar("/api/disciplinas/" + disciplinaId + "/convites", "{\"email\":\"colega-" + sufixo + "@example.com\"}", tokenAutor);
         mvc.perform(comToken(patch("/api/convites/{id}/aceitar", conviteId), tokenColega)).andExpect(status().isOk());
 
@@ -138,6 +139,13 @@ class AssistenteIntegrationTest {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(resposta, "$.id");
+    }
+
+    private RequestBuilder perguntaDaDisciplina(String disciplina, String mensagensJson, String token) {
+        return comToken(post("/api/disciplinas/{id}/assistente", disciplina)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.TEXT_EVENT_STREAM, MediaType.APPLICATION_PROBLEM_JSON)
+                .content("{\"mensagens\":" + mensagensJson + "}"), token);
     }
 
     private RequestBuilder pergunta(String aula, String mensagensJson, String token) {
@@ -191,6 +199,30 @@ class AssistenteIntegrationTest {
     }
 
     @Test
+    void perguntaNaPaginaDaDisciplinaUsaAsAulasTodasSemAulaEmDestaque() throws Exception {
+        criar("/api/anotacoes", "{\"aulaId\":\"" + outraAulaId + "\",\"conteudo\":\"Conteúdo da outra aula\"}", tokenColega);
+
+        String corpo = respostaCompleta(perguntaDaDisciplina(disciplinaId,
+                "[{\"papel\":\"USUARIO\",\"texto\":\"Resuma a disciplina\"}]", tokenColega));
+
+        assertThat(corpo).containsSubsequence("event:texto", "event:texto", "event:fim");
+        PedidoAoModelo pedido = modelo.pedidos.getFirst();
+        assertThat(pedido.instrucoes()).contains("PDS").doesNotContain("página da aula");
+        String material = textoDoMaterial(pedido);
+        assertThat(material).contains("<aula data=\"20/10/2026\"", "<aula data=\"22/10/2026\"", "Padrões GoF",
+                "Conteúdo da outra aula", "Imagem 1 (foto avulsa da galeria da aula de 20/10/2026");
+    }
+
+    @Test
+    void perguntaNaPaginaDaAulaTambemVeOMaterialDeOutrasAulas() throws Exception {
+        criar("/api/anotacoes", "{\"aulaId\":\"" + outraAulaId + "\",\"conteudo\":\"Conteúdo da outra aula\"}", tokenColega);
+
+        respostaCompleta(pergunta(aulaId, "[{\"papel\":\"USUARIO\",\"texto\":\"Compare as aulas\"}]", tokenAutor));
+
+        assertThat(textoDoMaterial(modelo.pedidos.getFirst())).contains("Padrões GoF", "Conteúdo da outra aula");
+    }
+
+    @Test
     void conversaComFocoReenviaOHistoricoEIndicaOItem() throws Exception {
         respostaCompleta(pergunta(aulaId, """
                 [{"papel":"USUARIO","texto":"Resuma a aula"},
@@ -221,7 +253,7 @@ class AssistenteIntegrationTest {
         String pergunta = "[{\"papel\":\"USUARIO\",\"texto\":\"Resuma\"}]";
         mvc.perform(pergunta(aulaId, pergunta, tokenDeFora))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.detail").value("Somente participantes da disciplina usam o assistente da aula."));
+                .andExpect(jsonPath("$.detail").value("Somente participantes da disciplina usam o assistente."));
         mvc.perform(pergunta(UUID.randomUUID().toString(), pergunta, tokenAutor))
                 .andExpect(status().isNotFound());
         mvc.perform(pergunta(aulaId, "[{\"papel\":\"ASSISTENTE\",\"texto\":\"Olá\"}]", tokenAutor))
@@ -231,13 +263,20 @@ class AssistenteIntegrationTest {
         mvc.perform(pergunta(aulaId, "[]", tokenAutor))
                 .andExpect(status().isBadRequest());
 
-        // a anotação é de outra aula
-        String deOutraAula = criar("/api/anotacoes", "{\"aulaId\":\"" + outraAulaId + "\",\"conteudo\":\"Outra\"}", tokenAutor);
+        // a anotação é de outra disciplina
+        String outraDisciplinaId = criar("/api/disciplinas", "{\"nome\":\"Outra disciplina\"}", tokenAutor);
+        String aulaDeFora = criar("/api/aulas", "{\"disciplinaId\":\"" + outraDisciplinaId
+                + "\",\"data\":\"2026-10-21\",\"horario\":\"10:00\",\"topico\":\"Outro tema\"}", tokenAutor);
+        String deOutraDisciplina = criar("/api/anotacoes", "{\"aulaId\":\"" + aulaDeFora + "\",\"conteudo\":\"Outra\"}", tokenAutor);
         mvc.perform(pergunta(aulaId, """
                 [{"papel":"USUARIO","texto":"Explique","foco":{"tipo":"ANOTACAO","id":"%s"}}]
-                """.formatted(deOutraAula), tokenAutor))
+                """.formatted(deOutraDisciplina), tokenAutor))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("O item em foco não pertence a esta aula."));
+                .andExpect(jsonPath("$.detail").value("O item em foco não pertence a esta disciplina."));
+        mvc.perform(perguntaDaDisciplina(UUID.randomUUID().toString(), pergunta, tokenAutor))
+                .andExpect(status().isNotFound());
+        mvc.perform(perguntaDaDisciplina(disciplinaId, pergunta, tokenDeFora))
+                .andExpect(status().isForbidden());
 
         mvc.perform(post("/api/aulas/{id}/assistente", aulaId).contentType(MediaType.APPLICATION_JSON).content("{\"mensagens\":" + pergunta + "}"))
                 .andExpect(status().isUnauthorized());

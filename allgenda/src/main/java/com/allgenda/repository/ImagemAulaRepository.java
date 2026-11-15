@@ -14,6 +14,9 @@ public interface ImagemAulaRepository extends JpaRepository<ImagemAula, UUID> {
     // ordem da galeria; a data desempata imagens com a mesma posição
     List<ImagemAula> findByAulaIdOrderByPosicaoAscDataCriacaoAsc(UUID aulaId);
 
+    // imagens avulsas de todas as aulas da disciplina: aulas por data, depois a ordem da galeria
+    List<ImagemAula> findByAulaDisciplinaIdOrderByAulaDataAscPosicaoAscDataCriacaoAsc(UUID disciplinaId);
+
     // -1 quando a aula ainda não tem imagens, para que a primeira fique na posição 0
     @Query("select coalesce(max(i.posicao), -1) from ImagemAula i where i.aula.id = :aulaId")
     int findMaiorPosicaoByAulaId(@Param("aulaId") UUID aulaId);
