@@ -19,6 +19,7 @@ import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
+import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.AcessoDisciplina;
@@ -31,6 +32,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
 
     private final DisciplinaRepository repository;
     private final ParticipacaoRepository participacaoRepository;
+    private final RecorrenciaRepository recorrenciaRepository;
     private final ImagemAnotacaoRepository imagemRepository;
     private final ImagemAulaRepository imagemAulaRepository;
     private final RemocaoArquivos remocaoArquivos;
@@ -40,6 +42,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
 
     public DisciplinaServiceImpl(DisciplinaRepository repository,
                                  ParticipacaoRepository participacaoRepository,
+                                 RecorrenciaRepository recorrenciaRepository,
                                  ImagemAnotacaoRepository imagemRepository,
                                  ImagemAulaRepository imagemAulaRepository,
                                  RemocaoArquivos remocaoArquivos,
@@ -48,6 +51,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
                                  AcessoDisciplina acesso){
         this.repository = repository;
         this.participacaoRepository = participacaoRepository;
+        this.recorrenciaRepository = recorrenciaRepository;
         this.imagemRepository = imagemRepository;
         this.imagemAulaRepository = imagemAulaRepository;
         this.remocaoArquivos = remocaoArquivos;
@@ -60,14 +64,14 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     @Transactional
     public DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto) {
         if(dto.nome() == null || dto.nome().isBlank()){
-            throw new RequisicaoInvalidaException("O nome da disciplina é obrigatório."); // 400
+            throw new RequisicaoInvalidaException("O nome da disciplina é obrigatório.");
         }
 
         String nome = dto.nome().trim();
         String descricao = dto.descricao() == null ? null : dto.descricao().trim();
 
         if (descricao != null && descricao.length() > 500) {
-            throw new RequisicaoInvalidaException("A descrição deve ter no máximo 500 caracteres."); // 400
+            throw new RequisicaoInvalidaException("A descrição deve ter no máximo 500 caracteres.");
         }
 
         Disciplina disciplina = new Disciplina();
@@ -103,7 +107,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public DisciplinaResponseDTO buscarPorId(UUID id) {
         Disciplina disciplina = repository.findById(id)
             .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));   // 404
-        acesso.exigirParticipanteAceito(id);    // 403
+        acesso.exigirParticipanteAceito(id);                                 // 403
         return mapper.toDto(disciplina);
     }
 
@@ -136,6 +140,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         chavesDasImagens.addAll(imagemAulaRepository.findChavesArmazenamentoByDisciplinaId(id));
         // Remove os vínculos antes da disciplina para respeitar as FKs, sem composição JPA.
         participacaoRepository.deleteByDisciplinaId(id);
+        recorrenciaRepository.deleteByDisciplinaId(id);
         repository.delete(disciplina);
         remocaoArquivos.removerAoConfirmar(chavesDasImagens);
     }

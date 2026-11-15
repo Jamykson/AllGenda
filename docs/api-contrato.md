@@ -5,7 +5,7 @@ Todos os endpoints exigem `Authorization: Bearer <token>`, exceto os POSTs de lo
 
 ## Estado da implementação
 
-Login, cadastro, disciplinas, aulas, convites, anotações (inclusive as dos colegas), tags, imagens e o assistente da disciplina estão implementados. Avaliações: veja [contrato de avaliações e telas](api-telas-colaboracao.md).
+Login, cadastro, disciplinas, aulas, recorrência, convites, anotações (inclusive as dos colegas), tags, imagens e o assistente da disciplina estão implementados. Avaliações: veja [contrato de avaliações e telas](api-telas-colaboracao.md).
 
 ### Regra geral de acesso
 
@@ -14,10 +14,10 @@ Quase tudo o que pertence a uma disciplina exige **participação `ACEITO`** nel
 | Operação | Quem pode |
 |---|---|
 | Listar disciplinas (`GET /disciplinas`) | Qualquer usuário autenticado, mas só vê as disciplinas em que participa (`ACEITO`) |
-| Ver disciplina, aulas, anotações, tags, avaliações e imagens da aula | Participante `ACEITO` |
+| Ver disciplina, aulas, recorrência, anotações, tags, avaliações e imagens da aula | Participante `ACEITO` |
 | Criar aula, criar anotação, acrescentar/remover tags, renomear/excluir tag, reordenar imagens da aula | Participante `ACEITO` |
 | Baixar imagem de uma anotação | Participante `ACEITO` da disciplina da anotação |
-| Excluir disciplina, enviar convite, remover participante, editar a disciplina, editar/cancelar/excluir aula | Somente o dono (`DONO` com `ACEITO`) |
+| Excluir disciplina, enviar convite, remover participante, editar a disciplina, editar/cancelar/excluir aula, definir ou remover a recorrência | Somente o dono (`DONO` com `ACEITO`) |
 | Editar ou excluir uma anotação, anexar ou remover suas imagens, editar ou excluir uma imagem da aula | Somente o autor |
 | Aceitar ou recusar convite | Somente o destinatário |
 
@@ -283,6 +283,37 @@ A página da aula usa `disciplinaId` para reconhecer a disciplina. `cancelada` i
 ### DELETE /aulas/{id} — implementado
 
 Sem corpo. **Somente o dono** exclui. Apaga a aula com todas as anotações (inclusive as privadas de cada participante) e as imagens, e remove os arquivos do disco depois que a exclusão é confirmada. Para só avisar que a aula não vai acontecer, use o cancelamento. Sucesso `204`. Erros: `401` sem token válido; `403` solicitante não é o dono; `404` aula inexistente.
+
+## Recorrência da disciplina — implementado
+
+Quando a disciplina acontece: dias da semana, horário e período. Cada disciplina tem **no máximo uma**. Antes ela ficava só no navegador (`localStorage`); agora vale para todos os participantes. Quem ainda tem uma recorrência salva no navegador a vê enviada ao servidor na primeira vez que abre a agenda ou as disciplinas, e só se for o dono (nos outros casos ela é descartada).
+
+Formato (resposta e corpo do `PUT`; a resposta traz também `disciplinaId`):
+```json
+{"diasSemana":["SEG","QUA"],"horaInicio":"08:00","horaFim":"09:40","dataInicio":"2026-08-03","dataFim":"2026-12-18","frequencia":"QUINZENAL"}
+```
+- `diasSemana`: um ou mais de `DOM`, `SEG`, `TER`, `QUA`, `QUI`, `SEX`, `SAB`; a resposta sempre vem de domingo a sábado.
+- `horaInicio` e `horaFim`: `HH:mm`, com o fim depois do início.
+- `dataInicio` e `dataFim`: a data final não pode ser anterior à inicial.
+- `frequencia`: `SEMANAL` (padrão, se ausente) ou `QUINZENAL`. Na quinzenal as semanas (domingo a sábado) são contadas a partir da semana da `dataInicio`, e só as de número par, começando em 0, têm aula. Ex.: início numa quarta, dia 5; a aula do dia 5 acontece, a da semana seguinte não, e a da outra semana sim.
+
+**As aulas da recorrência não existem no banco** até receberem a primeira anotação, imagem ou cancelamento: o front gera as datas a partir desta configuração e, nesse momento, cadastra a aula (`POST /aulas`). Mudar ou remover a recorrência não apaga as aulas já cadastradas.
+
+### GET /disciplinas/{id}/recorrencia
+
+Sem corpo. Qualquer participante `ACEITO`. Sucesso `200`. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente ou sem recorrência.
+
+### PUT /disciplinas/{id}/recorrencia
+
+**Somente o dono.** Cria ou substitui a recorrência da disciplina. Sucesso `200`. Erros: `400` nenhum dia, hora fora de `HH:mm` ou com fim não posterior ao início, datas ausentes ou invertidas, dia/frequência desconhecidos ou JSON inválido; `401` sem token válido; `403` solicitante não é o dono; `404` disciplina inexistente.
+
+### DELETE /disciplinas/{id}/recorrencia
+
+Sem corpo. **Somente o dono.** Sucesso `204`. Erros: `401` sem token válido; `403` solicitante não é o dono; `404` disciplina inexistente ou sem recorrência.
+
+### GET /recorrencias
+
+Sem corpo. As recorrências de todas as disciplinas em que a pessoa participa (`ACEITO`), cada uma com o seu `disciplinaId`, ou `[]`. A agenda, a pesquisa e os cards das disciplinas usam esta rota para carregar tudo de uma vez. Erro: `401` sem token válido. Excluir a disciplina apaga a sua recorrência.
 
 ## Imagens da aula
 

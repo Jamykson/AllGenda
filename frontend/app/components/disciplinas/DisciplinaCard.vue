@@ -12,17 +12,9 @@ const emit = defineEmits<{
   excluir: []
 }>()
 
-interface HorarioRecorrente {
-  dias: number[]
-  horaInicio: string
-  horaFim: string
-  dataInicio: string
-  dataFim: string
-}
-
-const CHAVE_HORARIOS = 'allgenda-horarios-recorrentes'
 const nomesDias = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
-const horario = ref<HorarioRecorrente | null>(null)
+const { recorrencias, carregar } = useRecorrencias()
+const horario = computed(() => recorrencias.value[props.disciplina.id] ?? null)
 
 const diasHorario = computed(() => {
   const diasSalvos = horario.value?.dias || []
@@ -33,21 +25,7 @@ const horarioCompleto = computed(() =>
   Boolean(horario.value?.horaInicio && horario.value.horaFim)
 )
 
-function carregarHorario() {
-  if (import.meta.server) return
-
-  try {
-    const dados = JSON.parse(localStorage.getItem(CHAVE_HORARIOS) || '{}') as Record<string, HorarioRecorrente>
-    const salvo = dados[props.disciplina.id]
-    horario.value = salvo && Array.isArray(salvo.dias) ? salvo : null
-  }
-  catch {
-    horario.value = null
-  }
-}
-
-onMounted(carregarHorario)
-watch(() => props.disciplina.id, carregarHorario)
+onMounted(() => carregar())
 </script>
 
 <template>
@@ -81,7 +59,7 @@ watch(() => props.disciplina.id, carregarHorario)
           {{ diasHorario.join(' · ') }}
         </span>
         <span v-if="horarioCompleto" class="horas-horario">
-          {{ horario?.horaInicio }} – {{ horario?.horaFim }}
+          {{ horario?.horaInicio }} – {{ horario?.horaFim }}<template v-if="horario?.frequencia === 'QUINZENAL'"> · quinzenal</template>
         </span>
       </div>
     </div>

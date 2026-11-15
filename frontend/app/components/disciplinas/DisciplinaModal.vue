@@ -87,7 +87,7 @@ const emit = defineEmits([
 			/>
 
 						<ListaAulasDisciplina :disciplina-id="disciplina.id" :cor="disciplina.cor || '#2563eb'" />
-			<HorarioModal :disciplina="disciplina" />
+			<HorarioModal :disciplina="disciplina" :pode-editar="ehDono" />
 		</section>
 	</div>
 </template>

@@ -8,6 +8,7 @@ interface HorarioRecorrenteForm {
   horaFim: string
   dataInicio: string
   dataFim: string
+  frequencia: 'SEMANAL' | 'QUINZENAL'
 }
 
 const props = withDefaults(defineProps<{
@@ -52,7 +53,8 @@ const horario = ref<HorarioRecorrenteForm>({
   horaInicio: '',
   horaFim: '',
   dataInicio: '',
-  dataFim: ''
+  dataFim: '',
+  frequencia: 'SEMANAL'
 })
 const erroHorario = ref('')
 const seletorCorAberto = ref(false)
@@ -289,7 +291,8 @@ function salvar() {
       horaInicio: horario.value.horaInicio,
       horaFim: horario.value.horaFim,
       dataInicio: horario.value.dataInicio,
-      dataFim: horario.value.dataFim
+      dataFim: horario.value.dataFim,
+      frequencia: horario.value.frequencia
     }
   })
 }
@@ -451,6 +454,16 @@ onBeforeUnmount(() => {
             <div class="campo-horario">
               <label for="data-final-disciplina">Data final</label>
               <input id="data-final-disciplina" v-model="horario.dataFim" type="date">
+            </div>
+          </div>
+
+          <div class="linha-horario">
+            <div class="campo-horario">
+              <label for="frequencia-disciplina">Frequência</label>
+              <select id="frequencia-disciplina" v-model="horario.frequencia">
+                <option value="SEMANAL">Toda semana</option>
+                <option value="QUINZENAL">A cada duas semanas</option>
+              </select>
             </div>
           </div>
 
@@ -685,6 +698,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 
+.campo-horario select,
 .campo-horario input {
   width: 100%;
   min-height: 36px;
@@ -695,6 +709,7 @@ onBeforeUnmount(() => {
   color: #0f172a;
 }
 
+.campo-horario select:focus,
 .campo-horario input:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);

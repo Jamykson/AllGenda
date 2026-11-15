@@ -23,6 +23,8 @@ interface HorarioRecorrente {
 
   dataFim:string
 
+  frequencia?:'SEMANAL'|'QUINZENAL'
+
 }
 
 
@@ -116,8 +118,7 @@ ref('')
 
 
 
-const CHAVE_HORARIOS =
-'allgenda-horarios-recorrentes'
+const { recorrencias, carregar: carregarRecorrencias } = useRecorrencias()
 
 
 
@@ -447,7 +448,6 @@ function aulasDoDia(
 chave:string
 ){
 
-const data = new Date(`${chave}T00:00:00`)
 const aulasDoBackend = aulas.value.filter(
 
 aula=>
@@ -458,13 +458,11 @@ aula.data===chave
 const aulasRecorrentes = Object.entries(horariosRecorrentes.value).flatMap(
   ([disciplinaId, horario]) => {
     const disciplina = disciplinas.value.find(item => item.id === disciplinaId)
-    const dataDentroDoPeriodo = chave >= horario.dataInicio && chave <= horario.dataFim
 
     if (
       !disciplina
       || !Array.isArray(horario.dias)
-      || !horario.dias.includes(data.getDay())
-      || !dataDentroDoPeriodo
+      || !ocorreNoDia(horario, chave)
       || !horario.horaInicio
       || !horario.horaFim
     ) {
@@ -669,7 +667,8 @@ async function carregarAgenda() {
 
   erro.value = ''
 
-  horariosRecorrentes.value = carregarRegistroLocal<HorarioRecorrente>(CHAVE_HORARIOS)
+  await carregarRecorrencias()
+  horariosRecorrentes.value = recorrencias.value
   personalizacoes.value = carregarRegistroLocal<PersonalizacaoDisciplina>(CHAVE_PERSONALIZACOES)
 
   try {

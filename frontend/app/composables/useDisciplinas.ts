@@ -1,10 +1,7 @@
-import type { Disciplina, HorarioRecorrente, NovaDisciplina, Participante } from '~/types/disciplina'
+import type { Disciplina, NovaDisciplina, Participante } from '~/types/disciplina'
 
 const CHAVE_PERSONALIZACOES =
   'allgenda-personalizacoes-disciplinas'
-
-const CHAVE_HORARIOS =
-  'allgenda-horarios-recorrentes'
 
 interface PersonalizacaoDisciplina {
   nome?: string
@@ -15,36 +12,7 @@ interface PersonalizacaoDisciplina {
 export function useDisciplinas() {
   const { $api } = useNuxtApp()
 
-  function salvarHorarioDisciplina(
-    disciplinaId: string,
-    horario: HorarioRecorrente
-  ) {
-    if (import.meta.server) {
-      return
-    }
-
-    const horariosSalvos = localStorage.getItem(CHAVE_HORARIOS)
-    let horarios: Record<string, HorarioRecorrente> = {}
-
-    if (horariosSalvos) {
-      try {
-        const parseado = JSON.parse(horariosSalvos)
-        if (parseado && typeof parseado === 'object') {
-          horarios = parseado as Record<string, HorarioRecorrente>
-        }
-      }
-      catch {
-        horarios = {}
-      }
-    }
-
-    horarios[disciplinaId] = {
-      ...horario,
-      dias: [...horario.dias]
-    }
-
-    localStorage.setItem(CHAVE_HORARIOS, JSON.stringify(horarios))
-  }
+  const { salvar: salvarRecorrencia, esquecer: esquecerRecorrencia } = useRecorrencias()
 
   function carregarPersonalizacoes(): Record<string, PersonalizacaoDisciplina> {
     if (import.meta.server) {
@@ -85,7 +53,7 @@ export function useDisciplinas() {
       return
     }
 
-    for (const chave of [CHAVE_PERSONALIZACOES, CHAVE_HORARIOS]) {
+    for (const chave of [CHAVE_PERSONALIZACOES]) {
       const salvo = localStorage.getItem(chave)
       if (!salvo) continue
 
@@ -135,8 +103,14 @@ export function useDisciplinas() {
       }
     )
 
+    // a disciplina já existe; se a recorrência falhar, o dono a define de novo na edição da disciplina
     if (nova.horario && nova.horario.dias.length > 0) {
-      salvarHorarioDisciplina(criada.id, nova.horario)
+      try {
+        await salvarRecorrencia(criada.id, nova.horario)
+      }
+      catch (erro) {
+        console.error('[disciplinas] falha ao salvar a recorrência:', erro)
+      }
     }
 
     const personalizacoes = carregarPersonalizacoes()
@@ -158,6 +132,7 @@ export function useDisciplinas() {
     await $api.delete(`/api/disciplinas/${disciplinaId}`)
 
     excluirDadosLocais(disciplinaId)
+    esquecerRecorrencia(disciplinaId)
   }
 
   // só o dono edita; descrição vazia deixa a disciplina sem descrição

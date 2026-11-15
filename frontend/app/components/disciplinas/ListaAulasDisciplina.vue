@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Participante } from '~/types/disciplina'
+import type { HorarioRecorrente, Participante } from '~/types/disciplina'
 
 interface Aula {
   id: string
@@ -11,16 +11,6 @@ interface Aula {
   anotacoes?: number
 }
 
-interface HorarioRecorrente {
-  dias: number[]
-  horaInicio: string
-  horaFim: string
-  dataInicio: string
-  dataFim: string
-}
-
-const CHAVE_HORARIOS = 'allgenda-horarios-recorrentes'
-
 const props = defineProps<{
   disciplinaId: string
   cor?: string
@@ -29,7 +19,9 @@ const props = defineProps<{
 
 const { $api } = useNuxtApp()
 const { listarParticipantes } = useDisciplinas()
+const { recorrencias, carregar: carregarRecorrencias } = useRecorrencias()
 const { atualizarAula, excluirAula } = useAulas()
+const { cadastrarAulaRecorrente } = useAnotacoes()
 const { usuario } = useAuth()
 const aulas = ref<Aula[]>([])
 const carregando = ref(true)
@@ -52,6 +44,8 @@ async function descobrirDono() {
   }
 }
 
+// editar e excluir só valem para aulas que já existem no backend; uma ocorrência da recorrência ainda
+// não existe, e só pode ser cancelada (o que a cadastra já marcada como cancelada)
 function podeAgir(aula: Aula) {
   return ehDono.value && !aula.recorrente
 }
@@ -99,8 +93,20 @@ async function alternarCancelamento(aula: Aula) {
   ocupadaId.value = aula.id
   erroAcao.value = ''
   try {
-    const atualizada = await atualizarAula<Aula>(aula.id, { cancelada: cancelando })
-    Object.assign(aula, atualizada)
+    let idDaAula = aula.id
+    if (aula.recorrente) {
+      const criada = await cadastrarAulaRecorrente({
+        id: aula.id,
+        data: aula.data,
+        horario: aula.horario,
+        topico: null,
+        recorrente: true,
+        disciplinaId: props.disciplinaId
+      })
+      idDaAula = criada.id
+    }
+    const atualizada = await atualizarAula<Aula>(idDaAula, { cancelada: cancelando })
+    Object.assign(aula, atualizada, { recorrente: false })
   }
   catch (err) {
     console.error('[aulas] falha ao cancelar:', err)
@@ -228,18 +234,6 @@ function estiloAula(aula: Aula) {
   }
 }
 
-function lerHorariosRecorrentes(): Record<string, HorarioRecorrente> {
-  try {
-    const dados = JSON.parse(localStorage.getItem(CHAVE_HORARIOS) || '{}')
-    return dados && typeof dados === 'object' && !Array.isArray(dados)
-      ? dados as Record<string, HorarioRecorrente>
-      : {}
-  }
-  catch {
-    return {}
-  }
-}
-
 function gerarOcorrencias(horario: HorarioRecorrente): Aula[] {
   if (
     !Array.isArray(horario.dias)
@@ -262,13 +256,14 @@ function gerarOcorrencias(horario: HorarioRecorrente): Aula[] {
   const data = new Date(inicio)
 
   while (data <= fim) {
-    if (horario.dias.includes(data.getDay())) {
-      const chaveData = [
-        data.getFullYear(),
-        String(data.getMonth() + 1).padStart(2, '0'),
-        String(data.getDate()).padStart(2, '0')
-      ].join('-')
+    const chaveData = [
+      data.getFullYear(),
+      String(data.getMonth() + 1).padStart(2, '0'),
+      String(data.getDate()).padStart(2, '0')
+    ].join('-')
 
+    // dia da semana, período e frequência (semanal ou quinzenal) vêm da recorrência salva no backend
+    if (ocorreNoDia(horario, chaveData)) {
       ocorrencias.push({
         id: `recorrente-${props.disciplinaId}-${chaveData}`,
         data: chaveData,
@@ -300,7 +295,8 @@ async function carregarAulas() {
     erro.value = 'Não foi possível carregar as aulas cadastradas.'
   }
 
-  const horario = lerHorariosRecorrentes()[props.disciplinaId]
+  await carregarRecorrencias()
+  const horario: HorarioRecorrente | undefined = recorrencias.value[props.disciplinaId]
   if (horario) {
     const ocorrencias = gerarOcorrencias(horario)
     const chavesExistentes = new Set(
@@ -323,6 +319,11 @@ async function carregarAulas() {
 onMounted(() => {
   carregarAulas()
   descobrirDono()
+})
+
+// o dono mexeu na recorrência (no mesmo modal): as ocorrências são geradas de novo
+watch(() => recorrencias.value[props.disciplinaId], (nova, antiga) => {
+  if (nova !== antiga && !carregando.value) carregarAulas()
 })
 </script>
 
@@ -390,12 +391,12 @@ onMounted(() => {
             <strong>{{ aula.topico || 'Aula recorrente' }}</strong>
             <span v-if="aula.cancelada" class="selo-cancelada">Cancelada</span>
           </div>
-          <div v-if="podeAgir(aula)" class="acoes-aula" @click.stop @keydown.stop>
-            <button type="button" :disabled="ocupadaId === aula.id" @click="comecarEdicao(aula)">Editar</button>
+          <div v-if="ehDono" class="acoes-aula" @click.stop @keydown.stop>
+            <button v-if="podeAgir(aula)" type="button" :disabled="ocupadaId === aula.id" @click="comecarEdicao(aula)">Editar</button>
             <button type="button" :disabled="ocupadaId === aula.id" @click="alternarCancelamento(aula)">
               {{ aula.cancelada ? 'Reativar' : 'Cancelar aula' }}
             </button>
-            <button type="button" class="perigo" :disabled="ocupadaId === aula.id" @click="excluir(aula)">Excluir</button>
+            <button v-if="podeAgir(aula)" type="button" class="perigo" :disabled="ocupadaId === aula.id" @click="excluir(aula)">Excluir</button>
           </div>
         </template>
       </li>

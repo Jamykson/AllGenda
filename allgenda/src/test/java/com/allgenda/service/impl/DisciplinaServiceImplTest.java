@@ -32,6 +32,7 @@ import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
+import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.AcessoDisciplina;
@@ -47,6 +48,8 @@ class DisciplinaServiceImplTest {
     @Mock
     private ParticipacaoRepository participacaoRepository;
     @Mock
+    private RecorrenciaRepository recorrenciaRepository;
+    @Mock
     private ImagemAnotacaoRepository imagemRepository;
     @Mock
     private ImagemAulaRepository imagemAulaRepository;
@@ -61,7 +64,7 @@ class DisciplinaServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, participacaoRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado, acessoDisciplina);
+        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado, acessoDisciplina);
     }
 
     @Test

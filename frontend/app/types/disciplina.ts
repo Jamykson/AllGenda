@@ -31,12 +31,15 @@ export interface NovaDisciplina {
   horario?: HorarioRecorrente
 }
 
+export type FrequenciaRecorrencia = 'SEMANAL' | 'QUINZENAL'
+
 export interface HorarioRecorrente {
   dias: number[]
   horaInicio: string
   horaFim: string
   dataInicio: string
   dataFim: string
+  frequencia?: FrequenciaRecorrencia
 }
 
 

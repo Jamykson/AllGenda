@@ -1,20 +1,13 @@
 <script setup lang="ts">
-import type { Disciplina } from '~/types/disciplina'
+import type { Disciplina, FrequenciaRecorrencia, HorarioRecorrente } from '~/types/disciplina'
 
 const props = defineProps<{
   disciplina: Disciplina
+  // só o dono define a recorrência; os outros participantes só a veem
+  podeEditar?: boolean
 }>()
 
-interface HorarioRecorrente {
-  dias: number[]
-  horaInicio: string
-  horaFim: string
-  dataInicio: string
-  dataFim: string
-}
-
-const CHAVE_HORARIOS =
-  'allgenda-horarios-recorrentes'
+const { recorrencias, carregar, salvar: salvarNoServidor, remover: removerNoServidor } = useRecorrencias()
 
 const diasSemana = [
   { numero: 0, nome: 'Dom' },
@@ -27,212 +20,134 @@ const diasSemana = [
 ]
 
 const editando = ref(false)
+const salvando = ref(false)
 
-const horario = ref<HorarioRecorrente>({
-  dias: [],
-  horaInicio: '',
-  horaFim: '',
-  dataInicio: '',
-  dataFim: ''
-})
+function horarioVazio(): HorarioRecorrente {
+  return {
+    dias: [],
+    horaInicio: '',
+    horaFim: '',
+    dataInicio: '',
+    dataFim: '',
+    frequencia: 'SEMANAL'
+  }
+}
+
+// o que está gravado no servidor; o formulário edita uma cópia
+const horarioSalvo = computed(() => recorrencias.value[props.disciplina.id] ?? null)
+const horario = ref<HorarioRecorrente>(horarioVazio())
 
 const erro = ref('')
 const sucesso = ref('')
 
-
-function carregar() {
-  if (import.meta.server) return
-
-  const salvo =
-    localStorage.getItem(CHAVE_HORARIOS)
-
-  if (!salvo) return
-
-  try {
-    const horarios =
-      JSON.parse(salvo)
-
-    const horarioSalvo =
-      horarios[props.disciplina.id]
-
-    if (horarioSalvo) {
-      horario.value = {
-        dias: horarioSalvo.dias || [],
-        horaInicio: horarioSalvo.horaInicio || '',
-        horaFim: horarioSalvo.horaFim || '',
-        dataInicio: horarioSalvo.dataInicio || '',
-        dataFim: horarioSalvo.dataFim || ''
-      }
-    }
-  }
-  catch (e) {
-    console.error(
-      'Erro ao carregar horários:',
-      e
-    )
-  }
+function copiaDoSalvo() {
+  const salvo = horarioSalvo.value
+  horario.value = salvo
+    ? { ...salvo, dias: [...salvo.dias], frequencia: salvo.frequencia ?? 'SEMANAL' }
+    : horarioVazio()
 }
 
+function comecarEdicao() {
+  copiaDoSalvo()
+  erro.value = ''
+  sucesso.value = ''
+  editando.value = true
+}
+
+function cancelarEdicao() {
+  editando.value = false
+  erro.value = ''
+}
 
 function alternarDia(dia: number) {
-  if (
-    horario.value.dias.includes(dia)
-  ) {
-    horario.value.dias =
-      horario.value.dias.filter(
-        item => item !== dia
-      )
+  if (horario.value.dias.includes(dia)) {
+    horario.value.dias = horario.value.dias.filter(item => item !== dia)
   }
   else {
     horario.value.dias.push(dia)
   }
 }
 
-
-function salvar() {
+async function salvar() {
   erro.value = ''
   sucesso.value = ''
 
-  if (
-    horario.value.dias.length === 0
-  ) {
-    erro.value =
-      'Selecione pelo menos um dia da semana.'
+  if (horario.value.dias.length === 0) {
+    erro.value = 'Selecione pelo menos um dia da semana.'
     return
   }
 
-  if (
-    !horario.value.horaInicio ||
-    !horario.value.horaFim
-  ) {
-    erro.value =
-      'Informe o horário de início e fim.'
+  if (!horario.value.horaInicio || !horario.value.horaFim) {
+    erro.value = 'Informe o horário de início e fim.'
     return
   }
 
-  if (
-    !horario.value.dataInicio ||
-    !horario.value.dataFim
-  ) {
-    erro.value =
-      'Informe a data inicial e final.'
+  if (!horario.value.dataInicio || !horario.value.dataFim) {
+    erro.value = 'Informe a data inicial e final.'
     return
   }
 
-  if (
-    horario.value.horaFim <=
-    horario.value.horaInicio
-  ) {
-    erro.value =
-      'O horário final deve ser depois do horário inicial.'
+  if (horario.value.horaFim <= horario.value.horaInicio) {
+    erro.value = 'O horário final deve ser depois do horário inicial.'
     return
   }
 
-  if (
-    horario.value.dataFim <
-    horario.value.dataInicio
-  ) {
-    erro.value =
-      'A data final deve ser depois da data inicial.'
+  if (horario.value.dataFim < horario.value.dataInicio) {
+    erro.value = 'A data final deve ser depois da data inicial.'
     return
   }
 
-  let horarios: Record<
-    string,
-    HorarioRecorrente
-  > = {}
-
-  const salvo =
-    localStorage.getItem(CHAVE_HORARIOS)
-
-  if (salvo) {
-    try {
-      horarios =
-        JSON.parse(salvo)
-    }
-    catch {
-      horarios = {}
-    }
+  salvando.value = true
+  try {
+    await salvarNoServidor(props.disciplina.id, {
+      ...horario.value,
+      dias: [...horario.value.dias]
+    })
+    sucesso.value = 'Horário salvo com sucesso.'
+    editando.value = false
   }
-
-  horarios[props.disciplina.id] = {
-    ...horario.value,
-    dias: [...horario.value.dias]
+  catch (err) {
+    console.error('[recorrencia] falha ao salvar:', err)
+    erro.value = mensagemDeErro(err, 'Não foi possível salvar o horário.')
   }
-
-  localStorage.setItem(
-    CHAVE_HORARIOS,
-    JSON.stringify(horarios)
-  )
-
-  sucesso.value =
-    'Horário salvo com sucesso.'
-
-  editando.value = false
+  finally {
+    salvando.value = false
+  }
 }
 
-
-function remover() {
-  const salvo =
-    localStorage.getItem(CHAVE_HORARIOS)
-
-  if (salvo) {
-    try {
-      const horarios =
-        JSON.parse(salvo)
-
-      delete horarios[
-        props.disciplina.id
-      ]
-
-      localStorage.setItem(
-        CHAVE_HORARIOS,
-        JSON.stringify(horarios)
-      )
-    }
-    catch {
-      // ignora localStorage inválido
-    }
+async function remover() {
+  if (!window.confirm('Remover o horário recorrente? As aulas que já têm anotações continuam na disciplina.')) {
+    return
   }
-
-  horario.value = {
-    dias: [],
-    horaInicio: '',
-    horaFim: '',
-    dataInicio: '',
-    dataFim: ''
-  }
-
   erro.value = ''
   sucesso.value = ''
-  editando.value = false
+  try {
+    await removerNoServidor(props.disciplina.id)
+    editando.value = false
+  }
+  catch (err) {
+    console.error('[recorrencia] falha ao remover:', err)
+    erro.value = mensagemDeErro(err, 'Não foi possível remover o horário.')
+  }
 }
 
+const rotuloFrequencia = (frequencia?: FrequenciaRecorrencia) =>
+  frequencia === 'QUINZENAL' ? 'Quinzenal' : 'Semanal'
 
-const possuiHorario =
-  computed(() =>
-    horario.value.dias.length > 0 &&
-    horario.value.horaInicio &&
-    horario.value.horaFim
-  )
-
-
-const diasSelecionados =
-  computed(() => {
-    return diasSemana
-      .filter(dia =>
-        horario.value.dias.includes(
-          dia.numero
-        )
-      )
-      .map(dia => dia.nome)
-      .join(', ')
-  })
-
-
-onMounted(() => {
-  carregar()
+const possuiHorario = computed(() => {
+  const salvo = horarioSalvo.value
+  return Boolean(salvo && salvo.dias.length > 0 && salvo.horaInicio && salvo.horaFim)
 })
+
+const diasSelecionados = computed(() => {
+  const salvo = horarioSalvo.value
+  return diasSemana
+    .filter(dia => salvo?.dias.includes(dia.numero))
+    .map(dia => dia.nome)
+    .join(', ')
+})
+
+onMounted(() => carregar())
 </script>
 
 
@@ -256,26 +171,26 @@ onMounted(() => {
     >
       <div>
         <strong>
-          {{ diasSelecionados }}
+          {{ diasSelecionados }} · {{ rotuloFrequencia(horarioSalvo?.frequencia) }}
         </strong>
 
         <p>
-          {{ horario.horaInicio }}
+          {{ horarioSalvo?.horaInicio }}
           –
-          {{ horario.horaFim }}
+          {{ horarioSalvo?.horaFim }}
         </p>
 
         <small>
-          {{ horario.dataInicio }}
+          {{ horarioSalvo?.dataInicio }}
           até
-          {{ horario.dataFim }}
+          {{ horarioSalvo?.dataFim }}
         </small>
       </div>
 
-      <div class="acoes">
+      <div v-if="podeEditar" class="acoes">
         <button
           type="button"
-          @click="editando = true"
+          @click="comecarEdicao"
         >
           Editar
         </button>
@@ -296,6 +211,9 @@ onMounted(() => {
       class="sem-horario"
     >
       Nenhum horário configurado.
+      <button v-if="podeEditar" type="button" class="definir" @click="comecarEdicao">
+        Definir horário
+      </button>
     </div>
 
 
@@ -325,6 +243,20 @@ onMounted(() => {
         >
           {{ dia.nome }}
         </button>
+      </div>
+
+
+      <div class="linha">
+        <div>
+          <label>
+            Frequência
+          </label>
+
+          <select v-model="horario.frequencia">
+            <option value="SEMANAL">Toda semana</option>
+            <option value="QUINZENAL">A cada duas semanas</option>
+          </select>
+        </div>
       </div>
 
 
@@ -390,7 +322,8 @@ onMounted(() => {
         <button
           type="button"
           class="cancelar"
-          @click="editando = false"
+          :disabled="salvando"
+          @click="cancelarEdicao"
         >
           Cancelar
         </button>
@@ -398,9 +331,10 @@ onMounted(() => {
         <button
           type="button"
           class="salvar"
+          :disabled="salvando"
           @click="salvar"
         >
-          Salvar horário
+          {{ salvando ? 'Salvando...' : 'Salvar horário' }}
         </button>
       </div>
     </div>
@@ -532,6 +466,7 @@ onMounted(() => {
   margin-bottom: 15px;
 }
 
+select,
 input {
   width: 100%;
   min-height: 36px;
@@ -541,8 +476,20 @@ input {
   outline: none;
 }
 
+select:focus,
 input:focus {
   border-color: #2563eb;
+}
+
+.definir {
+  margin-left: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2563eb;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .botoes {

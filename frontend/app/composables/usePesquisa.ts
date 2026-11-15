@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 import type { Anotacao, ImagemAnotacao } from '~/types/anotacao'
-import type { Disciplina } from '~/types/disciplina'
+import type { Disciplina, HorarioRecorrente } from '~/types/disciplina'
 
 // "minhas" é filtrado na página, pelo autor; "colegas" usa o endpoint das anotações dos colegas
 export type FiltroAutor = 'todos' | 'minhas' | 'colegas'
@@ -35,33 +35,11 @@ export interface ResultadoPesquisa {
   anotacao: AnotacaoPesquisa
 }
 
-interface HorarioRecorrente {
-  dias: number[]
-  horaInicio: string
-  horaFim: string
-  dataInicio: string
-  dataFim: string
-}
-
 interface AulaApi {
   id: string
   data: string
   horario: string
   topico?: string | null
-}
-
-const CHAVE_HORARIOS = 'allgenda-horarios-recorrentes'
-
-function lerRegistroLocal<T>(chave: string): Record<string, T> {
-  try {
-    const registro = JSON.parse(localStorage.getItem(chave) || '{}')
-    return registro && typeof registro === 'object' && !Array.isArray(registro)
-      ? registro as Record<string, T>
-      : {}
-  }
-  catch {
-    return {}
-  }
 }
 
 function paraAnotacaoPesquisa(anotacao: Anotacao): AnotacaoPesquisa {
@@ -128,7 +106,7 @@ function gerarAulasRecorrentes(
         && aula.horario === horarioFormatado
       )
 
-      if (horario.dias.includes(data.getDay()) && !duplicada) {
+      if (ocorreNoDia(horario, dataAula) && !duplicada) {
         ocorrencias.push({
           id: `recorrente-${disciplinaId}-${dataAula}`,
           disciplinaId,
@@ -156,6 +134,7 @@ export function usePesquisa(filtros: { disciplinaId: Ref<string>, autor: Ref<Fil
   const { listar } = useDisciplinas()
   const { listarPorDisciplina, listarDosColegas, listarTags } = useAnotacoes()
   const { $api } = useNuxtApp()
+  const { recorrencias, carregar: carregarRecorrencias } = useRecorrencias()
   const disciplinas = ref<Disciplina[]>([])
   const aulas = ref<AulaPesquisa[]>([])
   const anotacoesPorAula = ref<Record<string, AnotacaoPesquisa[]>>({})
@@ -211,7 +190,8 @@ export function usePesquisa(filtros: { disciplinaId: Ref<string>, autor: Ref<Fil
       ])
 
       const aulasDaApi = aulasPorDisciplina.flat()
-      const horarios = lerRegistroLocal<HorarioRecorrente>(CHAVE_HORARIOS)
+      await carregarRecorrencias()
+      const horarios = recorrencias.value
       aulas.value = [
         ...aulasDaApi,
         ...gerarAulasRecorrentes(disciplinas.value, aulasDaApi, horarios)
