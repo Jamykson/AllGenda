@@ -47,6 +47,8 @@ interface Aula {
 
   topico?:string
 
+  cancelada?:boolean
+
   disciplinaId:string
 
   disciplinaNome:string
@@ -959,6 +961,7 @@ aula.id
 "
 
 class="evento"
+:class="{ cancelada: aula.cancelada }"
 role="button"
 tabindex="0"
 :aria-label="'Abrir anotações de ' + aula.disciplinaNome"
@@ -1086,6 +1089,7 @@ corTextoParaFundo(aula.cor || '#2563eb')
         v-for="aula in aulasDoDia(dia.chave)"
         :key="aula.id"
         class="evento-semana"
+        :class="{ cancelada: aula.cancelada }"
         role="button"
         tabindex="0"
         :aria-label="'Abrir anotações de ' + aula.disciplinaNome"
@@ -1373,6 +1377,13 @@ class="erro"
 }
 
 .evento:focus-visible,
+/* aula cancelada continua na agenda, só marcada */
+.evento.cancelada,
+.evento-semana.cancelada {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
 .evento-semana:focus-visible {
   outline: 2px solid #0f172a;
   outline-offset: 2px;

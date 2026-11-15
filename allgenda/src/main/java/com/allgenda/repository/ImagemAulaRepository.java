@@ -27,4 +27,8 @@ public interface ImagemAulaRepository extends JpaRepository<ImagemAula, UUID> {
     // só as chaves dos arquivos, das imagens avulsas de todas as aulas da disciplina
     @Query("select i.chaveArmazenamento from ImagemAula i where i.aula.disciplina.id = :disciplinaId")
     List<String> findChavesArmazenamentoByDisciplinaId(@Param("disciplinaId") UUID disciplinaId);
+
+    // só as chaves dos arquivos, das imagens avulsas de uma aula
+    @Query("select i.chaveArmazenamento from ImagemAula i where i.aula.id = :aulaId")
+    List<String> findChavesArmazenamentoByAulaId(@Param("aulaId") UUID aulaId);
 }

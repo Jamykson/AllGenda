@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import type { Participante } from '~/types/disciplina'
+
 interface Aula {
   id: string
   data: string
   horario: string
   topico: string | null
   recorrente?: boolean
+  cancelada?: boolean
+  anotacoes?: number
 }
 
 interface HorarioRecorrente {
@@ -24,9 +28,120 @@ const props = defineProps<{
 }>()
 
 const { $api } = useNuxtApp()
+const { listarParticipantes } = useDisciplinas()
+const { atualizarAula, excluirAula } = useAulas()
+const { usuario } = useAuth()
 const aulas = ref<Aula[]>([])
 const carregando = ref(true)
 const erro = ref('')
+
+// só o dono edita, cancela e exclui aulas
+const ehDono = ref(false)
+const editandoId = ref<string | null>(null)
+const rascunho = reactive({ data: '', horario: '', topico: '' })
+const ocupadaId = ref<string | null>(null)
+const erroAcao = ref('')
+
+async function descobrirDono() {
+  try {
+    const participantes: Participante[] = await listarParticipantes(props.disciplinaId)
+    ehDono.value = participantes.some(p => p.papel === 'DONO' && p.usuarioId === usuario.value?.id)
+  }
+  catch {
+    ehDono.value = false
+  }
+}
+
+function podeAgir(aula: Aula) {
+  return ehDono.value && !aula.recorrente
+}
+
+function comecarEdicao(aula: Aula) {
+  rascunho.data = aula.data
+  rascunho.horario = aula.horario
+  rascunho.topico = aula.topico ?? ''
+  erroAcao.value = ''
+  editandoId.value = aula.id
+}
+
+async function salvarEdicao(aula: Aula) {
+  if (!rascunho.data || !rascunho.horario.trim() || !rascunho.topico.trim()) {
+    erroAcao.value = 'Data, horário e tópico são obrigatórios.'
+    return
+  }
+  ocupadaId.value = aula.id
+  erroAcao.value = ''
+  try {
+    const atualizada = await atualizarAula<Aula>(aula.id, {
+      data: rascunho.data,
+      horario: rascunho.horario.trim(),
+      topico: rascunho.topico.trim()
+    })
+    Object.assign(aula, atualizada)
+    ordenar()
+    editandoId.value = null
+  }
+  catch (err) {
+    console.error('[aulas] falha ao editar:', err)
+    erroAcao.value = mensagemDeErro(err, 'Não foi possível salvar a aula.')
+  }
+  finally {
+    ocupadaId.value = null
+  }
+}
+
+// cancelar não apaga nada: a aula e as anotações continuam, só ficam marcadas
+async function alternarCancelamento(aula: Aula) {
+  const cancelando = !aula.cancelada
+  if (cancelando && !window.confirm('Cancelar esta aula? Ela continua na lista, marcada como cancelada, com as anotações.')) {
+    return
+  }
+  ocupadaId.value = aula.id
+  erroAcao.value = ''
+  try {
+    const atualizada = await atualizarAula<Aula>(aula.id, { cancelada: cancelando })
+    Object.assign(aula, atualizada)
+  }
+  catch (err) {
+    console.error('[aulas] falha ao cancelar:', err)
+    erroAcao.value = mensagemDeErro(err, 'Não foi possível alterar o cancelamento da aula.')
+  }
+  finally {
+    ocupadaId.value = null
+  }
+}
+
+// excluir apaga a aula com todas as anotações (inclusive as privadas) e imagens; o dono é avisado antes
+async function excluir(aula: Aula) {
+  const notas = aula.anotacoes ?? 0
+  const aviso = notas > 0
+    ? `Ela tem ${notas} ${notas === 1 ? 'anotação' : 'anotações'} do grupo, que serão apagadas junto com as anotações privadas e as imagens. `
+    : 'As anotações privadas e as imagens da aula também serão apagadas. '
+  if (!window.confirm(`Excluir esta aula? ${aviso}Isso não pode ser desfeito. Para só avisar que não vai acontecer, use "Cancelar aula".`)) {
+    return
+  }
+  ocupadaId.value = aula.id
+  erroAcao.value = ''
+  try {
+    await excluirAula(aula.id)
+    aulas.value = aulas.value.filter(item => item.id !== aula.id)
+  }
+  catch (err) {
+    console.error('[aulas] falha ao excluir:', err)
+    erroAcao.value = mensagemDeErro(err, 'Não foi possível excluir a aula.')
+  }
+  finally {
+    ocupadaId.value = null
+  }
+}
+
+function ordenar() {
+  aulas.value = [...aulas.value].sort((aulaA, aulaB) =>
+    aulaA.data.localeCompare(aulaB.data)
+    || minutosInicio(aulaA.horario) - minutosInicio(aulaB.horario)
+    || (aulaA.topico || '').localeCompare(aulaB.topico || '', 'pt-BR')
+  )
+}
 
 // as ocorrências recorrentes não guardam a disciplina, que a página da aula precisa para cadastrá-las no backend
 function abrirAula(aula: Aula) {
@@ -205,7 +320,10 @@ async function carregarAulas() {
   carregando.value = false
 }
 
-onMounted(carregarAulas)
+onMounted(() => {
+  carregarAulas()
+  descobrirDono()
+})
 </script>
 
 <template>
@@ -237,26 +355,49 @@ onMounted(carregarAulas)
       Nenhuma aula cadastrada.
     </p>
 
-    <ol v-else-if="!carregando" class="itens-aulas">
+    <p v-if="erroAcao" class="estado-erro" role="alert">{{ erroAcao }}</p>
+
+    <ol v-if="!carregando && aulasOrdenadas.length" class="itens-aulas">
       <li
         v-for="aula in aulasOrdenadas"
         :key="aula.id"
         class="item-aula"
+        :class="{ cancelada: aula.cancelada }"
         tabindex="0"
         :style="estiloAula(aula)"
-        @click="abrirAula(aula)"
-        @keydown.enter.prevent="abrirAula(aula)"
-        @keydown.space.prevent="abrirAula(aula)"
+        @click="editandoId !== aula.id && abrirAula(aula)"
+        @keydown.enter.self.prevent="abrirAula(aula)"
+        @keydown.space.self.prevent="abrirAula(aula)"
       >
-        <div class="bloco-data">
-          <span class="hora-inicio">{{ horaInicio(aula.horario) }}</span>
-          <time class="data-aula" :datetime="aula.data">
-            {{ formatarData(aula.data) }}
-          </time>
-        </div>
-        <div class="detalhes-aula">
-          <strong>{{ aula.topico || 'Aula recorrente' }}</strong>
-        </div>
+        <form v-if="editandoId === aula.id" class="edicao-aula" @click.stop @submit.prevent="salvarEdicao(aula)">
+          <input v-model="rascunho.data" type="date" aria-label="Data da aula" :disabled="ocupadaId === aula.id">
+          <input v-model="rascunho.horario" type="text" aria-label="Horário da aula" placeholder="08:00" :disabled="ocupadaId === aula.id">
+          <input v-model="rascunho.topico" type="text" aria-label="Tópico da aula" placeholder="Tópico" :disabled="ocupadaId === aula.id">
+          <div class="acoes-aula">
+            <button type="submit" :disabled="ocupadaId === aula.id">Salvar</button>
+            <button type="button" :disabled="ocupadaId === aula.id" @click="editandoId = null">Cancelar edição</button>
+          </div>
+        </form>
+
+        <template v-else>
+          <div class="bloco-data">
+            <span class="hora-inicio">{{ horaInicio(aula.horario) }}</span>
+            <time class="data-aula" :datetime="aula.data">
+              {{ formatarData(aula.data) }}
+            </time>
+          </div>
+          <div class="detalhes-aula">
+            <strong>{{ aula.topico || 'Aula recorrente' }}</strong>
+            <span v-if="aula.cancelada" class="selo-cancelada">Cancelada</span>
+          </div>
+          <div v-if="podeAgir(aula)" class="acoes-aula" @click.stop @keydown.stop>
+            <button type="button" :disabled="ocupadaId === aula.id" @click="comecarEdicao(aula)">Editar</button>
+            <button type="button" :disabled="ocupadaId === aula.id" @click="alternarCancelamento(aula)">
+              {{ aula.cancelada ? 'Reativar' : 'Cancelar aula' }}
+            </button>
+            <button type="button" class="perigo" :disabled="ocupadaId === aula.id" @click="excluir(aula)">Excluir</button>
+          </div>
+        </template>
       </li>
     </ol>
   </section>
@@ -321,7 +462,7 @@ onMounted(carregarAulas)
 
 .item-aula {
   display: grid;
-  grid-template-columns: minmax(120px, 170px) minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -331,6 +472,66 @@ onMounted(carregarAulas)
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   cursor: pointer;
   transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.item-aula.cancelada .detalhes-aula strong,
+.item-aula.cancelada .bloco-data {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.selo-cancelada {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.acoes-aula {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.acoes-aula button {
+  padding: 3px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.acoes-aula button.perigo {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.edicao-aula {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.edicao-aula input {
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.edicao-aula input[aria-label="Tópico da aula"] {
+  flex: 1 1 160px;
 }
 
 .item-aula:hover {

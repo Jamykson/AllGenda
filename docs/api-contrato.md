@@ -17,7 +17,7 @@ Quase tudo o que pertence a uma disciplina exige **participação `ACEITO`** nel
 | Ver disciplina, aulas, anotações, tags, avaliações e imagens da aula | Participante `ACEITO` |
 | Criar aula, criar anotação, acrescentar/remover tags, renomear/excluir tag, reordenar imagens da aula | Participante `ACEITO` |
 | Baixar imagem de uma anotação | Participante `ACEITO` da disciplina da anotação |
-| Excluir disciplina, enviar convite | Somente o dono (`DONO` com `ACEITO`) |
+| Excluir disciplina, enviar convite, remover participante, editar a disciplina, editar/cancelar/excluir aula | Somente o dono (`DONO` com `ACEITO`) |
 | Editar ou excluir uma anotação, anexar ou remover suas imagens, editar ou excluir uma imagem da aula | Somente o autor |
 | Aceitar ou recusar convite | Somente o destinatário |
 
@@ -268,9 +268,21 @@ Sem corpo. Lista as aulas da disciplina, no formato do `GET /aulas/{id}`, ou `[]
 
 Sem corpo. Sucesso `200`:
 ```json
-{"id":"55555555-5555-4555-8555-555555555555","data":"2026-10-14","horario":"08:00 – 09:40","topico":"Padrões de projeto","disciplinaId":"33333333-3333-4333-8333-333333333333","disciplinaNome":"PDS"}
+{"id":"55555555-5555-4555-8555-555555555555","data":"2026-10-14","horario":"08:00 – 09:40","topico":"Padrões de projeto","disciplinaId":"33333333-3333-4333-8333-333333333333","disciplinaNome":"PDS","cancelada":false,"anotacoes":3}
 ```
-A página da aula usa `disciplinaId` para reconhecer a disciplina. Erros: `400` UUID inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente.
+A página da aula usa `disciplinaId` para reconhecer a disciplina. `cancelada` indica aula cancelada (continua existindo, com as anotações). `anotacoes` conta só as anotações do grupo da aula (as privadas não entram); o front usa o número para avisar o dono antes de excluir. Erros: `400` UUID inválido; `401` sem token válido; `403` participação ausente/pendente/recusada; `404` aula inexistente.
+
+### PATCH /aulas/{id} — implementado
+
+**Somente o dono.** Edição parcial: o que vier ausente ou `null` não muda.
+```json
+{"data":"2026-10-21","horario":"10:00 – 11:40","topico":"Observer","cancelada":true}
+```
+`cancelada: true` cancela a aula e `false` a reativa. Cancelar **não apaga nada**: a aula e as anotações continuam, só ficam marcadas como canceladas. `horario` e `topico` são salvos sem os espaços das pontas e não podem ficar em branco. Sucesso `200` com a aula, no formato do `GET /aulas/{id}`. Erros: `400` horário ou tópico em branco, data inválida ou JSON inválido; `401` sem token válido; `403` solicitante não é o dono; `404` aula inexistente.
+
+### DELETE /aulas/{id} — implementado
+
+Sem corpo. **Somente o dono** exclui. Apaga a aula com todas as anotações (inclusive as privadas de cada participante) e as imagens, e remove os arquivos do disco depois que a exclusão é confirmada. Para só avisar que a aula não vai acontecer, use o cancelamento. Sucesso `204`. Erros: `401` sem token válido; `403` solicitante não é o dono; `404` aula inexistente.
 
 ## Imagens da aula
 

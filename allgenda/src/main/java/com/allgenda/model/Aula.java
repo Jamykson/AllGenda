@@ -37,6 +37,10 @@ public class Aula implements Serializable{
     @Column(name = "topico")
     private String topico;
 
+    // aula cancelada continua na disciplina, com as anotações; só aparece marcada como cancelada
+    @Column(name = "cancelada", nullable = false, columnDefinition = "boolean default false")
+    private boolean cancelada = false;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "disciplina_id")
     private Disciplina disciplina;
@@ -78,6 +82,14 @@ public class Aula implements Serializable{
 
     public void setTopico(String topico) {
         this.topico = topico;
+    }
+
+    public boolean isCancelada() {
+        return cancelada;
+    }
+
+    public void setCancelada(boolean cancelada) {
+        this.cancelada = cancelada;
     }
 
     public Disciplina getDisciplina() {

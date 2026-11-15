@@ -17,4 +17,8 @@ public interface ImagemAnotacaoRepository extends JpaRepository<ImagemAnotacao, 
     // só as chaves dos arquivos, de todas as anotações de todas as aulas da disciplina
     @Query("select i.chaveArmazenamento from ImagemAnotacao i where i.anotacao.aula.disciplina.id = :disciplinaId")
     List<String> findChavesArmazenamentoByDisciplinaId(@Param("disciplinaId") UUID disciplinaId);
+
+    // só as chaves dos arquivos, das anotações de uma aula
+    @Query("select i.chaveArmazenamento from ImagemAnotacao i where i.anotacao.aula.id = :aulaId")
+    List<String> findChavesArmazenamentoByAulaId(@Param("aulaId") UUID aulaId);
 }

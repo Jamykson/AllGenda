@@ -1,6 +1,7 @@
 package com.allgenda.controller;
 
 import com.allgenda.dto.request.AulaRequestDTO;
+import com.allgenda.dto.request.AulaUpdateDTO;
 import com.allgenda.dto.response.AulaResponseDTO;
 import com.allgenda.service.AulaService;
 import org.springframework.http.HttpStatus;
@@ -34,5 +35,16 @@ public class AulaController {
     @GetMapping("/{id}")
     public AulaResponseDTO buscarPorId(@PathVariable UUID id) {
         return service.buscarPorId(id);
+    }
+
+    @PatchMapping("/{id}")
+    public AulaResponseDTO atualizar(@PathVariable UUID id, @RequestBody AulaUpdateDTO dto) {
+        return service.atualizar(id, dto);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable UUID id) {
+        service.excluir(id);
+        return ResponseEntity.noContent().build();
     }
 }
