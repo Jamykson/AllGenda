@@ -62,5 +62,4 @@ public class Participacao {
     public void setStatus(StatusParticipacao status) {
         this.status = status;
     }
-
 }

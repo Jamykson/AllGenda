@@ -1,6 +1,7 @@
 package com.allgenda.controller;
 
 import com.allgenda.dto.request.DisciplinaRequestDTO;
+import com.allgenda.dto.request.DisciplinaUpdateDTO;
 import com.allgenda.dto.response.DisciplinaResponseDTO;
 import com.allgenda.service.DisciplinaService;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,11 @@ public class DisciplinaController {
     @GetMapping("/{id}") // sufixo específico desse endpoint
     public DisciplinaResponseDTO buscarPorId(@PathVariable UUID id) { // @PathVariable extrai o id da URL e já converte pro tipo UUID.
         return service.buscarPorId(id); // busca por ID assume que o cliente já obteve o id de algum jeito antes.
+    }
+
+    @PatchMapping("/{id}")
+    public DisciplinaResponseDTO atualizar(@PathVariable UUID id, @RequestBody DisciplinaUpdateDTO dto) {
+        return service.atualizar(id, dto);
     }
 
     @DeleteMapping("/{id}")

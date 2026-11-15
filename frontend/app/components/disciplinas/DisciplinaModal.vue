@@ -1,13 +1,38 @@
 <script setup lang="ts">
 
-import type { Disciplina } from "~/types/disciplina"
+import type { Disciplina, Participante } from "~/types/disciplina"
 
 
-defineProps<{
+const props = defineProps<{
 
 disciplina:Disciplina
 
 }>()
+
+const { listarParticipantes } = useDisciplinas()
+const { usuario } = useAuth()
+
+const participantes = ref<Participante[]>([])
+const erroParticipantes = ref("")
+
+// só o dono edita a descrição e remove participantes
+const ehDono = computed(() =>
+	participantes.value.some(p => p.papel === "DONO" && p.usuarioId === usuario.value?.id)
+)
+
+onMounted(async () => {
+	try {
+		participantes.value = await listarParticipantes(props.disciplina.id)
+	}
+	catch (err) {
+		console.error("[participantes] falha ao listar:", err)
+		erroParticipantes.value = mensagemDeErro(err, "Não foi possível carregar os participantes.")
+	}
+})
+
+function aoRemover(usuarioId: string) {
+	participantes.value = participantes.value.filter(p => p.usuarioId !== usuarioId)
+}
 
 
 const emit = defineEmits([
@@ -42,6 +67,7 @@ const emit = defineEmits([
 			</header>
 
 			<p v-if="disciplina.descricao" class="descricao-disciplina">{{ disciplina.descricao }}</p>
+			<EditarDescricao v-if="ehDono" :disciplina="disciplina" />
 
 			<div class="personalizacao-area">
 				<h3>Personalização</h3>
@@ -52,7 +78,15 @@ const emit = defineEmits([
 				</div>
 			</div>
 
-			<ListaAulasDisciplina :disciplina-id="disciplina.id" :cor="disciplina.cor || '#2563eb'" />
+			<ParticipantesDisciplina
+				:disciplina-id="disciplina.id"
+				:participantes="participantes"
+				:eh-dono="ehDono"
+				:erro="erroParticipantes"
+				@removido="aoRemover"
+			/>
+
+						<ListaAulasDisciplina :disciplina-id="disciplina.id" :cor="disciplina.cor || '#2563eb'" />
 			<HorarioModal :disciplina="disciplina" />
 		</section>
 	</div>

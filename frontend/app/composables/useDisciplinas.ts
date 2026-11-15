@@ -1,4 +1,4 @@
-import type { Disciplina, HorarioRecorrente, NovaDisciplina } from '~/types/disciplina'
+import type { Disciplina, HorarioRecorrente, NovaDisciplina, Participante } from '~/types/disciplina'
 
 const CHAVE_PERSONALIZACOES =
   'allgenda-personalizacoes-disciplinas'
@@ -160,6 +160,24 @@ export function useDisciplinas() {
     excluirDadosLocais(disciplinaId)
   }
 
+  // só o dono edita; descrição vazia deixa a disciplina sem descrição
+  async function atualizarDescricao(disciplinaId: string, descricao: string): Promise<Disciplina> {
+    const { data } = await $api.patch<Disciplina>(`/api/disciplinas/${disciplinaId}`, {
+      descricao: descricao.trim() || null
+    })
+    return data
+  }
+
+  async function listarParticipantes(disciplinaId: string): Promise<Participante[]> {
+    const { data } = await $api.get<Participante[]>(`/api/disciplinas/${disciplinaId}/participantes`)
+    return data
+  }
+
+  // só o dono remove; a pessoa pode ser convidada de novo, e as anotações do grupo dela continuam
+  async function removerParticipante(disciplinaId: string, usuarioId: string): Promise<void> {
+    await $api.delete(`/api/disciplinas/${disciplinaId}/participantes/${usuarioId}`)
+  }
+
   function atualizarCor(
     disciplinaId: string,
     cor: string
@@ -215,6 +233,9 @@ export function useDisciplinas() {
     listar,
     criar,
     excluir,
+    atualizarDescricao,
+    listarParticipantes,
+    removerParticipante,
     atualizarCor,
     atualizarIcone,
     atualizarNome

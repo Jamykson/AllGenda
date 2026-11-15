@@ -6,12 +6,16 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.allgenda.model.Anotacao;
+import com.allgenda.model.VisibilidadeAnotacao;
 import java.util.Collection;
 
 
 public interface AnotacaoRepository extends JpaRepository<Anotacao, UUID> {
 
     List<Anotacao> findByAulaIdOrderByDataCriacaoAsc(UUID aulaId);
+
+    // quantas anotações de um autor, com a visibilidade dada, existem na disciplina
+    long countByAulaDisciplinaIdAndAutorIdAndVisibilidade(UUID disciplinaId, UUID autorId, VisibilidadeAnotacao visibilidade);
 
     // navega anotacao -> aula -> disciplina; ordena pela data da aula e depois pela criação da anotação
     List<Anotacao> findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(UUID disciplinaId);

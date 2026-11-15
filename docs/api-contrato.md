@@ -73,6 +73,24 @@ Sem corpo. Sucesso `200` com a disciplina, no formato do POST. Erros: `400` UUID
 
 Sem corpo. **Somente o dono** exclui. Apaga também as aulas, as avaliações, as tags, as participações e os arquivos das imagens da disciplina. A checagem de permissão vem antes de qualquer remoção. Sucesso `204`. Erros: `400` UUID inválido; `401` sem token válido; `403` solicitante não é o dono; `404` disciplina inexistente (inclusive se já foi excluída).
 
+
+### PATCH /disciplinas/{id} — implementado
+
+Corpo: `{"descricao":"Turma de segunda"}`. **Somente o dono** edita, e por ora só a descrição, que é substituída: em branco ou ausente a disciplina fica sem descrição (`null`). A descrição tem no máximo 500 caracteres e é salva sem os espaços das pontas. Sucesso `200` com a disciplina, no formato do POST. Erros: `400` descrição com mais de 500 caracteres ou JSON inválido; `401` sem token válido; `403` solicitante não é o dono; `404` disciplina inexistente.
+
+### GET /disciplinas/{id}/participantes — implementado
+
+Sem corpo. Qualquer participante `ACEITO` vê a lista: o dono primeiro e depois os membros em ordem alfabética. Convites pendentes ou recusados não aparecem, e o e-mail não é enviado. Sucesso `200`:
+```json
+[{"usuarioId":"11111111-1111-4111-8111-111111111111","nome":"Maria","papel":"DONO","anotacoes":0},
+ {"usuarioId":"22222222-2222-4222-8222-222222222222","nome":"João","papel":"MEMBRO","anotacoes":3}]
+```
+`anotacoes` conta só as anotações do grupo da pessoa nesta disciplina; as privadas não entram na conta. O front usa o número para avisar o dono antes de remover um membro. Erros: `401` sem token válido; `403` participação ausente/pendente/recusada; `404` disciplina inexistente.
+
+### DELETE /disciplinas/{id}/participantes/{usuarioId} — implementado
+
+Sem corpo. **Somente o dono** remove um membro. A participação é apagada: a pessoa perde o acesso à disciplina e pode ser convidada de novo (`POST /disciplinas/{id}/convites`). As anotações do grupo dela continuam na disciplina, com o nome do autor; as privadas ficam guardadas e ninguém as vê, e voltam a ser dela se ela aceitar um novo convite. Sucesso `204`. Erros: `400` tentativa de remover o dono; `401` sem token válido; `403` solicitante não é o dono; `404` disciplina inexistente ou a pessoa não é participante `ACEITO` dela.
+
 ## Convites — implementado
 
 Participação associa um usuário e uma disciplina, com papel `DONO` ou `MEMBRO` e status `PENDENTE`, `ACEITO` ou `RECUSADO`. Um par usuário/disciplina possui no máximo uma participação. Donos são participações `DONO/ACEITO`. Convites são enviados a usuários já cadastrados.

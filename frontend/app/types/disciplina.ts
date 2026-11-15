@@ -14,6 +14,15 @@ export interface Disciplina {
 
 }
 
+// Participante aceito da disciplina (GET /api/disciplinas/{id}/participantes).
+// anotacoes conta só as anotações do grupo dele: as privadas não entram na conta.
+export interface Participante {
+  usuarioId: string
+  nome: string
+  papel: 'DONO' | 'MEMBRO'
+  anotacoes: number
+}
+
 export interface NovaDisciplina {
   nome: string
   descricao: string

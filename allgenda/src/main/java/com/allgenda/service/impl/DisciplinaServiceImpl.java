@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.allgenda.dto.request.DisciplinaRequestDTO;
+import com.allgenda.dto.request.DisciplinaUpdateDTO;
 import com.allgenda.dto.response.DisciplinaResponseDTO;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
@@ -59,14 +60,14 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     @Transactional
     public DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto) {
         if(dto.nome() == null || dto.nome().isBlank()){
-            throw new RequisicaoInvalidaException("O nome da disciplina é obrigatório.");
+            throw new RequisicaoInvalidaException("O nome da disciplina é obrigatório."); // 400
         }
 
         String nome = dto.nome().trim();
         String descricao = dto.descricao() == null ? null : dto.descricao().trim();
 
         if (descricao != null && descricao.length() > 500) {
-            throw new RequisicaoInvalidaException("A descrição deve ter no máximo 500 caracteres.");
+            throw new RequisicaoInvalidaException("A descrição deve ter no máximo 500 caracteres."); // 400
         }
 
         Disciplina disciplina = new Disciplina();
@@ -102,8 +103,24 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public DisciplinaResponseDTO buscarPorId(UUID id) {
         Disciplina disciplina = repository.findById(id)
             .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));   // 404
-        acesso.exigirParticipanteAceito(id);                                 // 403
+        acesso.exigirParticipanteAceito(id);    // 403
         return mapper.toDto(disciplina);
+    }
+
+    @Override
+    @Transactional
+    public DisciplinaResponseDTO atualizar(UUID id, DisciplinaUpdateDTO dto) {
+        Disciplina disciplina = repository.findById(id)
+            .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));       // 404
+        acesso.exigirDono(id, "Somente o dono pode editar a disciplina.");       // 403
+
+        String descricao = dto == null || dto.descricao() == null ? null : dto.descricao().trim();
+        if (descricao != null && descricao.length() > 500) {
+            throw new RequisicaoInvalidaException("A descrição deve ter no máximo 500 caracteres."); // 400
+        }
+        // em branco, a disciplina fica sem descrição
+        disciplina.setDescricao(descricao == null || descricao.isBlank() ? null : descricao);
+        return mapper.toDto(repository.save(disciplina));
     }
 
     @Override
