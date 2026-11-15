@@ -9,6 +9,10 @@
         {{ disciplina?.nome ?? 'Carregando...' }}
       </h1>
 
+      <p v-if="disciplina?.descricao" class="descricao-disciplina">
+        {{ disciplina.descricao }}
+      </p>
+
       <nav class="links-anotacoes" aria-label="Anotações da disciplina">
         <NuxtLink :to="{ path: '/pesquisar', query: { disciplinaId } }" class="link-anotacoes">
           Ver anotações
@@ -83,6 +87,7 @@
 interface Disciplina {
   id: string
   nome: string
+  descricao?: string | null
 }
 
 interface Aula {
@@ -195,6 +200,15 @@ onMounted(() => {
   font-size: 20px;
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.descricao-disciplina {
+  margin: -4px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .links-anotacoes {

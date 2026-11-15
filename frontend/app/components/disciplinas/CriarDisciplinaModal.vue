@@ -34,6 +34,7 @@ const cores = [
   '#334155'
 ]
 const nome = ref('')
+const descricao = ref('')
 const cor = ref(cores[0])
 const icone = ref('📚')
 const hexManual = ref(cor.value)
@@ -280,7 +281,7 @@ function salvar() {
   erroHorario.value = ''
   emit('salvar', {
     nome: nomeLimpo,
-    descricao: '',
+    descricao: descricao.value.trim(),
     cor: cor.value,
     icone: icone.value,
     horario: {
@@ -358,6 +359,20 @@ onBeforeUnmount(() => {
         <p v-if="erroValidacao" class="erro-campo" role="alert">
           {{ erroValidacao }}
         </p>
+
+        <div class="grupo-campo">
+          <label class="campo-label" for="descricao-disciplina">
+            Descrição <span class="opcional">(opcional)</span>
+          </label>
+          <textarea
+            id="descricao-disciplina"
+            v-model="descricao"
+            class="campo-texto campo-descricao"
+            rows="3"
+            maxlength="500"
+            placeholder="Ex.: Turma de segunda e quarta, com a professora Ana"
+          />
+        </div>
 
         <div class="grupo-campo">
           <span class="campo-label">Personalização</span>
@@ -718,6 +733,17 @@ onBeforeUnmount(() => {
 .campo-texto:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgb(37 99 235 / 14%);
+}
+
+.campo-descricao {
+  resize: vertical;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.campo-label .opcional {
+  color: #64748b;
+  font-weight: 400;
 }
 
 .grupo-campo {

@@ -355,8 +355,8 @@ useHead(() => ({ title: aula.value ? `${aula.value.disciplinaNome} · ${formatar
       </button>
       <div class="identificacao">
         <h1>{{ aula?.disciplinaNome ?? (carregandoAula ? 'Carregando aula...' : 'Aula') }}</h1>
+        <p v-if="aula?.topico && aula.topico !== TOPICO_AULA_RECORRENTE" class="topico-aula">{{ aula.topico }}</p>
         <p v-if="aula">
-          <span v-if="aula.topico">{{ aula.topico }} · </span>
           {{ formatarDataDaAula(aula.data) }} · {{ aula.horario }}
           <span v-if="aula.recorrente" class="selo">Aula recorrente</span>
         </p>
@@ -504,6 +504,16 @@ h1 {
   margin: 2px 0 0;
   color: #64748b;
   font-size: 13px;
+}
+
+.identificacao .topico-aula {
+  overflow: hidden;
+  margin: 2px 0 0;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .selo {

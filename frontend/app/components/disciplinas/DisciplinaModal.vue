@@ -41,6 +41,8 @@ const emit = defineEmits([
 				</button>
 			</header>
 
+			<p v-if="disciplina.descricao" class="descricao-disciplina">{{ disciplina.descricao }}</p>
+
 			<div class="personalizacao-area">
 				<h3>Personalização</h3>
 				<div class="personalizacao-toolbar" aria-label="Personalizar disciplina">
@@ -95,6 +97,15 @@ const emit = defineEmits([
 	color: #0f172a;
 	font-size: 18px;
 	font-weight: 700;
+}
+
+.descricao-disciplina {
+	margin: 8px 0 0;
+	color: #64748b;
+	font-size: 14px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+	white-space: pre-line;
 }
 
 .botao-fechar {
