@@ -1,5 +1,7 @@
 package com.allgenda.dto.response;
 
+import com.allgenda.model.VisibilidadeAnotacao;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,5 +19,6 @@ public record AnotacaoResponseDTO(
     UUID aulaId,
     LocalDate aulaData,
     String aulaTopico,
-    List<ImagemAnotacaoResponseDTO> imagens
+    List<ImagemAnotacaoResponseDTO> imagens,
+    VisibilidadeAnotacao visibilidade // PRIVADA: só o autor a vê
 ) {}

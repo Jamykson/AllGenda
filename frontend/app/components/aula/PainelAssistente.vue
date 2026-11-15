@@ -309,7 +309,7 @@ onBeforeUnmount(parar)
           <ArrowUp :size="17" :stroke-width="2.2" aria-hidden="true" />
         </button>
       </div>
-      <p class="aviso">As anotações e imagens desta aula são enviadas à Anthropic para gerar as respostas.</p>
+      <p class="aviso">As anotações do grupo e as imagens da disciplina são enviadas à Anthropic para gerar as respostas. Anotações privadas não são enviadas.</p>
     </form>
   </aside>
 </template>

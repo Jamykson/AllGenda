@@ -2,6 +2,7 @@ package com.allgenda.service;
 import com.allgenda.dto.request.AnotacaoUpdateDTO;
 
 import com.allgenda.dto.request.AnotacaoRequestDTO;
+import com.allgenda.dto.request.AnotacaoVisibilidadeDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 
 import java.util.List;
@@ -16,6 +17,8 @@ public interface AnotacaoService {
     List<AnotacaoResponseDTO> listarPorDisciplina(UUID disciplinaId, String tag); // tag opcional: null = todas
     List<AnotacaoResponseDTO> listarPorTag(String tag);
     AnotacaoResponseDTO editar(UUID anotacaoId, AnotacaoUpdateDTO dto);
+    // torna a anotação privada (só do autor) ou a devolve ao grupo; só o autor altera
+    AnotacaoResponseDTO alterarVisibilidade(UUID anotacaoId, AnotacaoVisibilidadeDTO dto);
     void excluir(UUID anotacaoId); // apaga também as imagens (registros e arquivos); só o autor pode excluir
     // anotações dos outros participantes da disciplina (exclui as do solicitante)
     List<AnotacaoResponseDTO> listarDosColegas(UUID disciplinaId);

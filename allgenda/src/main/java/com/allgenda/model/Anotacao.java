@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,6 +44,11 @@ public class Anotacao implements Serializable {
 
     @Column(name = "dataCriacao")
     private LocalDateTime dataCriacao;
+
+    // o default no banco preenche as anotações que já existiam antes desta coluna (ddl-auto=update)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibilidade", nullable = false, length = 10, columnDefinition = "varchar(10) default 'GRUPO'")
+    private VisibilidadeAnotacao visibilidade = VisibilidadeAnotacao.GRUPO;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "aula_id")
@@ -91,6 +98,19 @@ public class Anotacao implements Serializable {
 
     public void setDataCriacao(LocalDateTime dataCriacao) {
         this.dataCriacao = dataCriacao;
+    }
+
+    public VisibilidadeAnotacao getVisibilidade() {
+        return visibilidade;
+    }
+
+    public void setVisibilidade(VisibilidadeAnotacao visibilidade) {
+        this.visibilidade = visibilidade;
+    }
+
+    // a regra de privacidade, num lugar só: o grupo vê as anotações do grupo; a privada é só do autor
+    public boolean visivelPara(UUID usuarioId) {
+        return visibilidade != VisibilidadeAnotacao.PRIVADA || autor.getId().equals(usuarioId);
     }
 
     public Aula getAula() {

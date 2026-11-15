@@ -122,9 +122,13 @@ Sem corpo. Participação `ACEITO` obrigatória. Retorna anotações da discipli
 
 No front-end, a página Pesquisar usa este endpoint no filtro de autor "Dos colegas" (`/pesquisar?disciplinaId=…&autor=colegas`, link "Anotações dos colegas" na página da disciplina). Os resultados vêm agrupados por aula, e um `403` ou `404` mostra uma mensagem própria, com link para os convites no caso do `403`.
 
+### Anotações privadas
+
+Toda anotação tem `visibilidade`: `GRUPO` (padrão; todos os participantes `ACEITO` da disciplina a veem) ou `PRIVADA` (só o autor). Todas as respostas de anotação trazem o campo. Para quem não é o autor, a privada **não existe**: ela não entra em nenhuma listagem (`GET /anotacoes` por aula, disciplina, tag ou os filtros combinados, e `GET /disciplinas/{id}/anotacoes/colegas`), e qualquer rota por id (editar, excluir, tags, visibilidade e as imagens dela) responde `404`, igual a um id inventado, inclusive para quem nem participa da disciplina, para não revelar que ela existe. O assistente também nunca a lê, nem para o próprio autor, e pôr uma privada em `foco` dá `400`. Ao tornar uma anotação privada de novo ou devolvê-la ao grupo, nada além da visibilidade muda. As tags continuam sendo da disciplina e aparecem em `GET /tags` para todos, mesmo as usadas só em anotações privadas.
+
 ### POST /anotacoes — implementado
 
-Corpo (o autor vem exclusivamente do JWT; não enviar `autorId`):
+Corpo (o autor vem exclusivamente do JWT; não enviar `autorId`; `visibilidade` é opcional e, ausente, vale `GRUPO`; um valor inválido dá `400`):
 ```json
 {"aulaId":"55555555-5555-4555-8555-555555555555","titulo":"Padrões comportamentais","conteudo":"Strategy e Observer","tags":["java","poo"]}
 ```
@@ -149,6 +153,14 @@ Corpo:
 {"titulo":"Padrões comportamentais","conteudo":"Conteúdo revisado"}
 ```
 Apenas o autor edita. Os dois campos são substituídos pelos valores enviados: um campo ausente ou vazio fica `null`, então para manter o título é preciso reenviá-lo. Vale a mesma regra do POST, ao menos um dos dois é obrigatório. Sucesso `200`: objeto de anotação do POST, com `titulo` e `conteudo` atualizados. Erros: `400` título e conteúdo vazios, título com mais de 150 caracteres ou JSON inválido; `401` sem token válido; `403` solicitante não é o autor; `404` anotação inexistente.
+
+### PATCH /anotacoes/{id}/visibilidade — implementado
+
+Corpo:
+```json
+{"visibilidade":"PRIVADA"}
+```
+Torna a anotação privada ou a devolve ao grupo. Apenas o autor altera. Sucesso `200`: objeto de anotação com a nova `visibilidade`. Erros: `400` `visibilidade` ausente ou inválida; `401` sem token válido; `403` anotação do grupo de outra pessoa; `404` anotação inexistente ou privada de outra pessoa.
 
 ### DELETE /anotacoes/{id} — implementado
 

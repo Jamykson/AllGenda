@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Image as ImageIcon, PanelLeftClose, PanelLeftOpen, Plus } from '@lucide/vue'
+import { Image as ImageIcon, Lock, PanelLeftClose, PanelLeftOpen, Plus } from '@lucide/vue'
 import type { Anotacao } from '~/types/anotacao'
 
 // Barra lateral da página da aula: um item grande por anotação. Com título, mostra o título e o
@@ -99,7 +99,10 @@ function ehDoUsuario(anotacao: Anotacao) {
             :class="{ 'trecho-sem-titulo': !anotacao.titulo }"
           >{{ anotacao.conteudo }}</span>
 
-          <span v-if="anotacao.tags.length || anotacao.imagens.length || !ehDoUsuario(anotacao)" class="rodape-item">
+          <span
+            v-if="anotacao.tags.length || anotacao.imagens.length || !ehDoUsuario(anotacao) || anotacao.visibilidade === 'PRIVADA'"
+            class="rodape-item"
+          >
             <span v-for="tag in anotacao.tags.slice(0, MAXIMO_TAGS_NO_ITEM)" :key="tag" class="tag">{{ tag }}</span>
             <span v-if="anotacao.tags.length > MAXIMO_TAGS_NO_ITEM" class="tag">
               +{{ anotacao.tags.length - MAXIMO_TAGS_NO_ITEM }}
@@ -108,6 +111,10 @@ function ehDoUsuario(anotacao: Anotacao) {
               <ImageIcon :size="13" :stroke-width="1.8" aria-hidden="true" />
               <span class="visually-hidden">Possui imagem anexada</span>
               {{ anotacao.imagens.length }}
+            </span>
+            <span v-if="anotacao.visibilidade === 'PRIVADA'" class="anexos" title="Privada: só você vê esta anotação">
+              <Lock :size="13" :stroke-width="1.8" aria-hidden="true" />
+              <span class="visually-hidden">Anotação privada</span>
             </span>
             <span v-if="!ehDoUsuario(anotacao)" class="autor">por {{ anotacao.autorNome }}</span>
           </span>

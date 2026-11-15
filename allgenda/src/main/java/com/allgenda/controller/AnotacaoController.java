@@ -2,6 +2,7 @@ package com.allgenda.controller;
 import com.allgenda.dto.request.AnotacaoUpdateDTO;
 
 import com.allgenda.dto.request.AnotacaoRequestDTO;
+import com.allgenda.dto.request.AnotacaoVisibilidadeDTO;
 import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.service.AnotacaoService;
@@ -63,6 +64,11 @@ public class AnotacaoController {
     @PatchMapping("/{id}")
     public AnotacaoResponseDTO editar(@PathVariable UUID id, @RequestBody AnotacaoUpdateDTO dto) {
         return service.editar(id, dto);
+    }
+
+    @PatchMapping("/{id}/visibilidade")
+    public AnotacaoResponseDTO alterarVisibilidade(@PathVariable UUID id, @RequestBody AnotacaoVisibilidadeDTO dto) {
+        return service.alterarVisibilidade(id, dto);
     }
 
     @DeleteMapping("/{id}")

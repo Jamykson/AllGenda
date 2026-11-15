@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios'
 import type { RouteLocationRaw } from 'vue-router'
-import type { Anotacao, AulaDaAnotacao, AulaDaPagina, ImagemAnotacao, ImagemAula, Tag } from '~/types/anotacao'
+import type { Anotacao, AulaDaAnotacao, AulaDaPagina, ImagemAnotacao, ImagemAula, Tag, VisibilidadeAnotacao } from '~/types/anotacao'
 
 // Limites aceitos pelo backend (app.uploads.* no application.properties).
 export const TIPOS_DE_IMAGEM = ['image/png', 'image/jpeg', 'image/webp']
@@ -96,12 +96,19 @@ export function useAnotacoes() {
   }
 
   // título e conteúdo vazios vão como null; a API exige ao menos um dos dois
-  async function criar(aulaId: string, titulo: string, conteudo: string, tags: string[]) {
+  async function criar(
+    aulaId: string,
+    titulo: string,
+    conteudo: string,
+    tags: string[],
+    visibilidade: VisibilidadeAnotacao = 'GRUPO'
+  ) {
     const { data } = await $api.post<Anotacao>('/api/anotacoes', {
       aulaId,
       titulo: titulo || null,
       conteudo: conteudo || null,
-      tags
+      tags,
+      visibilidade
     })
     return data
   }
@@ -112,6 +119,12 @@ export function useAnotacoes() {
       titulo: titulo || null,
       conteudo: conteudo || null
     })
+    return data
+  }
+
+  // só o autor alterna; uma anotação privada só ele vê, e o assistente não a lê
+  async function alterarVisibilidade(anotacaoId: string, visibilidade: VisibilidadeAnotacao) {
+    const { data } = await $api.patch<Anotacao>(`/api/anotacoes/${anotacaoId}/visibilidade`, { visibilidade })
     return data
   }
 
@@ -217,6 +230,7 @@ export function useAnotacoes() {
     excluirTag,
     criar,
     editar,
+    alterarVisibilidade,
     acrescentarTags,
     removerTag,
     excluir,

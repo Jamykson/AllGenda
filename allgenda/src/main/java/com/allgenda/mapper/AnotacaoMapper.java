@@ -42,7 +42,8 @@ public class AnotacaoMapper {
             anotacao.getAula().getId(),
             anotacao.getAula().getData(),
             anotacao.getAula().getTopico(),
-            anotacao.getImagens().stream().map(this::toImagemDto).toList()
+            anotacao.getImagens().stream().map(this::toImagemDto).toList(),
+            anotacao.getVisibilidade()
         );
     }
 

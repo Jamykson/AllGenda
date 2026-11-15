@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Image as ImageIcon, Sparkles, Trash2, X } from '@lucide/vue'
-import type { Anotacao, ImagemAnotacao, Tag } from '~/types/anotacao'
+import { Image as ImageIcon, Lock, Sparkles, Trash2, Users, X } from '@lucide/vue'
+import type { Anotacao, ImagemAnotacao, Tag, VisibilidadeAnotacao } from '~/types/anotacao'
 
 // Editor de uma anotação da página da aula. Título e texto são do autor e se salvam sozinhos pouco
 // depois da digitação; tags são salvas na hora e qualquer participante pode mexer nelas (SeletorTags).
@@ -28,7 +28,7 @@ const emit = defineEmits<{
   perguntar: [anotacaoId: string]
 }>()
 
-const { criar, editar, excluir, acrescentarTags, removerTag, anexarImagem, removerImagem } = useAnotacoes()
+const { criar, editar, alterarVisibilidade, excluir, acrescentarTags, removerTag, anexarImagem, removerImagem } = useAnotacoes()
 const { usuario } = useAuth()
 
 const titulo = ref(props.anotacao?.titulo ?? '')
@@ -49,6 +49,10 @@ let fila: Promise<void> = Promise.resolve()
 const ehDoUsuario = computed(() =>
   !props.anotacao || (Boolean(usuario.value) && props.anotacao.autorId === usuario.value?.id)
 )
+// Anotação nova ainda não existe no backend: a escolha fica aqui e vai junto com a criação.
+const visibilidadeNova = ref<VisibilidadeAnotacao>('GRUPO')
+const visibilidade = computed<VisibilidadeAnotacao>(() => props.anotacao?.visibilidade ?? visibilidadeNova.value)
+const ehPrivada = computed(() => visibilidade.value === 'PRIVADA')
 const tags = computed(() => props.anotacao?.tags ?? [])
 const imagens = computed(() => props.anotacao?.imagens ?? [])
 const salvaNoBackend = computed(() => Boolean(anotacaoId.value))
@@ -109,7 +113,7 @@ async function enviar() {
     }
     else {
       const aulaId = await props.obterAulaId()
-      salva = await criar(aulaId, tituloAtual, conteudoAtual, [])
+      salva = await criar(aulaId, tituloAtual, conteudoAtual, [], visibilidadeNova.value)
       anotacaoId.value = salva.id
     }
     ultimoSalvo = { titulo: tituloAtual, conteudo: conteudoAtual }
@@ -140,6 +144,28 @@ async function prepararSaida() {
 }
 
 defineExpose({ salvarAgora, temPendencia, prepararSaida })
+
+// Alterna entre privada (só o autor vê) e do grupo. Numa anotação ainda não salva só muda a escolha.
+async function alternarVisibilidade() {
+  const nova: VisibilidadeAnotacao = ehPrivada.value ? 'GRUPO' : 'PRIVADA'
+  if (!anotacaoId.value) {
+    visibilidadeNova.value = nova
+    return
+  }
+  if (ocupado.value) return
+  ocupado.value = true
+  erroAcao.value = ''
+  try {
+    emit('salva', await alterarVisibilidade(anotacaoId.value, nova))
+  }
+  catch (erro) {
+    console.error('[anotacao] erro ao alterar a visibilidade:', erro)
+    erroAcao.value = mensagemDeErro(erro, 'Não foi possível alterar a visibilidade da anotação.')
+  }
+  finally {
+    ocupado.value = false
+  }
+}
 
 // o assistente lê a anotação do backend, então o texto pendente é salvo antes
 async function perguntarAoAssistente() {
@@ -281,7 +307,23 @@ onBeforeUnmount(() => {
           <button v-if="estado === 'erro'" type="button" class="link-acao" @click="salvarAgora">Tentar de novo</button>
         </span>
         <button
-          v-if="salvaNoBackend"
+          v-if="ehDoUsuario"
+          type="button"
+          class="visibilidade"
+          :class="{ privada: ehPrivada }"
+          :disabled="ocupado"
+          :aria-pressed="ehPrivada"
+          :title="ehPrivada
+            ? 'Só você vê esta anotação, e o assistente não a lê. Clique para compartilhar com o grupo.'
+            : 'Todos os participantes da disciplina veem esta anotação. Clique para torná-la privada.'"
+          @click="alternarVisibilidade"
+        >
+          <Lock v-if="ehPrivada" :size="13" :stroke-width="2" aria-hidden="true" />
+          <Users v-else :size="13" :stroke-width="2" aria-hidden="true" />
+          {{ ehPrivada ? 'Privada' : 'Do grupo' }}
+        </button>
+        <button
+          v-if="salvaNoBackend && !ehPrivada"
           type="button"
           class="perguntar-assistente"
           title="Perguntar ao assistente sobre esta anotação"
@@ -412,6 +454,30 @@ onBeforeUnmount(() => {
 
 .estado-salvamento {
   color: #64748b;
+}
+
+.visibilidade {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.visibilidade:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.visibilidade.privada {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
 }
 
 .perguntar-assistente {

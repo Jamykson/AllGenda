@@ -8,6 +8,9 @@ export interface ImagemAnotacao {
   url: string // caminho do GET que devolve a imagem; exige o token, então é baixada pelo $api
 }
 
+// GRUPO: todos os participantes da disciplina veem; PRIVADA: só o autor (e o assistente não a lê)
+export type VisibilidadeAnotacao = 'GRUPO' | 'PRIVADA'
+
 // título e conteúdo são opcionais, mas toda anotação tem ao menos um dos dois
 export interface Anotacao {
   id: string
@@ -22,6 +25,7 @@ export interface Anotacao {
   aulaData: string
   aulaTopico: string | null
   imagens: ImagemAnotacao[]
+  visibilidade: VisibilidadeAnotacao
 }
 
 // Imagem avulsa da aula, que não pertence a nenhuma anotação.

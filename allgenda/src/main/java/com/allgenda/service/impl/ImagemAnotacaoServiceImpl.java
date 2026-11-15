@@ -107,9 +107,14 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
         remocaoArquivos.removerAoConfirmar(List.of(imagem.getChaveArmazenamento()));
     }
 
+    // a anotação privada de outra pessoa dá 404, como se não existisse; vale para anexar, ver e remover imagens
     private Anotacao buscarAnotacao(UUID anotacaoId) {
-        return anotacaoRepository.findById(anotacaoId)
+        Anotacao anotacao = anotacaoRepository.findById(anotacaoId)
                 .orElseThrow(() -> new AnotacaoNaoEncontradaException(anotacaoId));
+        if (!anotacao.visivelPara(usuarioAutenticado.id())) {
+            throw new AnotacaoNaoEncontradaException(anotacaoId);
+        }
+        return anotacao;
     }
 
     private ImagemAnotacao buscarImagem(UUID anotacaoId, UUID imagemId) {

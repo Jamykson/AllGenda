@@ -14,6 +14,7 @@ import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.ImagemAula;
 import com.allgenda.model.Tag;
+import com.allgenda.model.VisibilidadeAnotacao;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
@@ -155,6 +156,9 @@ public class AssistenteServiceImpl implements AssistenteService {
         // numeradas em ordem cronológica (aula, depois criação); o número não muda quando algo fica de fora
         List<AnotacaoDoMaterial> anotacoes = new ArrayList<>();
         for (Anotacao anotacao : anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId)) {
+            if (anotacao.getVisibilidade() == VisibilidadeAnotacao.PRIVADA) {
+                continue; // a anotação privada nunca vai ao modelo, nem a do próprio autor: o assistente é do grupo
+            }
             anotacoes.add(new AnotacaoDoMaterial(anotacao, anotacoes.size() + 1));
         }
         List<ImagemDoMaterial> imagens = imagensDoMaterial(disciplinaId, anotacoes);
