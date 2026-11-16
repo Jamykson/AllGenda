@@ -1,6 +1,6 @@
 package com.allgenda.framework.assistente;
 
-import com.allgenda.exception.LimiteDePerguntasException;
+import com.allgenda.framework.exception.LimiteDePerguntasException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

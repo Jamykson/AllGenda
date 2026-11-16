@@ -2,7 +2,7 @@ package com.allgenda.framework.acesso;
 
 import java.util.Set;
 
-import com.allgenda.model.StatusParticipacao;
+import com.allgenda.framework.model.StatusParticipacao;
 
 // Ponto variável 2 (Strategy): quem pode fazer o quê num grupo. A aplicação declara os papéis, o papel de
 // quem cria o grupo e de quem é convidado, o status de quem ingressa e quais papéis podem cada Acao.

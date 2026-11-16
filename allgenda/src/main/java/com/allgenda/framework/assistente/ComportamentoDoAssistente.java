@@ -1,7 +1,7 @@
 package com.allgenda.framework.assistente;
 
-import com.allgenda.model.Encontro;
-import com.allgenda.model.Grupo;
+import com.allgenda.framework.model.Encontro;
+import com.allgenda.framework.model.Grupo;
 
 // Ponto variável 3: o que muda no assistente de uma aplicação para outra. A aplicação define a persona
 // (as instruções iniciais) e, se quiser, restringe ou reordena o contexto. Todo o resto é fixo no núcleo

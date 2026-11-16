@@ -6,7 +6,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.allgenda.model.StatusParticipacao;
+import com.allgenda.framework.model.StatusParticipacao;
 
 // Implementação da PoliticaDeAcesso montada por declaração, sem código: para cada papel, a lista de ações
 // que ele pode. Ex.:

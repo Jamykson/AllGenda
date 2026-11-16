@@ -1,7 +1,7 @@
 package com.allgenda.framework.extensao;
 
-import com.allgenda.model.Evento;
-import com.allgenda.model.Grupo;
+import com.allgenda.framework.model.Evento;
+import com.allgenda.framework.model.Grupo;
 
 // Ponto variável 1 (Factory): a aplicação diz como criar o seu tipo de evento. A fábrica instancia a
 // subclasse e valida e preenche o que é só dela (ex.: converter o subtipo no enum de tipos de evento da

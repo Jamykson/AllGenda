@@ -3,7 +3,7 @@ package com.allgenda.framework.extensao;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.allgenda.exception.RequisicaoInvalidaException;
+import com.allgenda.framework.exception.RequisicaoInvalidaException;
 
 // Ponto variável 1 (Factory com registro): guarda, pelo nome do tipo, a fábrica de cada tipo de grupo,
 // encontro e evento da aplicação. A aplicação registra as fábricas na inicialização

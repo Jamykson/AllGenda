@@ -11,10 +11,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.allgenda.exception.AcessoNegadoException;
-import com.allgenda.model.StatusParticipacao;
-import com.allgenda.repository.ParticipacaoRepository;
-import com.allgenda.service.UsuarioAutenticado;
+import com.allgenda.framework.exception.AcessoNegadoException;
+import com.allgenda.framework.model.StatusParticipacao;
+import com.allgenda.framework.repository.ParticipacaoRepository;
+import com.allgenda.framework.service.UsuarioAutenticado;
 
 // Os mesmos cenários do antigo AcessoDisciplina (participante aceito; só o dono), agora decididos pela política.
 class AcessoAoGrupoTest {

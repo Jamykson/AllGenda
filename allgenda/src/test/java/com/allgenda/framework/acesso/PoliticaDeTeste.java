@@ -2,8 +2,8 @@ package com.allgenda.framework.acesso;
 
 import java.util.Optional;
 
-import com.allgenda.model.Participacao;
-import com.allgenda.model.StatusParticipacao;
+import com.allgenda.framework.model.Participacao;
+import com.allgenda.framework.model.StatusParticipacao;
 
 // Política usada nos testes unitários do núcleo, sem depender de nenhuma aplicação: DONO pode tudo;
 // MEMBRO vê o conteúdo, cria encontros, eventos e anotações e usa o assistente (a mesma matriz do AllGenda).

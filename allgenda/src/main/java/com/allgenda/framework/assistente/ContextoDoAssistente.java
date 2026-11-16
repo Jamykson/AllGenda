@@ -3,9 +3,9 @@ package com.allgenda.framework.assistente;
 import java.util.List;
 
 import com.allgenda.framework.assistente.PerguntaAoAssistente.Foco;
-import com.allgenda.model.Anotacao;
-import com.allgenda.model.Encontro;
-import com.allgenda.model.ImagemEncontro;
+import com.allgenda.framework.model.Anotacao;
+import com.allgenda.framework.model.Encontro;
+import com.allgenda.framework.model.ImagemEncontro;
 
 // O que o assistente pode usar para responder, entregue à aplicação em
 // ComportamentoDoAssistente.selecionarContexto. O núcleo monta este contexto já sem as anotações

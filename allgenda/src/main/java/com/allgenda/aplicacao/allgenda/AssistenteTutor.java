@@ -3,8 +3,8 @@ package com.allgenda.aplicacao.allgenda;
 import java.time.format.DateTimeFormatter;
 
 import com.allgenda.framework.assistente.ComportamentoDoAssistente;
-import com.allgenda.model.Encontro;
-import com.allgenda.model.Grupo;
+import com.allgenda.framework.model.Encontro;
+import com.allgenda.framework.model.Grupo;
 
 // Ponto variável 3 no AllGenda: o assistente é um tutor de estudos da disciplina. Só define a persona;
 // o contexto continua o padrão do núcleo (a disciplina inteira, sem as anotações privadas).

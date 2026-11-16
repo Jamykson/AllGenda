@@ -4,11 +4,11 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import com.allgenda.exception.AcessoNegadoException;
-import com.allgenda.model.Participacao;
-import com.allgenda.model.StatusParticipacao;
-import com.allgenda.repository.ParticipacaoRepository;
-import com.allgenda.service.UsuarioAutenticado;
+import com.allgenda.framework.exception.AcessoNegadoException;
+import com.allgenda.framework.model.Participacao;
+import com.allgenda.framework.model.StatusParticipacao;
+import com.allgenda.framework.repository.ParticipacaoRepository;
+import com.allgenda.framework.service.UsuarioAutenticado;
 
 // Responde "a pessoa logada pode fazer isto neste grupo?". A parte fixa (precisa ter participação ACEITO)
 // fica aqui; a parte variável (o papel dela permite a ação?) é perguntada à PoliticaDeAcesso da aplicação.

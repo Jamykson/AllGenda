@@ -1,0 +1,30 @@
+package com.allgenda.aplicacao.allgenda.controller;
+
+import com.allgenda.aplicacao.allgenda.dto.response.AnotacaoResponseDTO;
+import com.allgenda.aplicacao.allgenda.mapper.AnotacaoMapper;
+import com.allgenda.framework.service.AnotacaoService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/disciplinas/{disciplinaId}/anotacoes")
+public class AnotacaoColegaController {
+
+    private final AnotacaoService service;
+    private final AnotacaoMapper mapper;
+
+    public AnotacaoColegaController(AnotacaoService service, AnotacaoMapper mapper) {
+        this.service = service;
+        this.mapper = mapper;
+    }
+
+    @GetMapping("/colegas")
+    public List<AnotacaoResponseDTO> listar(@PathVariable UUID disciplinaId) {
+        return mapper.toDtoList(service.listarDosColegas(disciplinaId));
+    }
+}

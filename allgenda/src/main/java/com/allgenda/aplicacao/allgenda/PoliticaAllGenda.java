@@ -6,7 +6,7 @@ import static com.allgenda.aplicacao.allgenda.model.PapelAllGenda.MEMBRO;
 import com.allgenda.framework.acesso.Acao;
 import com.allgenda.framework.acesso.PoliticaDeAcesso;
 import com.allgenda.framework.acesso.PoliticaDeAcessoDeclarativa;
-import com.allgenda.model.StatusParticipacao;
+import com.allgenda.framework.model.StatusParticipacao;
 
 // Política de acesso do AllGenda (ponto variável 2), declarada como matriz papel -> ações:
 // o DONO pode tudo; o MEMBRO vê o conteúdo, cria aulas, avaliações e anotações (com tags e imagens) e usa
