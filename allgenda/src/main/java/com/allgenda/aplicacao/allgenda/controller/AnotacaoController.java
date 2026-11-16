@@ -43,10 +43,10 @@ public class AnotacaoController {
             if (disciplinaId != null || tag != null) {
                 throw new RequisicaoInvalidaException("O filtro por aula não pode ser combinado com outros filtros.");
             }
-            return mapper.toDtoList(service.listarPorAula(aulaId));
+            return mapper.toDtoList(service.listarPorEncontro(aulaId));
         }
         if (disciplinaId != null) {
-            return mapper.toDtoList(service.listarPorDisciplina(disciplinaId, tag));
+            return mapper.toDtoList(service.listarPorGrupo(disciplinaId, tag));
         }
         if (tag != null) {
             return mapper.toDtoList(service.listarPorTag(tag));

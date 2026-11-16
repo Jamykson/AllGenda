@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Dados em conflito com um registro existente.");
     }
 
-    @ExceptionHandler(RecursoNaoEncontradoException.class) // cobre todas as subclasses (Aula, Disciplina, Anotacao, Usuario...)
+    @ExceptionHandler(RecursoNaoEncontradoException.class) // cobre todas as subclasses (Grupo, Encontro, Anotacao, Usuario...)
     public ProblemDetail tratarNaoEncontrado(RecursoNaoEncontradoException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }

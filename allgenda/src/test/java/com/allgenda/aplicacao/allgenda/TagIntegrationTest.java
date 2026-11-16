@@ -166,7 +166,7 @@ class TagIntegrationTest {
 
         mvc.perform(renomeacao(prova, "resumo", tokenAutor))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value("Já existe uma tag com esse nome nesta disciplina."));
+                .andExpect(jsonPath("$.detail").value("Já existe uma tag com esse nome neste grupo."));
         // mudar só maiúsculas e minúsculas da própria tag é permitido
         mvc.perform(renomeacao(prova, "PROVA", tokenAutor))
                 .andExpect(status().isOk())

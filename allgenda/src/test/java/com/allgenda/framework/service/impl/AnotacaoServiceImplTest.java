@@ -492,7 +492,7 @@ class AnotacaoServiceImplTest {
         when(anotacaoRepository.findByEncontroIdOrderByDataCriacaoAsc(aulaId))
                 .thenReturn(List.of(anotacao("Primeira", tag("java")), anotacao("Segunda")));
 
-        List<Anotacao> resposta = service.listarPorAula(aulaId);
+        List<Anotacao> resposta = service.listarPorEncontro(aulaId);
 
         assertThat(resposta).extracting(Anotacao::getConteudo).containsExactly("Primeira", "Segunda");
         assertThat(nomesDasTags(resposta.get(0))).containsExactly("java");
@@ -503,7 +503,7 @@ class AnotacaoServiceImplTest {
     void listarPorAulaInexistenteLancaErroTratado() {
         when(encontroRepository.findById(aulaId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.listarPorAula(aulaId))
+        assertThatThrownBy(() -> service.listarPorEncontro(aulaId))
                 .isInstanceOf(EncontroNaoEncontradoException.class);
     }
 
@@ -512,7 +512,7 @@ class AnotacaoServiceImplTest {
         ReflectionTestUtils.setField(aula.getGrupo(), "id", UUID.randomUUID());
         when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
 
-        assertThatThrownBy(() -> service.listarPorAula(aulaId))
+        assertThatThrownBy(() -> service.listarPorEncontro(aulaId))
                 .isInstanceOf(AcessoNegadoException.class);
         verify(anotacaoRepository, never()).findByEncontroIdOrderByDataCriacaoAsc(any());
     }
@@ -525,7 +525,7 @@ class AnotacaoServiceImplTest {
         when(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId))
                 .thenReturn(List.of(anotacao("Texto")));
 
-        List<Anotacao> resposta = service.listarPorDisciplina(disciplinaId, null);
+        List<Anotacao> resposta = service.listarPorGrupo(disciplinaId, null);
 
         assertThat(resposta).extracting(Anotacao::getConteudo).containsExactly("Texto");
     }
@@ -538,7 +538,7 @@ class AnotacaoServiceImplTest {
         when(anotacaoRepository.findByEncontroGrupoIdAndTagsNomeIgnoreCaseOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, "java"))
                 .thenReturn(List.of(anotacao("Com tag", tag("java"))));
 
-        List<Anotacao> resposta = service.listarPorDisciplina(disciplinaId, "  java ");
+        List<Anotacao> resposta = service.listarPorGrupo(disciplinaId, "  java ");
 
         assertThat(resposta).extracting(Anotacao::getConteudo).containsExactly("Com tag");
         verify(anotacaoRepository, never()).findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(any());
@@ -549,7 +549,7 @@ class AnotacaoServiceImplTest {
         UUID disciplinaId = UUID.randomUUID();
         when(grupoRepository.existsById(disciplinaId)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.listarPorDisciplina(disciplinaId, null))
+        assertThatThrownBy(() -> service.listarPorGrupo(disciplinaId, null))
                 .isInstanceOf(GrupoNaoEncontradoException.class);
     }
 
@@ -558,7 +558,7 @@ class AnotacaoServiceImplTest {
         UUID disciplinaId = UUID.randomUUID();
         when(grupoRepository.existsById(disciplinaId)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.listarPorDisciplina(disciplinaId, null))
+        assertThatThrownBy(() -> service.listarPorGrupo(disciplinaId, null))
                 .isInstanceOf(AcessoNegadoException.class);
         verify(anotacaoRepository, never()).findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(any());
     }

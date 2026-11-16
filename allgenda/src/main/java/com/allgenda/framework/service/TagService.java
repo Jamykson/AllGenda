@@ -7,12 +7,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-// Tags são da disciplina. Listar, renomear e excluir exigem participação ACEITO nela.
+// Tags são do grupo. Listar exige VER_CONTEUDO; renomear e excluir, CRIAR_ANOTACAO.
 public interface TagService {
-    // reaproveita as tags da disciplina com esses nomes (sem diferenciar maiúsculas) e cria as que faltam
-    Set<Tag> buscarOuCriar(Grupo disciplina, List<String> nomes);
-    // sem disciplina, lista as tags de todas as disciplinas em que o usuário participa; em ordem alfabética
-    List<Tag> listar(UUID disciplinaId);
+    // reaproveita as tags do grupo com esses nomes (sem diferenciar maiúsculas) e cria as que faltam
+    Set<Tag> buscarOuCriar(Grupo grupo, List<String> nomes);
+    // sem grupo, lista as tags de todos os grupos em que o usuário participa; em ordem alfabética
+    List<Tag> listar(UUID grupoId);
     Tag renomear(UUID tagId, String nome);
     void excluir(UUID tagId); // tira a tag de todas as anotações que a usam
 }

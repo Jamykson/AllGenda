@@ -55,12 +55,12 @@ public class TagServiceImpl implements TagService {
         this.acesso = acesso;
     }
 
-    /*/ Para cada nome recebido, reaproveita a tag da disciplina que já existe ou cria uma nova nela.
+    /*/ Para cada nome recebido, reaproveita a tag do grupo que já existe ou cria uma nova nele.
         Nomes são comparados sem diferenciar maiúsculas/minúsculas e sem espaços nas pontas:
         "Java", "java" e " JAVA " resultam na mesma tag, que mantém a grafia de quando foi criada. /*/
     @Override
     @Transactional
-    public Set<Tag> buscarOuCriar(Grupo disciplina, List<String> nomes) {
+    public Set<Tag> buscarOuCriar(Grupo grupo, List<String> nomes) {
         Set<Tag> tags = new LinkedHashSet<>();
         if (nomes == null) {
             return tags;
@@ -78,11 +78,11 @@ public class TagServiceImpl implements TagService {
 
         for (String nome : nomesUnicos.values()) {
             validarTamanho(nome);
-            Tag tag = repository.findByGrupoIdAndNomeIgnoreCase(disciplina.getId(), nome)
+            Tag tag = repository.findByGrupoIdAndNomeIgnoreCase(grupo.getId(), nome)
                 .orElseGet(() -> {
                     Tag nova = new Tag();
                     nova.setNome(nome);
-                    nova.setGrupo(disciplina);
+                    nova.setGrupo(grupo);
                     return repository.save(nova);
                 });
             tags.add(tag);
@@ -92,22 +92,22 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Tag> listar(UUID disciplinaId) {
-        List<UUID> disciplinas;
-        if (disciplinaId != null) {
-            if (!grupoRepository.existsById(disciplinaId)) {
-                throw new GrupoNaoEncontradoException(disciplinaId);
+    public List<Tag> listar(UUID grupoId) {
+        List<UUID> grupos;
+        if (grupoId != null) {
+            if (!grupoRepository.existsById(grupoId)) {
+                throw new GrupoNaoEncontradoException(grupoId);
             }
-            acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);
-            disciplinas = List.of(disciplinaId);
+            acesso.exigir(Acao.VER_CONTEUDO, grupoId, SEM_ACESSO);
+            grupos = List.of(grupoId);
         }
         else {
-            disciplinas = participacaoRepository
+            grupos = participacaoRepository
                 .findByUsuarioIdAndStatus(usuarioAutenticado.id(), StatusParticipacao.ACEITO)
                 .stream()
                 .map(participacao -> participacao.getGrupo().getId())
                 .toList();
-            if (disciplinas.isEmpty()) {
+            if (grupos.isEmpty()) {
                 return List.of();
             }
         }
@@ -115,7 +115,7 @@ public class TagServiceImpl implements TagService {
         // ordem alfabética do português, sem diferenciar maiúsculas ("árvore" vem antes de "Banco")
         Collator collator = Collator.getInstance(Locale.of("pt", "BR"));
         collator.setStrength(Collator.SECONDARY);
-        return repository.findByGrupoIdIn(disciplinas).stream()
+        return repository.findByGrupoIdIn(grupos).stream()
             .sorted(Comparator.comparing(Tag::getNome, collator))
             .toList();
     }
@@ -134,7 +134,7 @@ public class TagServiceImpl implements TagService {
         repository.findByGrupoIdAndNomeIgnoreCase(tag.getGrupo().getId(), novoNome)
             .filter(outra -> !outra.getId().equals(tag.getId()))
             .ifPresent(outra -> {
-                throw new ConflitoException("Já existe uma tag com esse nome nesta disciplina.");
+                throw new ConflitoException("Já existe uma tag com esse nome neste grupo.");
             });
 
         tag.setNome(novoNome);

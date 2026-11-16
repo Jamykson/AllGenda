@@ -16,7 +16,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Optional;
 
-// Prepara as imagens da aula para o modelo de linguagem. O upload aceita até 5 MB, mas a API aceita
+// Prepara as imagens do grupo para o modelo de linguagem. O upload aceita até 5 MB, mas a API aceita
 // no máximo 5 MB depois da codificação em base64 (uns 3,75 MB de arquivo), e o modelo reduz para
 // 1568 px no maior lado de qualquer forma. PNG e JPEG maiores que isso são reduzidos e regravados
 // em JPEG; WebP, que o ImageIO não lê, vai como está se couber.

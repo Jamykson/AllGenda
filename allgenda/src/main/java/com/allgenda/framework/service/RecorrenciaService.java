@@ -6,8 +6,8 @@ import java.util.UUID;
 import com.allgenda.framework.model.Recorrencia;
 
 public interface RecorrenciaService {
-    Recorrencia buscar(UUID disciplinaId);
+    Recorrencia buscar(UUID grupoId);
     List<Recorrencia> listarDoUsuario();
-    Recorrencia salvar(UUID disciplinaId, DadosDaRecorrencia dados);
-    void remover(UUID disciplinaId);
+    Recorrencia salvar(UUID grupoId, DadosDaRecorrencia dados);
+    void remover(UUID grupoId);
 }

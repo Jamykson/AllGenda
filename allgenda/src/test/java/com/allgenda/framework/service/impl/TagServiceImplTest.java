@@ -166,7 +166,7 @@ class TagServiceImplTest {
 
         assertThatThrownBy(() -> service.renomear(tag.getId(), "resumo"))
                 .isInstanceOf(ConflitoException.class)
-                .hasMessage("Já existe uma tag com esse nome nesta disciplina.");
+                .hasMessage("Já existe uma tag com esse nome neste grupo.");
         assertThat(tag.getNome()).isEqualTo("Prova");
     }
 

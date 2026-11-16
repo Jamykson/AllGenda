@@ -56,14 +56,14 @@ public class ConviteServiceImpl implements ConviteService {
 
     @Override
     @Transactional
-    public Participacao enviar(UUID disciplinaId, String emailInformado) {
+    public Participacao enviar(UUID grupoId, String emailInformado) {
         String email = normalizarEmail(emailInformado);   // 400
 
-        Grupo disciplina = grupoRepository.findById(disciplinaId)   
-          .orElseThrow(() -> new GrupoNaoEncontradoException(disciplinaId)); // 404
+        Grupo grupo = grupoRepository.findById(grupoId)   
+          .orElseThrow(() -> new GrupoNaoEncontradoException(grupoId)); // 404
 
     UUID solicitanteId = usuarioAutenticado.id();
-    acesso.exigir(Acao.CONVIDAR, disciplinaId, "Você não tem permissão para convidar pessoas para este grupo.");   // 403
+    acesso.exigir(Acao.CONVIDAR, grupoId, "Você não tem permissão para convidar pessoas para este grupo.");   // 403
 
     Usuario destinatario = usuarioRepository.findByEmail(email)   // 404
         .orElseThrow(() -> new UsuarioNaoEncontradoException(email));
@@ -71,14 +71,14 @@ public class ConviteServiceImpl implements ConviteService {
         if (destinatario.getId().equals(solicitanteId)) {
             throw new ConflitoException("Você não pode convidar a si mesmo."); // 409
         }
-        if (participacaoRepository.findByUsuarioIdAndGrupoId(destinatario.getId(), disciplinaId).isPresent()) {
-            throw new ConflitoException("Este usuário já tem uma participação nesta disciplina.");   // 409
+        if (participacaoRepository.findByUsuarioIdAndGrupoId(destinatario.getId(), grupoId).isPresent()) {
+            throw new ConflitoException("Este usuário já tem uma participação neste grupo.");   // 409
         }
 
-        // convite = participação com o papel e o status de ingresso definidos pela política; grava-se pelo lado dono (Participacao)
+        // convite = participação com o papel e o status de ingresso definidos pela política; grava-se pelo lado dono da relação (Participacao)
         Participacao convite = new Participacao();
         convite.setUsuario(destinatario);
-        convite.setGrupo(disciplina);
+        convite.setGrupo(grupo);
         convite.setPapel(politica.papelDoConvidado());
         convite.setStatus(politica.statusAoIngressar());
 

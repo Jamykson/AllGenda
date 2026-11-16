@@ -45,7 +45,7 @@ public class ImagemAulaController {
 
     @GetMapping
     public List<ImagemAulaResponseDTO> listar(@PathVariable UUID aulaId) {
-        return mapper.toDtoList(service.listarPorAula(aulaId));
+        return mapper.toDtoList(service.listarPorEncontro(aulaId));
     }
 
     // corpo: todos os ids das imagens da aula, na nova ordem, ex: ["id1", "id2"]

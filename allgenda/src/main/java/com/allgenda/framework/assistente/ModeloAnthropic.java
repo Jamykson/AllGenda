@@ -73,7 +73,7 @@ public class ModeloAnthropic implements ModeloDeLinguagem {
         return switch (status) {
             case 429, 529 -> "O assistente está sobrecarregado no momento. Tente de novo em instantes.";
             case 401, 403 -> "O assistente está com a configuração inválida. Avise quem mantém o AllGenda.";
-            case 413 -> "O material da aula ficou grande demais para o assistente.";
+            case 413 -> "O material do grupo ficou grande demais para o assistente.";
             default -> "Não foi possível gerar a resposta. Tente de novo.";
         };
     }

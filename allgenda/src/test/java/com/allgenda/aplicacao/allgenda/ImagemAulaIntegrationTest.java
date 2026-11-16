@@ -254,7 +254,7 @@ class ImagemAulaIntegrationTest {
     void ordemQueNaoListaExatamenteAsImagensDaAulaRecebe400() throws Exception {
         String primeira = enviarComoAutor();
         String segunda = enviarComoAutor();
-        String mensagem = "A nova ordem deve listar exatamente as imagens da aula.";
+        String mensagem = "A nova ordem deve listar exatamente as imagens do encontro.";
 
         mvc.perform(reordenacao("[\"" + primeira + "\"]", tokenAutor))
                 .andExpect(status().isBadRequest())

@@ -59,9 +59,9 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
 
     @Override
     @Transactional
-    public ImagemEncontro adicionar(UUID aulaId, MultipartFile arquivo, String legenda) {
-        Encontro aula = buscarAula(aulaId);
-        exigir(Acao.CRIAR_ANOTACAO, aula);
+    public ImagemEncontro adicionar(UUID encontroId, MultipartFile arquivo, String legenda) {
+        Encontro encontro = buscarEncontro(encontroId);
+        exigir(Acao.CRIAR_ANOTACAO, encontro);
         String legendaNormalizada = normalizarLegenda(legenda); // antes de gravar o arquivo
 
         ImagemRecebida recebida = recebimento.receber(arquivo);
@@ -73,44 +73,44 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
         imagem.setTamanho(recebida.tamanho());
         imagem.setChaveArmazenamento(recebida.chave());
         imagem.setDataCriacao(LocalDateTime.now());
-        imagem.setPosicao(imagemRepository.findMaiorPosicaoByEncontroId(aulaId) + 1); // entra no fim da galeria
+        imagem.setPosicao(imagemRepository.findMaiorPosicaoByEncontroId(encontroId) + 1); // entra no fim da galeria
         imagem.setAutor(usuarioAutenticado.obter());
-        aula.addImagem(imagem);
+        encontro.addImagem(imagem);
 
         return imagemRepository.save(imagem);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ImagemEncontro> listarPorAula(UUID aulaId) {
-        exigir(Acao.VER_CONTEUDO, buscarAula(aulaId));
-        return imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
+    public List<ImagemEncontro> listarPorEncontro(UUID encontroId) {
+        exigir(Acao.VER_CONTEUDO, buscarEncontro(encontroId));
+        return imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(encontroId);
     }
 
     @Override
     @Transactional
-    public List<ImagemEncontro> reordenar(UUID aulaId, List<UUID> ids) {
-        exigir(Acao.CRIAR_ANOTACAO, buscarAula(aulaId)); // reordenar a galeria faz parte de anotar
-        List<ImagemEncontro> imagens = imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
+    public List<ImagemEncontro> reordenar(UUID encontroId, List<UUID> ids) {
+        exigir(Acao.CRIAR_ANOTACAO, buscarEncontro(encontroId)); // reordenar a galeria faz parte de anotar
+        List<ImagemEncontro> imagens = imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(encontroId);
 
-        // a lista precisa ter cada imagem da aula exatamente uma vez; outra combinação provavelmente
+        // a lista precisa ter cada imagem do encontro exatamente uma vez; outra combinação provavelmente
         // vem de uma tela desatualizada, e aplicá-la deixaria a ordem inconsistente
         Map<UUID, ImagemEncontro> porId = imagens.stream().collect(Collectors.toMap(ImagemEncontro::getId, imagem -> imagem));
         if (ids == null || ids.size() != imagens.size() || !porId.keySet().equals(new HashSet<>(ids))) {
-            throw new RequisicaoInvalidaException("A nova ordem deve listar exatamente as imagens da aula.");
+            throw new RequisicaoInvalidaException("A nova ordem deve listar exatamente as imagens do encontro.");
         }
 
         for (int i = 0; i < ids.size(); i++) {
             porId.get(ids.get(i)).setPosicao(i);
         }
-        return imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
+        return imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(encontroId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ImagemArquivo carregar(UUID aulaId, UUID imagemId) {
-        exigir(Acao.VER_CONTEUDO, buscarAula(aulaId));
-        ImagemEncontro imagem = buscarImagem(aulaId, imagemId);
+    public ImagemArquivo carregar(UUID encontroId, UUID imagemId) {
+        exigir(Acao.VER_CONTEUDO, buscarEncontro(encontroId));
+        ImagemEncontro imagem = buscarImagem(encontroId, imagemId);
         return armazenamento.carregar(imagem.getChaveArmazenamento())
                 .map(conteudo -> new ImagemArquivo(conteudo, imagem.getContentType(), imagem.getNomeOriginal()))
                 .orElseThrow(() -> new ImagemNaoEncontradaException(imagemId));
@@ -118,9 +118,9 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
 
     @Override
     @Transactional
-    public ImagemEncontro editarLegenda(UUID aulaId, UUID imagemId, String legendaInformada) {
+    public ImagemEncontro editarLegenda(UUID encontroId, UUID imagemId, String legendaInformada) {
         String legenda = normalizarLegenda(legendaInformada);
-        ImagemEncontro imagem = buscarImagem(aulaId, imagemId);
+        ImagemEncontro imagem = buscarImagem(encontroId, imagemId);
         exigirAutor(imagem);
 
         imagem.setLegenda(legenda);
@@ -129,21 +129,21 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
 
     @Override
     @Transactional
-    public void remover(UUID aulaId, UUID imagemId) {
-        ImagemEncontro imagem = buscarImagem(aulaId, imagemId);
+    public void remover(UUID encontroId, UUID imagemId) {
+        ImagemEncontro imagem = buscarImagem(encontroId, imagemId);
         exigirAutor(imagem);
 
         imagem.getEncontro().removeImagem(imagem);
         remocaoArquivos.removerAoConfirmar(List.of(imagem.getChaveArmazenamento()));
     }
 
-    private Encontro buscarAula(UUID aulaId) {
-        return encontroRepository.findById(aulaId)
-                .orElseThrow(() -> new EncontroNaoEncontradoException(aulaId));
+    private Encontro buscarEncontro(UUID encontroId) {
+        return encontroRepository.findById(encontroId)
+                .orElseThrow(() -> new EncontroNaoEncontradoException(encontroId));
     }
 
-    private ImagemEncontro buscarImagem(UUID aulaId, UUID imagemId) {
-        return imagemRepository.findByIdAndEncontroId(imagemId, aulaId)
+    private ImagemEncontro buscarImagem(UUID encontroId, UUID imagemId) {
+        return imagemRepository.findByIdAndEncontroId(imagemId, encontroId)
                 .orElseThrow(() -> new ImagemNaoEncontradaException(imagemId));
     }
 
@@ -153,8 +153,8 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
         }
     }
 
-    private void exigir(Acao acao, Encontro aula) {
-        acesso.exigir(acao, aula.getGrupo().getId(), "Somente participantes do grupo acessam as imagens dos encontros.");
+    private void exigir(Acao acao, Encontro encontro) {
+        acesso.exigir(acao, encontro.getGrupo().getId(), "Somente participantes do grupo acessam as imagens dos encontros.");
     }
 
     // legenda em branco vira null; o limite acompanha a coluna legenda de ImagemEncontro

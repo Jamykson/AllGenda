@@ -42,11 +42,11 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
 
     @Override
     @Transactional(readOnly = true)
-    public Recorrencia buscar(UUID disciplinaId) {
-        exigirDisciplina(disciplinaId);                                        // 404
-        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, "Somente participantes do grupo têm acesso a ele."); // 403
-        return repository.findByGrupoId(disciplinaId)
-                .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId));   // 404
+    public Recorrencia buscar(UUID grupoId) {
+        exigirGrupo(grupoId);                                        // 404
+        acesso.exigir(Acao.VER_CONTEUDO, grupoId, "Somente participantes do grupo têm acesso a ele."); // 403
+        return repository.findByGrupoId(grupoId)
+                .orElseThrow(() -> new RecorrenciaNaoEncontradaException(grupoId));   // 404
     }
 
     @Override
@@ -55,17 +55,17 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
         return repository.findDosGruposDoUsuario(usuarioAutenticado.id());
     }
 
-    // cria ou substitui: a disciplina tem no máximo uma recorrência
+    // cria ou substitui: o grupo tem no máximo uma recorrência
     @Override
     @Transactional
-    public Recorrencia salvar(UUID disciplinaId, DadosDaRecorrencia dto) {
-        Grupo disciplina = exigirDisciplina(disciplinaId);                // 404
-        acesso.exigir(Acao.DEFINIR_RECORRENCIA, disciplinaId, "Você não tem permissão para definir a recorrência do grupo.");   // 403
+    public Recorrencia salvar(UUID grupoId, DadosDaRecorrencia dto) {
+        Grupo grupo = exigirGrupo(grupoId);                // 404
+        acesso.exigir(Acao.DEFINIR_RECORRENCIA, grupoId, "Você não tem permissão para definir a recorrência do grupo.");   // 403
         validar(dto);                                                          // 400
 
-        Recorrencia recorrencia = repository.findByGrupoId(disciplinaId).orElseGet(() -> {
+        Recorrencia recorrencia = repository.findByGrupoId(grupoId).orElseGet(() -> {
             Recorrencia nova = new Recorrencia();
-            nova.setGrupo(disciplina);
+            nova.setGrupo(grupo);
             return nova;
         });
         recorrencia.setDiasSemana(dto.diasSemana());
@@ -79,18 +79,18 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
 
     @Override
     @Transactional
-    public void remover(UUID disciplinaId) {
-        exigirDisciplina(disciplinaId);                                        // 404
-        acesso.exigir(Acao.DEFINIR_RECORRENCIA, disciplinaId, "Você não tem permissão para remover a recorrência do grupo.");   // 403
-        Recorrencia recorrencia = repository.findByGrupoId(disciplinaId)
-                .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId));    // 404
-        // as aulas já cadastradas (com anotações) continuam; só a regra que gera as próximas some
+    public void remover(UUID grupoId) {
+        exigirGrupo(grupoId);                                        // 404
+        acesso.exigir(Acao.DEFINIR_RECORRENCIA, grupoId, "Você não tem permissão para remover a recorrência do grupo.");   // 403
+        Recorrencia recorrencia = repository.findByGrupoId(grupoId)
+                .orElseThrow(() -> new RecorrenciaNaoEncontradaException(grupoId));    // 404
+        // os encontros já cadastrados (com anotações) continuam; só a regra que gera as próximas some
         repository.delete(recorrencia);
     }
 
-    private Grupo exigirDisciplina(UUID disciplinaId) {
-        return grupoRepository.findById(disciplinaId)
-                .orElseThrow(() -> new GrupoNaoEncontradoException(disciplinaId));
+    private Grupo exigirGrupo(UUID grupoId) {
+        return grupoRepository.findById(grupoId)
+                .orElseThrow(() -> new GrupoNaoEncontradoException(grupoId));
     }
 
     private void validar(DadosDaRecorrencia dto) {

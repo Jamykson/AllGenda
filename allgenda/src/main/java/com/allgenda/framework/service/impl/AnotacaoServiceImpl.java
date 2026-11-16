@@ -64,24 +64,24 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     @Transactional // anotação e tags novas são salvas juntas: se algo falhar, nada fica salvo pela metade
     public Anotacao cadastrar(NovaAnotacao nova) {
         if (nova.encontroId() == null) {
-            throw new RequisicaoInvalidaException("O id da aula é obrigatório.");
+            throw new RequisicaoInvalidaException("O id do encontro é obrigatório.");
         }
         String titulo = normalizarTitulo(nova.titulo());
         String conteudo = normalizarConteudo(nova.conteudo());
         exigirTituloOuConteudo(titulo, conteudo);
 
-        Encontro aula = encontroRepository.findById(nova.encontroId())
+        Encontro encontro = encontroRepository.findById(nova.encontroId())
                 .orElseThrow(() -> new EncontroNaoEncontradoException(nova.encontroId()));   // 404
-        acesso.exigir(Acao.CRIAR_ANOTACAO, aula.getGrupo().getId(), SEM_ACESSO);   // 403
+        acesso.exigir(Acao.CRIAR_ANOTACAO, encontro.getGrupo().getId(), SEM_ACESSO);   // 403
 
         Anotacao anotacao = new Anotacao();
         anotacao.setTitulo(titulo);
         anotacao.setConteudo(conteudo);
         anotacao.setDataCriacao(LocalDateTime.now());
-        anotacao.setEncontro(aula);
+        anotacao.setEncontro(encontro);
         anotacao.setAutor(usuarioAutenticado.obter());
         anotacao.setVisibilidade(nova.visibilidade() == null ? VisibilidadeAnotacao.GRUPO : nova.visibilidade());
-        tagService.buscarOuCriar(aula.getGrupo(), nova.tags()).forEach(anotacao::addTag); // tags são opcionais
+        tagService.buscarOuCriar(encontro.getGrupo(), nova.tags()).forEach(anotacao::addTag); // tags são opcionais
 
         return anotacaoRepository.save(anotacao);
     }
@@ -126,25 +126,25 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Anotacao> listarPorAula(UUID aulaId) {
-        Encontro aula = encontroRepository.findById(aulaId)
-                .orElseThrow(() -> new EncontroNaoEncontradoException(aulaId));  
-        acesso.exigir(Acao.VER_CONTEUDO, aula.getGrupo().getId(), SEM_ACESSO);     //403
-        return soVisiveis(anotacaoRepository.findByEncontroIdOrderByDataCriacaoAsc(aulaId));
+    public List<Anotacao> listarPorEncontro(UUID encontroId) {
+        Encontro encontro = encontroRepository.findById(encontroId)
+                .orElseThrow(() -> new EncontroNaoEncontradoException(encontroId));  
+        acesso.exigir(Acao.VER_CONTEUDO, encontro.getGrupo().getId(), SEM_ACESSO);     //403
+        return soVisiveis(anotacaoRepository.findByEncontroIdOrderByDataCriacaoAsc(encontroId));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Anotacao> listarPorDisciplina(UUID disciplinaId, String tag) {
-        if (!grupoRepository.existsById(disciplinaId)) {    //404
-            throw new GrupoNaoEncontradoException(disciplinaId);
+    public List<Anotacao> listarPorGrupo(UUID grupoId, String tag) {
+        if (!grupoRepository.existsById(grupoId)) {    //404
+            throw new GrupoNaoEncontradoException(grupoId);
         }
-        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);
+        acesso.exigir(Acao.VER_CONTEUDO, grupoId, SEM_ACESSO);
         if (tag == null || tag.isBlank()) {
-            return soVisiveis(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId));
+            return soVisiveis(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(grupoId));
         }
         return soVisiveis(anotacaoRepository
-                .findByEncontroGrupoIdAndTagsNomeIgnoreCaseOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, tag.trim()));
+                .findByEncontroGrupoIdAndTagsNomeIgnoreCaseOrderByEncontroDataAscDataCriacaoAsc(grupoId, tag.trim()));
     }
 
     @Override
@@ -153,18 +153,18 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         if (tag == null || tag.isBlank()) {
             throw new RequisicaoInvalidaException("O nome da tag é obrigatório.");
         }
-        // sem disciplina informada, a busca vale só para as disciplinas em que o usuário participa (ACEITO)
-        List<UUID> disciplinasDoUsuario = participacaoRepository
+        // sem grupo informado, a busca vale só para os grupos em que o usuário participa (ACEITO)
+        List<UUID> gruposDoUsuario = participacaoRepository
                 .findByUsuarioIdAndStatus(usuarioAutenticado.id(), StatusParticipacao.ACEITO)
                 .stream()
                 .map(participacao -> participacao.getGrupo().getId())
                 .toList();
-        if (disciplinasDoUsuario.isEmpty()) {
+        if (gruposDoUsuario.isEmpty()) {
             return List.of();
         }
         // tag que não existe não é erro: só não há anotações com ela
         return soVisiveis(anotacaoRepository
-                .findByTagsNomeIgnoreCaseAndEncontroGrupoIdInOrderByEncontroDataAscDataCriacaoAsc(tag.trim(), disciplinasDoUsuario));
+                .findByTagsNomeIgnoreCaseAndEncontroGrupoIdInOrderByEncontroDataAscDataCriacaoAsc(tag.trim(), gruposDoUsuario));
     }
 
     // título em branco vira null; o limite acompanha a coluna titulo de Anotacao
@@ -261,13 +261,13 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Anotacao> listarDosColegas(UUID disciplinaId) {
-        if (!grupoRepository.existsById(disciplinaId)) {    // 404
-            throw new GrupoNaoEncontradoException(disciplinaId);
+    public List<Anotacao> listarDosColegas(UUID grupoId) {
+        if (!grupoRepository.existsById(grupoId)) {    // 404
+            throw new GrupoNaoEncontradoException(grupoId);
         }
-        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);    // 403
+        acesso.exigir(Acao.VER_CONTEUDO, grupoId, SEM_ACESSO);    // 403
         return soVisiveis(anotacaoRepository
-                .findByEncontroGrupoIdAndAutorIdNotOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id()));
+                .findByEncontroGrupoIdAndAutorIdNotOrderByEncontroDataAscDataCriacaoAsc(grupoId, usuarioAutenticado.id()));
     }
 
 }

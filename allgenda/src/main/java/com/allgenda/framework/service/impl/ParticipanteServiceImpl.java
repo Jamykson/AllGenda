@@ -44,28 +44,28 @@ public class ParticipanteServiceImpl implements ParticipanteService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Participante> listar(UUID disciplinaId) {
-        exigirDisciplina(disciplinaId);                                                  // 404
-        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, "Somente participantes do grupo veem quem participa."); // 403
+    public List<Participante> listar(UUID grupoId) {
+        exigirGrupo(grupoId);                                                  // 404
+        acesso.exigir(Acao.VER_CONTEUDO, grupoId, "Somente participantes do grupo veem quem participa."); // 403
 
-        return participacaoRepository.findByGrupoIdAndStatus(disciplinaId, StatusParticipacao.ACEITO).stream()
+        return participacaoRepository.findByGrupoIdAndStatus(grupoId, StatusParticipacao.ACEITO).stream()
                 .sorted(Comparator
                         .comparing((Participacao participacao) -> !ehCriador(participacao))
                         .thenComparing(participacao -> participacao.getUsuario().getNome(), String.CASE_INSENSITIVE_ORDER))
                 .map(participacao -> new Participante(
                         participacao,
                         anotacaoRepository.countByEncontroGrupoIdAndAutorIdAndVisibilidade(
-                                disciplinaId, participacao.getUsuario().getId(), VisibilidadeAnotacao.GRUPO)))
+                                grupoId, participacao.getUsuario().getId(), VisibilidadeAnotacao.GRUPO)))
                 .toList();
     }
 
     @Override
     @Transactional
-    public void remover(UUID disciplinaId, UUID usuarioId) {
-        exigirDisciplina(disciplinaId);                                                   // 404
-        acesso.exigir(Acao.REMOVER_MEMBRO, disciplinaId, "Você não tem permissão para remover participantes deste grupo."); // 403
+    public void remover(UUID grupoId, UUID usuarioId) {
+        exigirGrupo(grupoId);                                                   // 404
+        acesso.exigir(Acao.REMOVER_MEMBRO, grupoId, "Você não tem permissão para remover participantes deste grupo."); // 403
 
-        Participacao participacao = participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)
+        Participacao participacao = participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, grupoId)
                 .filter(encontrada -> encontrada.getStatus() == StatusParticipacao.ACEITO)
                 .orElseThrow(() -> new ParticipanteNaoEncontradoException(usuarioId));    // 404
         // regra fixa do núcleo, não da política: quem criou o grupo não sai dele
@@ -79,9 +79,9 @@ public class ParticipanteServiceImpl implements ParticipanteService {
         return politica.papelDoCriador().equals(participacao.getPapel());
     }
 
-    private void exigirDisciplina(UUID disciplinaId) {
-        if (!grupoRepository.existsById(disciplinaId)) {
-            throw new GrupoNaoEncontradoException(disciplinaId);
+    private void exigirGrupo(UUID grupoId) {
+        if (!grupoRepository.existsById(grupoId)) {
+            throw new GrupoNaoEncontradoException(grupoId);
         }
     }
 }

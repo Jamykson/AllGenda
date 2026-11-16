@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Optional;
 
-// Valida e grava uma imagem enviada, seja ela anexada a uma anotação ou avulsa na aula.
+// Valida e grava uma imagem enviada, seja ela anexada a uma anotação ou avulsa no encontro.
 // Quem chama monta o registro com os dados devolvidos; se a transação for desfeita, o arquivo gravado é apagado.
 @Component
 public class RecebimentoImagem {
