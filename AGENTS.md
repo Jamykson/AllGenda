@@ -5,7 +5,10 @@
 - `frontend/`: aplicação Nuxt 4 e Vue 3, escrita em TypeScript.
 - `allgenda/`: back-end Spring Boot com Java 25, Maven, Spring MVC, Spring Data JPA e PostgreSQL.
 - O cliente da API do front-end é configurado em `frontend/app/plugins/axios.ts`.
-- Os endpoints do back-end ficam em `allgenda/src/main/java/com/allgenda/controller/`; regras de negócio, persistência, DTOs e modelos ficam nos pacotes de nome correspondente.
+- O back-end é um framework com uma aplicação instanciada nele, num só módulo Maven (`docs/framework/` explica o projeto):
+  - `allgenda/src/main/java/com/allgenda/framework/`: o núcleo (pontos fixos) e os pontos variáveis. Pacotes `model` (Grupo, Encontro, Evento, Anotacao...), `acesso` (papéis, ações e política de acesso), `extensao` (DefinicaoDaAplicacao, fábricas e registro de tipos), `assistente`, `repository`, `service`, `exception`, `config` e os controllers neutros de login e cadastro.
+  - `allgenda/src/main/java/com/allgenda/aplicacao/allgenda/`: a aplicação AllGenda (Disciplina, Aula, Avaliacao, DefinicaoAllGenda, PoliticaAllGenda, AssistenteTutor) e a camada web dela: os endpoints em `controller/`, os DTOs em `dto/` e os mappers em `mapper/`.
+  - O núcleo nunca importa `com.allgenda.aplicacao` (o teste `NucleoNaoDependeDaAplicacaoTest` garante). Os services do núcleo recebem e devolvem entidades e records neutros; a conversão de e para DTOs fica nos controllers da aplicação.
 
 ## Ferramentas
 
@@ -24,7 +27,7 @@ Rode-os de qualquer lugar do repositório (`mise tasks` lista todos):
 
 Os comandos de base continuam funcionando diretamente, desde que as ferramentas e as variáveis do mise estejam ativas: `npm run dev` / `npm run build` dentro de `frontend/`, e `./mvnw spring-boot:run` / `./mvnw test` dentro de `allgenda/`.
 
-O PostgreSQL roda em Docker pelo `compose.yaml`, em `localhost:5433`, com um banco chamado `allgenda`. O `application.properties` lê a conexão das variáveis `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD` definidas no `mise.toml` e, sem elas, usa esses mesmos valores. Os testes do back-end rodam num banco H2 em memória, com uma chave JWT própria (`allgenda/src/test/resources/application.properties`), então não precisam de PostgreSQL. O back-end exige `JWT_SECRET` (ao menos 32 bytes); o `mise.toml` define um valor só para desenvolvimento, que pode ser trocado no `mise.local.toml` ou no ambiente. Ao iniciar, o back-end cria o usuário de teste a partir de `DEV_USUARIO_*`, se ele não existir (`config/UsuarioTesteInitializer.java`). Só no `nuxt dev` e com `API_COM_USUARIO_DE_TESTE=true` (desligado por padrão), o front-end obtém um token com esse usuário para as chamadas à API quando não tem nenhum; nenhuma tela muda, então a tela de login continua aparecendo. O token fica a cargo de `composables/useAuth.ts` e dos interceptors em `plugins/axios.ts`. O assistente de IA da página da aula chama a API da Anthropic pelo back-end e precisa de `ANTHROPIC_API_KEY` (pessoal, no `mise.local.toml`); sem ela, o endpoint responde 503 e o resto do app funciona. Os testes nunca chamam a API: usam um modelo falso.
+O PostgreSQL roda em Docker pelo `compose.yaml`, em `localhost:5433`, com um banco chamado `allgenda`. O `application.properties` lê a conexão das variáveis `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD` definidas no `mise.toml` e, sem elas, usa esses mesmos valores. Os testes do back-end rodam num banco H2 em memória, com uma chave JWT própria (`allgenda/src/test/resources/application.properties`), então não precisam de PostgreSQL. O back-end exige `JWT_SECRET` (ao menos 32 bytes); o `mise.toml` define um valor só para desenvolvimento, que pode ser trocado no `mise.local.toml` ou no ambiente. Ao iniciar, o back-end cria o usuário de teste a partir de `DEV_USUARIO_*`, se ele não existir (`framework/config/UsuarioTesteInitializer.java`). Só no `nuxt dev` e com `API_COM_USUARIO_DE_TESTE=true` (desligado por padrão), o front-end obtém um token com esse usuário para as chamadas à API quando não tem nenhum; nenhuma tela muda, então a tela de login continua aparecendo. O token fica a cargo de `composables/useAuth.ts` e dos interceptors em `plugins/axios.ts`. O assistente de IA da página da aula chama a API da Anthropic pelo back-end e precisa de `ANTHROPIC_API_KEY` (pessoal, no `mise.local.toml`); sem ela, o endpoint responde 503 e o resto do app funciona. Os testes nunca chamam a API: usam um modelo falso.
 
 ## Rodar e testar no navegador
 
@@ -37,6 +40,6 @@ O PostgreSQL roda em Docker pelo `compose.yaml`, em `localhost:5433`, com um ban
 ## Orientações para mudanças
 
 - Mantenha as mudanças no front-end coerentes com os padrões existentes de Nuxt/Vue (Composition API) e TypeScript.
-- Mantenha as responsabilidades do back-end nas camadas existentes: controller, service, repository, DTO, mapper, model e exception.
+- Mantenha as responsabilidades do back-end nas camadas existentes: controller, service, repository, DTO, mapper, model e exception. Regra que vale para qualquer aplicação vai para `framework`; o que é só do AllGenda (rotas, JSON, papéis DONO/MEMBRO, textos do tutor) vai para `aplicacao/allgenda`.
 - Preserve os nomes em português e a linguagem voltada ao usuário onde fizer sentido.
 - Prefira mudanças focadas e rode o build do front-end ou os testes do back-end correspondentes ao código alterado.

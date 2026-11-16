@@ -1,0 +1,42 @@
+package com.allgenda.aplicacao.allgenda.controller;
+
+import com.allgenda.aplicacao.allgenda.dto.request.TagUpdateDTO;
+import com.allgenda.aplicacao.allgenda.dto.response.TagResponseDTO;
+import com.allgenda.aplicacao.allgenda.mapper.TagMapper;
+import com.allgenda.framework.service.TagService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+// Tags são da disciplina. Criar uma tag acontece ao atribuí-la a uma anotação (POST /api/anotacoes/{id}/tags).
+@RestController
+@RequestMapping("/api/tags")
+public class TagController {
+
+    private final TagService service;
+    private final TagMapper mapper;
+
+    public TagController(TagService service, TagMapper mapper) {
+        this.service = service;
+        this.mapper = mapper;
+    }
+
+    // ?disciplinaId=: as tags da disciplina; sem filtro: as de todas as disciplinas do usuário
+    @GetMapping
+    public List<TagResponseDTO> listar(@RequestParam(required = false) UUID disciplinaId) {
+        return mapper.toDtoList(service.listar(disciplinaId));
+    }
+
+    @PatchMapping("/{id}")
+    public TagResponseDTO renomear(@PathVariable UUID id, @RequestBody TagUpdateDTO dto) {
+        return mapper.toDto(service.renomear(id, dto.nome()));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluir(@PathVariable UUID id) {
+        service.excluir(id);
+    }
+}

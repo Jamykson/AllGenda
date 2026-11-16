@@ -1,0 +1,46 @@
+package com.allgenda.aplicacao.allgenda;
+
+import com.allgenda.framework.config.UsuarioTesteInitializer;
+import com.allgenda.framework.dto.request.LoginRequestDTO;
+import com.allgenda.framework.repository.UsuarioRepository;
+import com.allgenda.framework.service.AuthService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+// banco H2 próprio, para o usuário criado na inicialização não aparecer nos testes que usam o banco compartilhado
+@SpringBootTest
+@TestPropertySource(properties = {
+        "spring.datasource.url=jdbc:h2:mem:usuario-teste;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+        "app.dev.usuario.nome=Aluno Teste",
+        "app.dev.usuario.email=aluno@gmail.com",
+        "app.dev.usuario.senha=12345678"
+})
+class UsuarioTesteIntegrationTest {
+
+    @Autowired UsuarioTesteInitializer inicializador;
+    @Autowired UsuarioRepository usuarios;
+    @Autowired AuthService auth;
+
+    @Test
+    void usuarioDeTesteEhCriadoNaInicializacaoEConsegueEntrar() {
+        var usuario = usuarios.findByEmail("aluno@gmail.com").orElseThrow();
+        assertThat(usuario.getNome()).isEqualTo("Aluno Teste");
+
+        var login = auth.login(new LoginRequestDTO("aluno@gmail.com", "12345678"));
+        assertThat(login.usuario().id()).isEqualTo(usuario.getId());
+    }
+
+    @Test
+    void reiniciarNaoDuplicaOUsuarioDeTeste() {
+        long antes = usuarios.count();
+
+        inicializador.run(null);
+
+        assertThat(usuarios.count()).isEqualTo(antes);
+        assertThat(usuarios.existsByEmail("aluno@gmail.com")).isTrue();
+    }
+}

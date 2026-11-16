@@ -1,0 +1,24 @@
+package com.allgenda.aplicacao.allgenda.dto.response;
+
+import com.allgenda.framework.model.VisibilidadeAnotacao;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.util.List;
+
+public record AnotacaoResponseDTO(
+    UUID id,
+    String titulo, // null quando a anotação não tem título
+    String conteudo, // null quando a anotação só tem título
+    LocalDateTime dataCriacao,
+    UUID autorId, // o front compara com o id do usuário logado para saber se a anotação é dele
+    String autorNome,
+    List<String> tags,
+    String disciplinaNome,
+    UUID aulaId,
+    LocalDate aulaData,
+    String aulaTopico,
+    List<ImagemAnotacaoResponseDTO> imagens,
+    VisibilidadeAnotacao visibilidade // PRIVADA: só o autor a vê
+) {}

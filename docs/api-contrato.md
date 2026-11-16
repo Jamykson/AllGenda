@@ -9,7 +9,7 @@ Login, cadastro, disciplinas, aulas, recorrência, convites, anotações (inclus
 
 ### Regra geral de acesso
 
-Quase tudo o que pertence a uma disciplina exige **participação `ACEITO`** nela (dono ou membro). Quem não participa, ou tem convite pendente ou recusado, recebe `403`. A checagem é feita num só lugar do back-end, a classe `AcessoDisciplina`, e vem **depois** da verificação de existência: um id que não existe dá `404`, e um que existe mas é de uma disciplina alheia dá `403`.
+Quase tudo o que pertence a uma disciplina exige **participação `ACEITO`** nela (dono ou membro). Quem não participa, ou tem convite pendente ou recusado, recebe `403`. A checagem é feita num só lugar do back-end, a classe `AcessoAoGrupo`, que consulta a política de acesso do AllGenda (`PoliticaAllGenda`), e vem **depois** da verificação de existência: um id que não existe dá `404`, e um que existe mas é de uma disciplina alheia dá `403`.
 
 | Operação | Quem pode |
 |---|---|

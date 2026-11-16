@@ -7,6 +7,22 @@ tags, provas/entregas e colaboração entre colegas por disciplina.
 - `frontend/`: front-end (Nuxt 4, Vue 3, TypeScript)
 - `docs/api-contrato.md`: contrato da API (endpoints, erros e exemplos)
 - `mise.toml` e `compose.yaml`: ferramentas, variáveis de ambiente, tarefas e banco de dados
+- `docs/framework/`: o projeto do framework (diagramas de classes e roteiro da refatoração)
+
+## Estrutura do back-end
+
+O back-end é um framework de **gestão colaborativa de encontros e conteúdo por grupos**, com o AllGenda
+instanciado nele. Tudo fica num só módulo Maven (`allgenda/`), em dois pacotes:
+
+- `com.allgenda.framework`: o núcleo. Grupo, Encontro, Evento, Anotação, participação, tags, recorrência,
+  imagens, usuários e autenticação, e o mecanismo do assistente de IA. Também define os três pontos variáveis:
+  tipos de grupo, encontro e evento (fábricas com registro), a política de acesso (papéis e ações) e o
+  comportamento do assistente.
+- `com.allgenda.aplicacao.allgenda`: a aplicação AllGenda. Disciplina, Aula e Avaliação são subclasses de
+  Grupo, Encontro e Evento; `DefinicaoAllGenda` registra os tipos, a política (DONO e MEMBRO) e o
+  assistente tutor. Os controllers, DTOs e mappers das rotas `/api/disciplinas`, `/api/aulas` etc. ficam aqui.
+
+O núcleo não depende da aplicação: é ela que se apresenta a ele pela `DefinicaoDaAplicacao`.
 
 ## Como rodar
 
@@ -154,6 +170,9 @@ PostgreSQL nem de Docker.
   máquina). Pare-o antes de `mise run db:up`, ou mude `DB_PORT` no `mise.local.toml`.
 - **Dados antigos do banco**: o banco do Docker começa vazio; os dados de um PostgreSQL
   anterior não são migrados.
+- **Banco criado antes do framework**: as tabelas mudaram (`grupos`, `encontros`, `eventos`,
+  `disciplinas`, `aulas`...) e o `ddl-auto=update` não converte as antigas. Recrie o banco com
+  `mise run db:reset` (apaga os dados locais, que eram só de teste).
 
 ## Notas:
 
