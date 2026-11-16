@@ -1,4 +1,4 @@
-package com.allgenda.service;
+package com.allgenda.framework.extensao;
 
 import java.time.LocalDate;
 import java.util.UUID;

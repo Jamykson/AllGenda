@@ -4,9 +4,10 @@ import com.allgenda.dto.request.AulaRequestDTO;
 import com.allgenda.dto.request.AulaUpdateDTO;
 import com.allgenda.dto.response.AulaResponseDTO;
 import com.allgenda.mapper.AulaMapper;
+import com.allgenda.framework.extensao.DadosDoEncontro;
+import com.allgenda.model.Aula;
 import com.allgenda.service.AtualizacaoDeEncontro;
-import com.allgenda.service.AulaService;
-import com.allgenda.service.DadosDoEncontro;
+import com.allgenda.service.EncontroService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,24 +19,24 @@ import java.util.UUID;
 @RequestMapping("/api/aulas")
 public class AulaController {
 
-    private final AulaService service;
+    private final EncontroService service;
     private final AulaMapper mapper;
 
-    public AulaController(AulaService service, AulaMapper mapper) {
+    public AulaController(EncontroService service, AulaMapper mapper) {
         this.service = service;
         this.mapper = mapper;
     }
 
     @PostMapping
     public ResponseEntity<AulaResponseDTO> cadastrar(@RequestBody AulaRequestDTO dto) {
-        AulaResponseDTO criada = mapper.toDto(service.cadastrar(
+        AulaResponseDTO criada = mapper.toDto(service.criar(Aula.TIPO,
                 new DadosDoEncontro(dto.disciplinaId(), dto.data(), dto.horario(), dto.topico())));
         return ResponseEntity.status(HttpStatus.CREATED).body(criada);
     }
 
     @GetMapping
     public List<AulaResponseDTO> listarPorDisciplina(@RequestParam UUID disciplinaId) {
-        return mapper.toDtoList(service.listarPorDisciplina(disciplinaId));
+        return mapper.toDtoList(service.listarPorGrupo(disciplinaId));
     }
 
     @GetMapping("/{id}")

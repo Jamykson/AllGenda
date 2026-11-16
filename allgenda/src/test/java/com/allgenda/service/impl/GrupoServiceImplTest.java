@@ -36,12 +36,14 @@ import com.allgenda.framework.acesso.AcessoAoGrupo;
 import com.allgenda.framework.acesso.Acao;
 import com.allgenda.framework.acesso.PoliticaDeTeste;
 import com.allgenda.service.ArmazenamentoService;
-import com.allgenda.service.DadosDoGrupo;
+import com.allgenda.aplicacao.allgenda.FabricaDeDisciplina;
+import com.allgenda.framework.extensao.DadosDoGrupo;
+import com.allgenda.framework.extensao.RegistroDeTipos;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
 
 @ExtendWith(MockitoExtension.class)
-class DisciplinaServiceImplTest {
+class GrupoServiceImplTest {
 
     @Mock
     private GrupoRepository repository;
@@ -60,11 +62,14 @@ class DisciplinaServiceImplTest {
     @Mock
     private AcessoAoGrupo acessoAoGrupo;
 
-    private DisciplinaServiceImpl service;
+    private GrupoServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemEncontroRepository, new RemocaoArquivos(armazenamento), usuarioAutenticado, acessoAoGrupo, PoliticaDeTeste.politica());
+        // o tipo vem da aplicação; aqui basta a fábrica de disciplina do AllGenda
+        RegistroDeTipos registro = new RegistroDeTipos();
+        registro.registrar(new FabricaDeDisciplina());
+        service = new GrupoServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemEncontroRepository, new RemocaoArquivos(armazenamento), usuarioAutenticado, acessoAoGrupo, PoliticaDeTeste.politica(), registro);
     }
 
     @Test
@@ -73,7 +78,7 @@ class DisciplinaServiceImplTest {
         when(repository.save(any(Disciplina.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
 
-        var criada = service.cadastrar(
+        var criada = service.criar("DISCIPLINA", 
             new DadosDoGrupo("  Física  ", "  Mecânica clássica  ")
         );
 
@@ -84,7 +89,7 @@ class DisciplinaServiceImplTest {
 
     @Test
     void rejeitaNomeEmBranco() {
-        assertThatThrownBy(() -> service.cadastrar(new DadosDoGrupo("  ", null)))
+        assertThatThrownBy(() -> service.criar("DISCIPLINA", new DadosDoGrupo("  ", null)))
             .isInstanceOf(RequisicaoInvalidaException.class);
 
         verify(repository, never()).save(any(Disciplina.class));
@@ -94,7 +99,7 @@ class DisciplinaServiceImplTest {
     void rejeitaDescricaoMaiorQueQuinhentosCaracteres() {
         String descricao = "a".repeat(501);
 
-        assertThatThrownBy(() -> service.cadastrar(new DadosDoGrupo("Física", descricao)))
+        assertThatThrownBy(() -> service.criar("DISCIPLINA", new DadosDoGrupo("Física", descricao)))
             .isInstanceOf(RequisicaoInvalidaException.class);
 
         verify(repository, never()).save(any(Disciplina.class));
@@ -106,7 +111,7 @@ class DisciplinaServiceImplTest {
         when(usuarioAutenticado.obter()).thenReturn(usuario);
         when(repository.save(any(Disciplina.class))).thenAnswer(i -> i.getArgument(0));
 
-        service.cadastrar(new DadosDoGrupo("Física", null));
+        service.criar("DISCIPLINA", new DadosDoGrupo("Física", null));
 
         var captor = org.mockito.ArgumentCaptor.forClass(Disciplina.class);
         verify(repository).save(captor.capture());
