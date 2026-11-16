@@ -12,13 +12,13 @@ import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
 import com.allgenda.model.Disciplina;
-import com.allgenda.model.ImagemAula;
+import com.allgenda.model.ImagemEncontro;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.DisciplinaRepository;
-import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.GrupoRepository;
+import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.AcessoDisciplina;
@@ -53,10 +53,10 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AssistenteServiceImplTest {
 
-    @Mock private AulaRepository aulaRepository;
-    @Mock private DisciplinaRepository disciplinaRepository;
+    @Mock private EncontroRepository encontroRepository;
+    @Mock private GrupoRepository grupoRepository;
     @Mock private AnotacaoRepository anotacaoRepository;
-    @Mock private ImagemAulaRepository imagemAulaRepository;
+    @Mock private ImagemEncontroRepository imagemEncontroRepository;
     @Mock private ParticipacaoRepository participacaoRepository;
     @Mock private UsuarioRepository usuarioRepository;
     @Mock private ArmazenamentoService armazenamento;
@@ -76,7 +76,7 @@ class AssistenteServiceImplTest {
         ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
         aula = new Aula();
         ReflectionTestUtils.setField(aula, "id", aulaId);
-        aula.setDisciplina(disciplina);
+        aula.setGrupo(disciplina);
         aula.setData(LocalDate.of(2026, 10, 20));
         aula.setHorario("08:00");
         autor = new Usuario();
@@ -97,28 +97,28 @@ class AssistenteServiceImplTest {
 
     private AssistenteServiceImpl service(int maximoImagens, int maximoCaracteres, LimitePerguntasAssistente limite) {
         UsuarioAutenticado usuarioAutenticado = new UsuarioAutenticado(usuarioRepository);
-        return new AssistenteServiceImpl(aulaRepository, disciplinaRepository, anotacaoRepository, imagemAulaRepository,
+        return new AssistenteServiceImpl(encontroRepository, grupoRepository, anotacaoRepository, imagemEncontroRepository,
                 new AcessoDisciplina(participacaoRepository, usuarioAutenticado), armazenamento, new ReducaoDeImagem(),
                 modelo, limite, usuarioAutenticado, maximoImagens, maximoCaracteres);
     }
 
-    private void participanteDeAulaComImagens(ImagemAula... imagens) {
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
-        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+    private void participanteDeAulaComImagens(ImagemEncontro... imagens) {
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
                 .thenReturn(true);
         when(modelo.configurado()).thenReturn(true);
-        when(aulaRepository.findByDisciplinaId(disciplinaId)).thenReturn(List.of(aula));
-        when(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of());
-        when(imagemAulaRepository.findByAulaDisciplinaIdOrderByAulaDataAscPosicaoAscDataCriacaoAsc(disciplinaId))
+        when(encontroRepository.findByGrupoId(disciplinaId)).thenReturn(List.of(aula));
+        when(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of());
+        when(imagemEncontroRepository.findByEncontroGrupoIdOrderByEncontroDataAscPosicaoAscDataCriacaoAsc(disciplinaId))
                 .thenReturn(List.of(imagens));
     }
 
-    private ImagemAula imagem(String legenda) {
-        ImagemAula imagem = new ImagemAula();
+    private ImagemEncontro imagem(String legenda) {
+        ImagemEncontro imagem = new ImagemEncontro();
         ReflectionTestUtils.setField(imagem, "id", UUID.randomUUID());
         imagem.setLegenda(legenda);
         imagem.setAutor(autor);
-        imagem.setAula(aula);
+        imagem.setEncontro(aula);
         imagem.setChaveArmazenamento(legenda + ".png");
         imagem.setContentType("image/png");
         return imagem;
@@ -134,9 +134,9 @@ class AssistenteServiceImplTest {
 
     @Test
     void oLimiteDeImagensSempreIncluiAImagemEmFoco() {
-        ImagemAula primeira = imagem("primeira");
-        ImagemAula segunda = imagem("segunda");
-        ImagemAula terceira = imagem("terceira");
+        ImagemEncontro primeira = imagem("primeira");
+        ImagemEncontro segunda = imagem("segunda");
+        ImagemEncontro terceira = imagem("terceira");
         participanteDeAulaComImagens(primeira, segunda, terceira);
         when(armazenamento.carregar(anyString())).thenReturn(Optional.of(new ByteArrayResource(new byte[] {1, 2, 3})));
 
@@ -180,8 +180,8 @@ class AssistenteServiceImplTest {
 
     @Test
     void semModeloConfiguradoOAssistenteFicaIndisponivelSemGastarOLimite() {
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
-        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
                 .thenReturn(true);
         when(modelo.configurado()).thenReturn(false);
         LimitePerguntasAssistente limite = new LimitePerguntasAssistente(1);
@@ -206,7 +206,7 @@ class AssistenteServiceImplTest {
     private Aula outraAula(LocalDate data) {
         Aula outra = new Aula();
         ReflectionTestUtils.setField(outra, "id", UUID.randomUUID());
-        outra.setDisciplina(disciplina);
+        outra.setGrupo(disciplina);
         outra.setData(data);
         outra.setHorario("08:00");
         return outra;
@@ -215,7 +215,7 @@ class AssistenteServiceImplTest {
     private Anotacao anotacao(Aula daAula, String letra, LocalDateTime criadaEm) {
         Anotacao anotacao = new Anotacao();
         ReflectionTestUtils.setField(anotacao, "id", UUID.randomUUID());
-        anotacao.setAula(daAula);
+        anotacao.setEncontro(daAula);
         anotacao.setAutor(autor);
         anotacao.setConteudo(letra.repeat(1000));
         anotacao.setDataCriacao(criadaEm);
@@ -224,12 +224,12 @@ class AssistenteServiceImplTest {
 
     // três anotações de ~1100 caracteres, das quais só uma cabe no limite de 1500
     private void disciplinaComTresAnotacoes(Aula recente, Anotacao... anotacoes) {
-        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
                 .thenReturn(true);
         when(modelo.configurado()).thenReturn(true);
-        when(aulaRepository.findByDisciplinaId(disciplinaId)).thenReturn(List.of(recente, aula));
-        when(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of(anotacoes));
-        when(imagemAulaRepository.findByAulaDisciplinaIdOrderByAulaDataAscPosicaoAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of());
+        when(encontroRepository.findByGrupoId(disciplinaId)).thenReturn(List.of(recente, aula));
+        when(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of(anotacoes));
+        when(imagemEncontroRepository.findByEncontroGrupoIdOrderByEncontroDataAscPosicaoAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of());
     }
 
     private static String materialEmTexto(PedidoAoModelo pedido) {
@@ -248,7 +248,7 @@ class AssistenteServiceImplTest {
         Anotacao daAulaAberta = anotacao(aula, "x", LocalDateTime.of(2026, 10, 20, 9, 0));
         Anotacao recente1 = anotacao(recente, "y", LocalDateTime.of(2026, 10, 25, 9, 0));
         Anotacao recente2 = anotacao(recente, "z", LocalDateTime.of(2026, 10, 25, 10, 0));
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         disciplinaComTresAnotacoes(recente, daAulaAberta, recente1, recente2);
 
         PedidoAoModelo pedido = service(20, 1500, new LimitePerguntasAssistente(30))
@@ -266,7 +266,7 @@ class AssistenteServiceImplTest {
         Anotacao daAulaAntiga = anotacao(aula, "x", LocalDateTime.of(2026, 10, 20, 9, 0));
         Anotacao recente1 = anotacao(recente, "y", LocalDateTime.of(2026, 10, 25, 9, 0));
         Anotacao recente2 = anotacao(recente, "z", LocalDateTime.of(2026, 10, 25, 10, 0));
-        when(disciplinaRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
+        when(grupoRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
         disciplinaComTresAnotacoes(recente, daAulaAntiga, recente1, recente2);
 
         PedidoAoModelo pedido = service(20, 1500, new LimitePerguntasAssistente(30))
@@ -285,7 +285,7 @@ class AssistenteServiceImplTest {
         Anotacao antiga = anotacao(aula, "x", LocalDateTime.of(2026, 10, 20, 9, 0));
         Anotacao recente1 = anotacao(recente, "y", LocalDateTime.of(2026, 10, 25, 9, 0));
         Anotacao recente2 = anotacao(recente, "z", LocalDateTime.of(2026, 10, 25, 10, 0));
-        when(disciplinaRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
+        when(grupoRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
         disciplinaComTresAnotacoes(recente, antiga, recente1, recente2);
 
         PedidoAoModelo pedido = service(20, 1500, new LimitePerguntasAssistente(30))
@@ -296,7 +296,7 @@ class AssistenteServiceImplTest {
 
     @Test
     void focoDeOutraDisciplinaERecusadoSemGastarOLimite() {
-        when(disciplinaRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
+        when(grupoRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
         disciplinaComTresAnotacoes(outraAula(LocalDate.of(2026, 10, 25)));
         LimitePerguntasAssistente limite = new LimitePerguntasAssistente(1);
 
@@ -309,8 +309,8 @@ class AssistenteServiceImplTest {
 
     @Test
     void quemNaoParticipaDaDisciplinaNaoUsaOAssistente() {
-        when(disciplinaRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
-        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+        when(grupoRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
+        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
                 .thenReturn(false);
 
         assertThatThrownBy(() -> service(20, new LimitePerguntasAssistente(30)).prepararDaDisciplina(disciplinaId, pergunta("Resuma", null)))

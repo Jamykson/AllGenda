@@ -1,18 +1,18 @@
 package com.allgenda.service.impl;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
-import com.allgenda.exception.AulaNaoEncontradaException;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.EncontroNaoEncontradoException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.Anotacao;
-import com.allgenda.model.Aula;
+import com.allgenda.model.Encontro;
 import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.VisibilidadeAnotacao;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.service.AnotacaoService;
 import com.allgenda.service.NovaAnotacao;
 import com.allgenda.service.AcessoDisciplina;
@@ -33,8 +33,8 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     private static final String SEM_ACESSO = "Somente participantes da disciplina veem as anotações.";
 
     private final AnotacaoRepository anotacaoRepository;
-    private final AulaRepository aulaRepository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final EncontroRepository encontroRepository;
+    private final GrupoRepository grupoRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
     private final AcessoDisciplina acesso;
@@ -42,16 +42,16 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     private final RemocaoArquivos remocaoArquivos;
 
     public AnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
-                                AulaRepository aulaRepository,
-                                DisciplinaRepository disciplinaRepository,
+                                EncontroRepository encontroRepository,
+                                GrupoRepository grupoRepository,
                                 ParticipacaoRepository participacaoRepository,
                                 UsuarioAutenticado usuarioAutenticado,
                                 AcessoDisciplina acesso,
                                 TagService tagService,
                                 RemocaoArquivos remocaoArquivos) {
         this.anotacaoRepository = anotacaoRepository;
-        this.aulaRepository = aulaRepository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.encontroRepository = encontroRepository;
+        this.grupoRepository = grupoRepository;
         this.participacaoRepository = participacaoRepository;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
@@ -69,18 +69,18 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         String conteudo = normalizarConteudo(nova.conteudo());
         exigirTituloOuConteudo(titulo, conteudo);
 
-        Aula aula = aulaRepository.findById(nova.encontroId())
-                .orElseThrow(() -> new AulaNaoEncontradaException(nova.encontroId()));   // 404
-        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), SEM_ACESSO);   // 403
+        Encontro aula = encontroRepository.findById(nova.encontroId())
+                .orElseThrow(() -> new EncontroNaoEncontradoException(nova.encontroId()));   // 404
+        acesso.exigirParticipanteAceito(aula.getGrupo().getId(), SEM_ACESSO);   // 403
 
         Anotacao anotacao = new Anotacao();
         anotacao.setTitulo(titulo);
         anotacao.setConteudo(conteudo);
         anotacao.setDataCriacao(LocalDateTime.now());
-        anotacao.setAula(aula);
+        anotacao.setEncontro(aula);
         anotacao.setAutor(usuarioAutenticado.obter());
         anotacao.setVisibilidade(nova.visibilidade() == null ? VisibilidadeAnotacao.GRUPO : nova.visibilidade());
-        tagService.buscarOuCriar(aula.getDisciplina(), nova.tags()).forEach(anotacao::addTag); // tags são opcionais
+        tagService.buscarOuCriar(aula.getGrupo(), nova.tags()).forEach(anotacao::addTag); // tags são opcionais
 
         return anotacaoRepository.save(anotacao);
     }
@@ -94,10 +94,10 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
         Anotacao anotacao = buscarVisivel(anotacaoId);
         // qualquer participante da disciplina pode acrescentar tags, não só o autor (decisão do grupo, #64)
-        acesso.exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId(), SEM_ACESSO);
+        acesso.exigirParticipanteAceito(anotacao.getEncontro().getGrupo().getId(), SEM_ACESSO);
 
         // as tags são acrescentadas às existentes; como tags é um Set, uma tag já associada não é duplicada
-        tagService.buscarOuCriar(anotacao.getAula().getDisciplina(), nomesTags).forEach(anotacao::addTag);
+        tagService.buscarOuCriar(anotacao.getEncontro().getGrupo(), nomesTags).forEach(anotacao::addTag);
 
         return anotacaoRepository.save(anotacao);
     }
@@ -111,7 +111,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
         Anotacao anotacao = buscarVisivel(anotacaoId);
         // como acrescentar, remover é permitido a qualquer participante da disciplina
-        acesso.exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId(), SEM_ACESSO);
+        acesso.exigirParticipanteAceito(anotacao.getEncontro().getGrupo().getId(), SEM_ACESSO);
 
         // a busca ignora maiúsculas, como a criação de tags; uma tag que a anotação não tem não é erro
         String nome = nomeTag.strip();
@@ -126,24 +126,24 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     @Override
     @Transactional(readOnly = true)
     public List<Anotacao> listarPorAula(UUID aulaId) {
-        Aula aula = aulaRepository.findById(aulaId)
-                .orElseThrow(() -> new AulaNaoEncontradaException(aulaId));  
-        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), SEM_ACESSO);     //403
-        return soVisiveis(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId));
+        Encontro aula = encontroRepository.findById(aulaId)
+                .orElseThrow(() -> new EncontroNaoEncontradoException(aulaId));  
+        acesso.exigirParticipanteAceito(aula.getGrupo().getId(), SEM_ACESSO);     //403
+        return soVisiveis(anotacaoRepository.findByEncontroIdOrderByDataCriacaoAsc(aulaId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Anotacao> listarPorDisciplina(UUID disciplinaId, String tag) {
-        if (!disciplinaRepository.existsById(disciplinaId)) {    //404
-            throw new DisciplinaNaoEncontradaException(disciplinaId);
+        if (!grupoRepository.existsById(disciplinaId)) {    //404
+            throw new GrupoNaoEncontradoException(disciplinaId);
         }
         acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
         if (tag == null || tag.isBlank()) {
-            return soVisiveis(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId));
+            return soVisiveis(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId));
         }
         return soVisiveis(anotacaoRepository
-                .findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(disciplinaId, tag.trim()));
+                .findByEncontroGrupoIdAndTagsNomeIgnoreCaseOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, tag.trim()));
     }
 
     @Override
@@ -156,14 +156,14 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         List<UUID> disciplinasDoUsuario = participacaoRepository
                 .findByUsuarioIdAndStatus(usuarioAutenticado.id(), StatusParticipacao.ACEITO)
                 .stream()
-                .map(participacao -> participacao.getDisciplina().getId())
+                .map(participacao -> participacao.getGrupo().getId())
                 .toList();
         if (disciplinasDoUsuario.isEmpty()) {
             return List.of();
         }
         // tag que não existe não é erro: só não há anotações com ela
         return soVisiveis(anotacaoRepository
-                .findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc(tag.trim(), disciplinasDoUsuario));
+                .findByTagsNomeIgnoreCaseAndEncontroGrupoIdInOrderByEncontroDataAscDataCriacaoAsc(tag.trim(), disciplinasDoUsuario));
     }
 
     // título em branco vira null; o limite acompanha a coluna titulo de Anotacao
@@ -261,12 +261,12 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     @Override
     @Transactional(readOnly = true)
     public List<Anotacao> listarDosColegas(UUID disciplinaId) {
-        if (!disciplinaRepository.existsById(disciplinaId)) {    // 404
-            throw new DisciplinaNaoEncontradaException(disciplinaId);
+        if (!grupoRepository.existsById(disciplinaId)) {    // 404
+            throw new GrupoNaoEncontradoException(disciplinaId);
         }
         acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);    // 403
         return soVisiveis(anotacaoRepository
-                .findByAulaDisciplinaIdAndAutorIdNotOrderByAulaDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id()));
+                .findByEncontroGrupoIdAndAutorIdNotOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id()));
     }
 
 }

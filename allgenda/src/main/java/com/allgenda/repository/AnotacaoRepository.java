@@ -12,25 +12,25 @@ import java.util.Collection;
 
 public interface AnotacaoRepository extends JpaRepository<Anotacao, UUID> {
 
-    List<Anotacao> findByAulaIdOrderByDataCriacaoAsc(UUID aulaId);
+    List<Anotacao> findByEncontroIdOrderByDataCriacaoAsc(UUID encontroId);
 
-    // quantas anotações de um autor, com a visibilidade dada, existem na disciplina
-    long countByAulaDisciplinaIdAndAutorIdAndVisibilidade(UUID disciplinaId, UUID autorId, VisibilidadeAnotacao visibilidade);
+    // quantas anotações de um autor, com a visibilidade dada, existem no grupo
+    long countByEncontroGrupoIdAndAutorIdAndVisibilidade(UUID grupoId, UUID autorId, VisibilidadeAnotacao visibilidade);
 
-    // navega anotacao -> aula -> disciplina; ordena pela data da aula e depois pela criação da anotação
-    List<Anotacao> findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(UUID disciplinaId);
+    // navega anotacao -> encontro -> grupo; ordena pela data do encontro e depois pela criação da anotação
+    List<Anotacao> findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(UUID grupoId);
 
     // como o nome da tag é único, o join com tags não duplica anotações
-    List<Anotacao> findByTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(String nomeTag);
+    List<Anotacao> findByTagsNomeIgnoreCaseOrderByEncontroDataAscDataCriacaoAsc(String nomeTag);
 
     // anotações que usam a tag, para tirar o vínculo antes de excluí-la
     List<Anotacao> findByTagsId(UUID tagId);
 
-    List<Anotacao> findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(UUID disciplinaId, String nomeTag);
+    List<Anotacao> findByEncontroGrupoIdAndTagsNomeIgnoreCaseOrderByEncontroDataAscDataCriacaoAsc(UUID grupoId, String nomeTag);
 
-    // anotações da disciplina escritas por outros usuários (exclui as do próprio solicitante)
-    List<Anotacao> findByAulaDisciplinaIdAndAutorIdNotOrderByAulaDataAscDataCriacaoAsc(UUID disciplinaId, UUID autorId);
+    // anotações do grupo escritas por outros usuários (exclui as do próprio solicitante)
+    List<Anotacao> findByEncontroGrupoIdAndAutorIdNotOrderByEncontroDataAscDataCriacaoAsc(UUID grupoId, UUID autorId);
 
-    // filtro por tag restrito às disciplinas informadas (aquelas em que o usuário participa)
-    List<Anotacao> findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc(String nomeTag, Collection<UUID> disciplinaIds);
+    // filtro por tag restrito aos grupos informados (aqueles em que o usuário participa)
+    List<Anotacao> findByTagsNomeIgnoreCaseAndEncontroGrupoIdInOrderByEncontroDataAscDataCriacaoAsc(String nomeTag, Collection<UUID> grupoIds);
 }

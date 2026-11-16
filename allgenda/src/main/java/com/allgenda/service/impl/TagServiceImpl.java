@@ -1,14 +1,14 @@
 package com.allgenda.service.impl;
 
 import com.allgenda.exception.ConflitoException;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.TagNaoEncontradaException;
-import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Tag;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.TagRepository;
 import com.allgenda.service.AcessoDisciplina;
@@ -35,20 +35,20 @@ public class TagServiceImpl implements TagService {
 
     private final TagRepository repository;
     private final AnotacaoRepository anotacaoRepository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final GrupoRepository grupoRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
     private final AcessoDisciplina acesso;
 
     public TagServiceImpl(TagRepository repository,
                           AnotacaoRepository anotacaoRepository,
-                          DisciplinaRepository disciplinaRepository,
+                          GrupoRepository grupoRepository,
                           ParticipacaoRepository participacaoRepository,
                           UsuarioAutenticado usuarioAutenticado,
                           AcessoDisciplina acesso) {
         this.repository = repository;
         this.anotacaoRepository = anotacaoRepository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.grupoRepository = grupoRepository;
         this.participacaoRepository = participacaoRepository;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
@@ -59,7 +59,7 @@ public class TagServiceImpl implements TagService {
         "Java", "java" e " JAVA " resultam na mesma tag, que mantém a grafia de quando foi criada. /*/
     @Override
     @Transactional
-    public Set<Tag> buscarOuCriar(Disciplina disciplina, List<String> nomes) {
+    public Set<Tag> buscarOuCriar(Grupo disciplina, List<String> nomes) {
         Set<Tag> tags = new LinkedHashSet<>();
         if (nomes == null) {
             return tags;
@@ -77,11 +77,11 @@ public class TagServiceImpl implements TagService {
 
         for (String nome : nomesUnicos.values()) {
             validarTamanho(nome);
-            Tag tag = repository.findByDisciplinaIdAndNomeIgnoreCase(disciplina.getId(), nome)
+            Tag tag = repository.findByGrupoIdAndNomeIgnoreCase(disciplina.getId(), nome)
                 .orElseGet(() -> {
                     Tag nova = new Tag();
                     nova.setNome(nome);
-                    nova.setDisciplina(disciplina);
+                    nova.setGrupo(disciplina);
                     return repository.save(nova);
                 });
             tags.add(tag);
@@ -94,8 +94,8 @@ public class TagServiceImpl implements TagService {
     public List<Tag> listar(UUID disciplinaId) {
         List<UUID> disciplinas;
         if (disciplinaId != null) {
-            if (!disciplinaRepository.existsById(disciplinaId)) {
-                throw new DisciplinaNaoEncontradaException(disciplinaId);
+            if (!grupoRepository.existsById(disciplinaId)) {
+                throw new GrupoNaoEncontradoException(disciplinaId);
             }
             acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
             disciplinas = List.of(disciplinaId);
@@ -104,7 +104,7 @@ public class TagServiceImpl implements TagService {
             disciplinas = participacaoRepository
                 .findByUsuarioIdAndStatus(usuarioAutenticado.id(), StatusParticipacao.ACEITO)
                 .stream()
-                .map(participacao -> participacao.getDisciplina().getId())
+                .map(participacao -> participacao.getGrupo().getId())
                 .toList();
             if (disciplinas.isEmpty()) {
                 return List.of();
@@ -114,7 +114,7 @@ public class TagServiceImpl implements TagService {
         // ordem alfabética do português, sem diferenciar maiúsculas ("árvore" vem antes de "Banco")
         Collator collator = Collator.getInstance(Locale.of("pt", "BR"));
         collator.setStrength(Collator.SECONDARY);
-        return repository.findByDisciplinaIdIn(disciplinas).stream()
+        return repository.findByGrupoIdIn(disciplinas).stream()
             .sorted(Comparator.comparing(Tag::getNome, collator))
             .toList();
     }
@@ -130,7 +130,7 @@ public class TagServiceImpl implements TagService {
 
         Tag tag = buscarTagDeParticipante(tagId);
         // mudar só maiúsculas e minúsculas da própria tag é permitido; usar o nome de outra, não
-        repository.findByDisciplinaIdAndNomeIgnoreCase(tag.getDisciplina().getId(), novoNome)
+        repository.findByGrupoIdAndNomeIgnoreCase(tag.getGrupo().getId(), novoNome)
             .filter(outra -> !outra.getId().equals(tag.getId()))
             .ifPresent(outra -> {
                 throw new ConflitoException("Já existe uma tag com esse nome nesta disciplina.");
@@ -146,18 +146,14 @@ public class TagServiceImpl implements TagService {
         Tag tag = buscarTagDeParticipante(tagId);
         // o vínculo com cada anotação sai antes; as anotações continuam existindo
         anotacaoRepository.findByTagsId(tagId).forEach(anotacao -> anotacao.removeTag(tag));
-        tag.getDisciplina().getTags().remove(tag);
+        tag.getGrupo().getTags().remove(tag);
         repository.delete(tag);
     }
 
     private Tag buscarTagDeParticipante(UUID tagId) {
         Tag tag = repository.findById(tagId)
             .orElseThrow(() -> new TagNaoEncontradaException(tagId));
-        // uma tag antiga, ainda sem disciplina, não pertence a ninguém: só a migração mexe nela
-        if (tag.getDisciplina() == null) {
-            throw new TagNaoEncontradaException(tagId);
-        }
-        acesso.exigirParticipanteAceito(tag.getDisciplina().getId(), SEM_ACESSO);
+        acesso.exigirParticipanteAceito(tag.getGrupo().getId(), SEM_ACESSO);
         return tag;
     }
 

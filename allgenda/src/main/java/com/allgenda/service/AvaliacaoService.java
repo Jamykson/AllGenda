@@ -1,11 +1,11 @@
 package com.allgenda.service;
 
-import com.allgenda.model.Avaliacao;
+import com.allgenda.model.Evento;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface AvaliacaoService {
-    Avaliacao cadastrar(DadosDoEvento dados);
-    List<Avaliacao> listarPorDisciplina(UUID disciplinaId);
+    Evento cadastrar(DadosDoEvento dados);
+    List<Evento> listarPorDisciplina(UUID disciplinaId);
 }

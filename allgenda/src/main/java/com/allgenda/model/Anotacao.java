@@ -51,8 +51,8 @@ public class Anotacao implements Serializable {
     private VisibilidadeAnotacao visibilidade = VisibilidadeAnotacao.GRUPO;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "aula_id")
-    private Aula aula;
+    @JoinColumn(name = "encontro_id")
+    private Encontro encontro;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "usuario_id")
@@ -113,12 +113,12 @@ public class Anotacao implements Serializable {
         return visibilidade != VisibilidadeAnotacao.PRIVADA || autor.getId().equals(usuarioId);
     }
 
-    public Aula getAula() {
-        return aula;
+    public Encontro getEncontro() {
+        return encontro;
     }
 
-    public void setAula(Aula aula) {
-        this.aula = aula;
+    public void setEncontro(Encontro encontro) {
+        this.encontro = encontro;
     }
 
     public Usuario getAutor() {

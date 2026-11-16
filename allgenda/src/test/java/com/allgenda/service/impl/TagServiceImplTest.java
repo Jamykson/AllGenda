@@ -7,7 +7,7 @@ import com.allgenda.model.Disciplina;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Tag;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.TagRepository;
 import com.allgenda.repository.UsuarioRepository;
@@ -47,7 +47,7 @@ class TagServiceImplTest {
     @Mock
     private AnotacaoRepository anotacaoRepository;
     @Mock
-    private DisciplinaRepository disciplinaRepository;
+    private GrupoRepository grupoRepository;
     @Mock
     private ParticipacaoRepository participacaoRepository;
     @Mock
@@ -62,7 +62,7 @@ class TagServiceImplTest {
     @BeforeEach
     void setUp() {
         UsuarioAutenticado autenticado = new UsuarioAutenticado(usuarioRepository);
-        service = new TagServiceImpl(repository, anotacaoRepository, disciplinaRepository, participacaoRepository,
+        service = new TagServiceImpl(repository, anotacaoRepository, grupoRepository, participacaoRepository,
                 autenticado, new AcessoDisciplina(participacaoRepository, autenticado));
         disciplina = new Disciplina();
         ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
@@ -76,20 +76,20 @@ class TagServiceImplTest {
     private Tag tag(String nome) {
         Tag tag = new Tag();
         tag.setNome(nome);
-        tag.setDisciplina(disciplina);
+        tag.setGrupo(disciplina);
         ReflectionTestUtils.setField(tag, "id", UUID.randomUUID());
         return tag;
     }
 
     private void participa(boolean participa) {
-        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
                 .thenReturn(participa);
     }
 
     @Test
     void reaproveitaTagExistenteDaDisciplinaSemCriarNova() {
         Tag existente = tag("Java");
-        when(repository.findByDisciplinaIdAndNomeIgnoreCase(disciplinaId, "java")).thenReturn(Optional.of(existente));
+        when(repository.findByGrupoIdAndNomeIgnoreCase(disciplinaId, "java")).thenReturn(Optional.of(existente));
 
         Set<Tag> tags = service.buscarOuCriar(disciplina, List.of("java"));
 
@@ -99,20 +99,20 @@ class TagServiceImplTest {
 
     @Test
     void criaTagNaDisciplinaQuandoNaoExiste() {
-        when(repository.findByDisciplinaIdAndNomeIgnoreCase(disciplinaId, "POO")).thenReturn(Optional.empty());
+        when(repository.findByGrupoIdAndNomeIgnoreCase(disciplinaId, "POO")).thenReturn(Optional.empty());
         when(repository.save(any(Tag.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Set<Tag> tags = service.buscarOuCriar(disciplina, List.of("POO"));
 
         assertThat(tags).singleElement().satisfies(tag -> {
             assertThat(tag.getNome()).isEqualTo("POO");
-            assertThat(tag.getDisciplina()).isSameAs(disciplina);
+            assertThat(tag.getGrupo()).isSameAs(disciplina);
         });
     }
 
     @Test
     void nomesQueDiferemSoEmCaixaOuEspacosViramUmaTagSo() {
-        when(repository.findByDisciplinaIdAndNomeIgnoreCase(eq(disciplinaId), anyString())).thenReturn(Optional.empty());
+        when(repository.findByGrupoIdAndNomeIgnoreCase(eq(disciplinaId), anyString())).thenReturn(Optional.empty());
         when(repository.save(any(Tag.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Set<Tag> tags = service.buscarOuCriar(disciplina, List.of("Java", "java", " JAVA "));
@@ -139,7 +139,7 @@ class TagServiceImplTest {
         Tag tag = tag("Prova");
         when(repository.findById(tag.getId())).thenReturn(Optional.of(tag));
         participa(true);
-        when(repository.findByDisciplinaIdAndNomeIgnoreCase(disciplinaId, "Prova 1")).thenReturn(Optional.empty());
+        when(repository.findByGrupoIdAndNomeIgnoreCase(disciplinaId, "Prova 1")).thenReturn(Optional.empty());
         when(repository.save(tag)).thenReturn(tag);
 
         assertThat(service.renomear(tag.getId(), "  Prova 1 ").getNome()).isEqualTo("Prova 1");
@@ -150,7 +150,7 @@ class TagServiceImplTest {
         Tag tag = tag("prova");
         when(repository.findById(tag.getId())).thenReturn(Optional.of(tag));
         participa(true);
-        when(repository.findByDisciplinaIdAndNomeIgnoreCase(disciplinaId, "Prova")).thenReturn(Optional.of(tag));
+        when(repository.findByGrupoIdAndNomeIgnoreCase(disciplinaId, "Prova")).thenReturn(Optional.of(tag));
         when(repository.save(tag)).thenReturn(tag);
 
         assertThat(service.renomear(tag.getId(), "Prova").getNome()).isEqualTo("Prova");
@@ -161,7 +161,7 @@ class TagServiceImplTest {
         Tag tag = tag("Prova");
         when(repository.findById(tag.getId())).thenReturn(Optional.of(tag));
         participa(true);
-        when(repository.findByDisciplinaIdAndNomeIgnoreCase(disciplinaId, "resumo")).thenReturn(Optional.of(tag("Resumo")));
+        when(repository.findByGrupoIdAndNomeIgnoreCase(disciplinaId, "resumo")).thenReturn(Optional.of(tag("Resumo")));
 
         assertThatThrownBy(() -> service.renomear(tag.getId(), "resumo"))
                 .isInstanceOf(ConflitoException.class)

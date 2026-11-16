@@ -11,15 +11,15 @@ import org.springframework.transaction.annotation.Transactional;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.ConflitoException;
 import com.allgenda.exception.ConviteNaoEncontradoException;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.UsuarioNaoEncontradoException;
-import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.ConviteService;
@@ -33,18 +33,18 @@ public class ConviteServiceImpl implements ConviteService {
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+");
 
     private final ParticipacaoRepository participacaoRepository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final GrupoRepository grupoRepository;
     private final UsuarioRepository usuarioRepository;
     private final UsuarioAutenticado usuarioAutenticado;
     private final AcessoDisciplina acesso;
 
     public ConviteServiceImpl(ParticipacaoRepository participacaoRepository,
-                              DisciplinaRepository disciplinaRepository,
+                              GrupoRepository grupoRepository,
                               UsuarioRepository usuarioRepository,
                               UsuarioAutenticado usuarioAutenticado,
                               AcessoDisciplina acesso) {
         this.participacaoRepository = participacaoRepository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.grupoRepository = grupoRepository;
         this.usuarioRepository = usuarioRepository;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
@@ -55,8 +55,8 @@ public class ConviteServiceImpl implements ConviteService {
     public Participacao enviar(UUID disciplinaId, String emailInformado) {
         String email = normalizarEmail(emailInformado);   // 400
 
-        Disciplina disciplina = disciplinaRepository.findById(disciplinaId)   
-          .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId)); // 404
+        Grupo disciplina = grupoRepository.findById(disciplinaId)   
+          .orElseThrow(() -> new GrupoNaoEncontradoException(disciplinaId)); // 404
 
     UUID solicitanteId = usuarioAutenticado.id();
     acesso.exigirDono(disciplinaId, "Apenas o dono pode enviar convites.");   // 403
@@ -67,14 +67,14 @@ public class ConviteServiceImpl implements ConviteService {
         if (destinatario.getId().equals(solicitanteId)) {
             throw new ConflitoException("Você não pode convidar a si mesmo."); // 409
         }
-        if (participacaoRepository.findByUsuarioIdAndDisciplinaId(destinatario.getId(), disciplinaId).isPresent()) {
+        if (participacaoRepository.findByUsuarioIdAndGrupoId(destinatario.getId(), disciplinaId).isPresent()) {
             throw new ConflitoException("Este usuário já tem uma participação nesta disciplina.");   // 409
         }
 
         // convite = participação de membro ainda pendente; grava-se pelo lado dono (Participacao)
         Participacao convite = new Participacao();
         convite.setUsuario(destinatario);
-        convite.setDisciplina(disciplina);
+        convite.setGrupo(disciplina);
         convite.setPapel(PapelParticipacao.MEMBRO);
         convite.setStatus(StatusParticipacao.PENDENTE);
 

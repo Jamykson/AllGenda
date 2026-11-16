@@ -12,11 +12,11 @@ import jakarta.persistence.UniqueConstraint;
 
 import java.util.UUID;
 
-// Tag de anotação. Cada disciplina tem as suas: "Prova" em duas disciplinas são duas tags,
-// e renomear ou excluir uma não afeta a outra. Dentro da disciplina, o nome não se repete
+// Tag de anotação. Cada grupo tem as suas: "Prova" em dois grupos são duas tags,
+// e renomear ou excluir uma não afeta a outra. Dentro do grupo, o nome não se repete
 // (sem diferenciar maiúsculas, regra garantida pelo TagService).
 @Entity
-@Table(name = "tags", uniqueConstraints = @UniqueConstraint(columnNames = {"disciplina_id", "nome"}))
+@Table(name = "tags", uniqueConstraints = @UniqueConstraint(columnNames = {"grupo_id", "nome"}))
 public class Tag {
 
     @Id
@@ -26,11 +26,9 @@ public class Tag {
     @Column(name = "nome", nullable = false)
     private String nome;
 
-    // anulável só no banco: as tags antigas, globais, ainda não têm disciplina quando a coluna é criada.
-    // A MigracaoTagsPorDisciplina as distribui ao iniciar, e o TagService sempre preenche a disciplina.
-    @ManyToOne
-    @JoinColumn(name = "disciplina_id")
-    private Disciplina disciplina;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "grupo_id", nullable = false)
+    private Grupo grupo;
 
     public UUID getId() {
         return id;
@@ -44,11 +42,11 @@ public class Tag {
         this.nome = nome;
     }
 
-    public Disciplina getDisciplina() {
-        return disciplina;
+    public Grupo getGrupo() {
+        return grupo;
     }
 
-    public void setDisciplina(Disciplina disciplina) {
-        this.disciplina = disciplina;
+    public void setGrupo(Grupo grupo) {
+        this.grupo = grupo;
     }
 }

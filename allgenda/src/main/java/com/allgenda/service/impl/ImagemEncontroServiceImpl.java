@@ -1,16 +1,16 @@
 package com.allgenda.service.impl;
 
 import com.allgenda.exception.AcessoNegadoException;
-import com.allgenda.exception.AulaNaoEncontradaException;
+import com.allgenda.exception.EncontroNaoEncontradoException;
 import com.allgenda.exception.ImagemNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.model.Aula;
-import com.allgenda.model.ImagemAula;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.model.Encontro;
+import com.allgenda.model.ImagemEncontro;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemArquivo;
-import com.allgenda.service.ImagemAulaService;
+import com.allgenda.service.ImagemEncontroService;
 import com.allgenda.service.RecebimentoImagem;
 import com.allgenda.service.RecebimentoImagem.ImagemRecebida;
 import com.allgenda.service.RemocaoArquivos;
@@ -28,26 +28,26 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class ImagemAulaServiceImpl implements ImagemAulaService {
+public class ImagemEncontroServiceImpl implements ImagemEncontroService {
 
     private static final int TAMANHO_MAXIMO_LEGENDA = 300;
 
-    private final AulaRepository aulaRepository;
-    private final ImagemAulaRepository imagemRepository;
+    private final EncontroRepository encontroRepository;
+    private final ImagemEncontroRepository imagemRepository;
     private final AcessoDisciplina acesso;
     private final RecebimentoImagem recebimento;
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
     private final UsuarioAutenticado usuarioAutenticado;
 
-    public ImagemAulaServiceImpl(AulaRepository aulaRepository,
-                                 ImagemAulaRepository imagemRepository,
+    public ImagemEncontroServiceImpl(EncontroRepository encontroRepository,
+                                 ImagemEncontroRepository imagemRepository,
                                  AcessoDisciplina acesso,
                                  RecebimentoImagem recebimento,
                                  ArmazenamentoService armazenamento,
                                  RemocaoArquivos remocaoArquivos,
                                  UsuarioAutenticado usuarioAutenticado) {
-        this.aulaRepository = aulaRepository;
+        this.encontroRepository = encontroRepository;
         this.imagemRepository = imagemRepository;
         this.acesso = acesso;
         this.recebimento = recebimento;
@@ -58,21 +58,21 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
 
     @Override
     @Transactional
-    public ImagemAula adicionar(UUID aulaId, MultipartFile arquivo, String legenda) {
-        Aula aula = buscarAula(aulaId);
+    public ImagemEncontro adicionar(UUID aulaId, MultipartFile arquivo, String legenda) {
+        Encontro aula = buscarAula(aulaId);
         exigirParticipanteAceito(aula);
         String legendaNormalizada = normalizarLegenda(legenda); // antes de gravar o arquivo
 
         ImagemRecebida recebida = recebimento.receber(arquivo);
 
-        ImagemAula imagem = new ImagemAula();
+        ImagemEncontro imagem = new ImagemEncontro();
         imagem.setLegenda(legendaNormalizada);
         imagem.setNomeOriginal(recebida.nomeOriginal());
         imagem.setContentType(recebida.contentType());
         imagem.setTamanho(recebida.tamanho());
         imagem.setChaveArmazenamento(recebida.chave());
         imagem.setDataCriacao(LocalDateTime.now());
-        imagem.setPosicao(imagemRepository.findMaiorPosicaoByAulaId(aulaId) + 1); // entra no fim da galeria
+        imagem.setPosicao(imagemRepository.findMaiorPosicaoByEncontroId(aulaId) + 1); // entra no fim da galeria
         imagem.setAutor(usuarioAutenticado.obter());
         aula.addImagem(imagem);
 
@@ -81,20 +81,20 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ImagemAula> listarPorAula(UUID aulaId) {
+    public List<ImagemEncontro> listarPorAula(UUID aulaId) {
         exigirParticipanteAceito(buscarAula(aulaId));
-        return imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
+        return imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
     }
 
     @Override
     @Transactional
-    public List<ImagemAula> reordenar(UUID aulaId, List<UUID> ids) {
+    public List<ImagemEncontro> reordenar(UUID aulaId, List<UUID> ids) {
         exigirParticipanteAceito(buscarAula(aulaId));
-        List<ImagemAula> imagens = imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
+        List<ImagemEncontro> imagens = imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
 
         // a lista precisa ter cada imagem da aula exatamente uma vez; outra combinação provavelmente
         // vem de uma tela desatualizada, e aplicá-la deixaria a ordem inconsistente
-        Map<UUID, ImagemAula> porId = imagens.stream().collect(Collectors.toMap(ImagemAula::getId, imagem -> imagem));
+        Map<UUID, ImagemEncontro> porId = imagens.stream().collect(Collectors.toMap(ImagemEncontro::getId, imagem -> imagem));
         if (ids == null || ids.size() != imagens.size() || !porId.keySet().equals(new HashSet<>(ids))) {
             throw new RequisicaoInvalidaException("A nova ordem deve listar exatamente as imagens da aula.");
         }
@@ -102,14 +102,14 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
         for (int i = 0; i < ids.size(); i++) {
             porId.get(ids.get(i)).setPosicao(i);
         }
-        return imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
+        return imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ImagemArquivo carregar(UUID aulaId, UUID imagemId) {
         exigirParticipanteAceito(buscarAula(aulaId));
-        ImagemAula imagem = buscarImagem(aulaId, imagemId);
+        ImagemEncontro imagem = buscarImagem(aulaId, imagemId);
         return armazenamento.carregar(imagem.getChaveArmazenamento())
                 .map(conteudo -> new ImagemArquivo(conteudo, imagem.getContentType(), imagem.getNomeOriginal()))
                 .orElseThrow(() -> new ImagemNaoEncontradaException(imagemId));
@@ -117,9 +117,9 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
 
     @Override
     @Transactional
-    public ImagemAula editarLegenda(UUID aulaId, UUID imagemId, String legendaInformada) {
+    public ImagemEncontro editarLegenda(UUID aulaId, UUID imagemId, String legendaInformada) {
         String legenda = normalizarLegenda(legendaInformada);
-        ImagemAula imagem = buscarImagem(aulaId, imagemId);
+        ImagemEncontro imagem = buscarImagem(aulaId, imagemId);
         exigirAutor(imagem);
 
         imagem.setLegenda(legenda);
@@ -129,34 +129,34 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
     @Override
     @Transactional
     public void remover(UUID aulaId, UUID imagemId) {
-        ImagemAula imagem = buscarImagem(aulaId, imagemId);
+        ImagemEncontro imagem = buscarImagem(aulaId, imagemId);
         exigirAutor(imagem);
 
-        imagem.getAula().removeImagem(imagem);
+        imagem.getEncontro().removeImagem(imagem);
         remocaoArquivos.removerAoConfirmar(List.of(imagem.getChaveArmazenamento()));
     }
 
-    private Aula buscarAula(UUID aulaId) {
-        return aulaRepository.findById(aulaId)
-                .orElseThrow(() -> new AulaNaoEncontradaException(aulaId));
+    private Encontro buscarAula(UUID aulaId) {
+        return encontroRepository.findById(aulaId)
+                .orElseThrow(() -> new EncontroNaoEncontradoException(aulaId));
     }
 
-    private ImagemAula buscarImagem(UUID aulaId, UUID imagemId) {
-        return imagemRepository.findByIdAndAulaId(imagemId, aulaId)
+    private ImagemEncontro buscarImagem(UUID aulaId, UUID imagemId) {
+        return imagemRepository.findByIdAndEncontroId(imagemId, aulaId)
                 .orElseThrow(() -> new ImagemNaoEncontradaException(imagemId));
     }
 
-    private void exigirAutor(ImagemAula imagem) {
+    private void exigirAutor(ImagemEncontro imagem) {
         if (!usuarioAutenticado.id().equals(imagem.getAutor().getId())) {
             throw new AcessoNegadoException("Somente o autor da imagem pode alterá-la.");
         }
     }
 
-    private void exigirParticipanteAceito(Aula aula) {
-        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), "Somente participantes da disciplina veem as imagens.");
+    private void exigirParticipanteAceito(Encontro aula) {
+        acesso.exigirParticipanteAceito(aula.getGrupo().getId(), "Somente participantes da disciplina veem as imagens.");
     }
 
-    // legenda em branco vira null; o limite acompanha a coluna legenda de ImagemAula
+    // legenda em branco vira null; o limite acompanha a coluna legenda de ImagemEncontro
     private static String normalizarLegenda(String legenda) {
         if (legenda == null || legenda.isBlank()) {
             return null;

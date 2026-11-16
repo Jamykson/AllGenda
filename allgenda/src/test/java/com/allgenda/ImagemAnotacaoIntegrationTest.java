@@ -9,8 +9,8 @@ import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
@@ -59,9 +59,9 @@ class ImagemAnotacaoIntegrationTest {
     @Autowired AuthService auth;
     @Autowired UsuarioService cadastroUsuarios;
     @Autowired UsuarioRepository usuarios;
-    @Autowired DisciplinaRepository disciplinas;
+    @Autowired GrupoRepository disciplinas;
     @Autowired ParticipacaoRepository participacoes;
-    @Autowired AulaRepository aulas;
+    @Autowired EncontroRepository aulas;
     @Autowired AnotacaoRepository anotacoes;
     @Autowired ImagemAnotacaoRepository imagens;
     @Autowired ArmazenamentoService armazenamento;
@@ -93,11 +93,11 @@ class ImagemAnotacaoIntegrationTest {
         participacao.setStatus(StatusParticipacao.ACEITO);
         disciplina.addParticipacao(participacao);
         disciplina = disciplinas.save(disciplina);
-        participacao.setDisciplina(disciplina);
+        participacao.setGrupo(disciplina);
         participacoes.save(participacao);
         disciplinaId = disciplina.getId();
         var aula = new Aula();
-        aula.setDisciplina(disciplina);
+        aula.setGrupo(disciplina);
         aula.setData(LocalDate.now());
         aula.setHorario("08:00");
         aula = aulas.save(aula);
@@ -105,7 +105,7 @@ class ImagemAnotacaoIntegrationTest {
         var anotacao = new Anotacao();
         anotacao.setConteudo("Quadro da aula");
         anotacao.setDataCriacao(LocalDateTime.now());
-        anotacao.setAula(aula);
+        anotacao.setEncontro(aula);
         anotacao.setAutor(usuarios.findById(autor.id()).orElseThrow());
         anotacaoId = anotacoes.save(anotacao).getId();
     }
@@ -173,7 +173,7 @@ class ImagemAnotacaoIntegrationTest {
         String imagemId = anexarComoAutor();
         var membro = new Participacao();
         membro.setUsuario(usuarios.findById(colegaId).orElseThrow());
-        membro.setDisciplina(disciplinas.findById(disciplinaId).orElseThrow());
+        membro.setGrupo(disciplinas.findById(disciplinaId).orElseThrow());
         membro.setPapel(PapelParticipacao.MEMBRO);
         membro.setStatus(StatusParticipacao.ACEITO);
         participacoes.save(membro);

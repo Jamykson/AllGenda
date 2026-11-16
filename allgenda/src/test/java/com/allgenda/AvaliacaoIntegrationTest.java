@@ -4,13 +4,14 @@ import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.dto.response.UsuarioResponseDTO;
 import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.TipoAvaliacao;
 import com.allgenda.model.Usuario;
-import com.allgenda.repository.AvaliacaoRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.EventoRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.AuthService;
@@ -43,9 +44,9 @@ class AvaliacaoIntegrationTest {
     @Autowired UsuarioService usuarios;
     @Autowired UsuarioRepository usuarioRepository;
     @Autowired AuthService auth;
-    @Autowired DisciplinaRepository disciplinas;
+    @Autowired GrupoRepository disciplinas;
     @Autowired ParticipacaoRepository participacoes;
-    @Autowired AvaliacaoRepository avaliacoes;
+    @Autowired EventoRepository avaliacoes;
 
     private MockMvc mvc;
     private Pessoa dono;
@@ -74,10 +75,10 @@ class AvaliacaoIntegrationTest {
         return disciplinas.saveAndFlush(disciplina);
     }
 
-    private void participar(Pessoa pessoa, Disciplina disciplina, PapelParticipacao papel, StatusParticipacao status) {
+    private void participar(Pessoa pessoa, Grupo disciplina, PapelParticipacao papel, StatusParticipacao status) {
         Participacao participacao = new Participacao();
         participacao.setUsuario(pessoa.usuario());
-        participacao.setDisciplina(disciplina);
+        participacao.setGrupo(disciplina);
         participacao.setPapel(papel);
         participacao.setStatus(status);
         participacoes.saveAndFlush(participacao);
@@ -115,7 +116,7 @@ class AvaliacaoIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].disciplinaNome").value("PDS"));
-        assertThat(avaliacoes.findByDisciplinaIdOrderByDataAscIdAsc(disciplinaId)).hasSize(2);
+        assertThat(avaliacoes.findByGrupoIdOrderByDataAscIdAsc(disciplinaId)).hasSize(2);
     }
 
     @Test
@@ -144,7 +145,7 @@ class AvaliacaoIntegrationTest {
 
     @Test
     void convitePendenteOuRecusadoRecebe403() throws Exception {
-        Disciplina disciplina = disciplinas.findById(disciplinaId).orElseThrow();
+        Grupo disciplina = disciplinas.findById(disciplinaId).orElseThrow();
         for (StatusParticipacao status : new StatusParticipacao[] {StatusParticipacao.PENDENTE, StatusParticipacao.RECUSADO}) {
             Pessoa convidado = novaPessoa("Convidado");
             participar(convidado, disciplina, PapelParticipacao.MEMBRO, status);

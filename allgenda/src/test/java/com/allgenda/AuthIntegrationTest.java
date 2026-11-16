@@ -27,7 +27,7 @@ class AuthIntegrationTest {
     @Autowired AuthService auth;
     @Autowired UsuarioService cadastroUsuarios;
     @Autowired UsuarioRepository usuarios;
-    @Autowired DisciplinaRepository disciplinas;
+    @Autowired GrupoRepository disciplinas;
     @Autowired ParticipacaoRepository participacoes;
     @Autowired JwtDecoder decoder;
     @Autowired PasswordEncoder senhas;
@@ -105,11 +105,11 @@ class AuthIntegrationTest {
         disciplina = disciplinas.saveAndFlush(disciplina);
         var participacao = new Participacao();
         participacao.setUsuario(usuario);
-        participacao.setDisciplina(disciplina);
+        participacao.setGrupo(disciplina);
         participacao.setPapel(PapelParticipacao.MEMBRO);
         participacao.setStatus(StatusParticipacao.PENDENTE);
         participacoes.saveAndFlush(participacao);
-        assertThat(participacoes.findByUsuarioIdAndDisciplinaId(usuario.getId(), disciplina.getId())).isPresent();
+        assertThat(participacoes.findByUsuarioIdAndGrupoId(usuario.getId(), disciplina.getId())).isPresent();
         participacoes.delete(participacao);
         participacoes.flush();
         assertThat(usuarios.existsById(usuario.getId())).isTrue();

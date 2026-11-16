@@ -13,8 +13,8 @@ public class ConviteMapper {
     public ConviteResponseDTO toDto(Participacao participacao) {
         return new ConviteResponseDTO(
             participacao.getId(),
-            participacao.getDisciplina().getId(),
-            participacao.getDisciplina().getNome(),
+            participacao.getGrupo().getId(),
+            participacao.getGrupo().getNome(),
             participacao.getUsuario().getId(),
             participacao.getUsuario().getNome(),
             participacao.getPapel(),

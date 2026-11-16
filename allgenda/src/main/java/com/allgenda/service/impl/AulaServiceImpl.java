@@ -1,13 +1,14 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.exception.AulaNaoEncontradaException;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.EncontroNaoEncontradoException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.model.Aula;
-import com.allgenda.model.Disciplina;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.model.Encontro;
+import com.allgenda.model.Grupo;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
-import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.AtualizacaoDeEncontro;
@@ -24,26 +25,26 @@ import java.util.UUID;
 @Service
 public class AulaServiceImpl implements AulaService {
 
-    private final AulaRepository aulaRepository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final EncontroRepository encontroRepository;
+    private final GrupoRepository grupoRepository;
     private final AcessoDisciplina acesso;
     private final ImagemAnotacaoRepository imagemAnotacaoRepository;
-    private final ImagemAulaRepository imagemAulaRepository;
+    private final ImagemEncontroRepository imagemEncontroRepository;
     private final RemocaoArquivos remocaoArquivos;
 
-    public AulaServiceImpl(AulaRepository aulaRepository, DisciplinaRepository disciplinaRepository,
+    public AulaServiceImpl(EncontroRepository encontroRepository, GrupoRepository grupoRepository,
                            AcessoDisciplina acesso, ImagemAnotacaoRepository imagemAnotacaoRepository,
-                           ImagemAulaRepository imagemAulaRepository, RemocaoArquivos remocaoArquivos) {
+                           ImagemEncontroRepository imagemEncontroRepository, RemocaoArquivos remocaoArquivos) {
         this.imagemAnotacaoRepository = imagemAnotacaoRepository;
-        this.imagemAulaRepository = imagemAulaRepository;
+        this.imagemEncontroRepository = imagemEncontroRepository;
         this.remocaoArquivos = remocaoArquivos;
-        this.aulaRepository = aulaRepository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.encontroRepository = encontroRepository;
+        this.grupoRepository = grupoRepository;
         this.acesso = acesso;
     }
 
     @Override
-    public Aula cadastrar(DadosDoEncontro dados) {
+    public Encontro cadastrar(DadosDoEncontro dados) {
         if (dados.grupoId() == null) {
             throw new RequisicaoInvalidaException("O id da disciplina é obrigatório.");
         }
@@ -57,44 +58,44 @@ public class AulaServiceImpl implements AulaService {
             throw new RequisicaoInvalidaException("O tópico da aula é obrigatório.");
         }
 
-        Disciplina disciplina = disciplinaRepository.findById(dados.grupoId())           // a disciplina informada existe?
-                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dados.grupoId()));
+        Grupo disciplina = grupoRepository.findById(dados.grupoId())           // a disciplina informada existe?
+                .orElseThrow(() -> new GrupoNaoEncontradoException(dados.grupoId()));
         acesso.exigirParticipanteAceito(disciplina.getId());   // 403
 
-        Aula aula = new Aula();
+        Encontro aula = new Aula();
         aula.setData(dados.data());
         aula.setHorario(dados.horario());
         aula.setTopico(dados.topico());
-        aula.setDisciplina(disciplina);
+        aula.setGrupo(disciplina);
 
-        return aulaRepository.save(aula);
+        return encontroRepository.save(aula);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Aula> listarPorDisciplina(UUID disciplinaId) {
-        if (!disciplinaRepository.existsById(disciplinaId)) {                // 404
-            throw new DisciplinaNaoEncontradaException(disciplinaId);
+    public List<Encontro> listarPorDisciplina(UUID disciplinaId) {
+        if (!grupoRepository.existsById(disciplinaId)) {                // 404
+            throw new GrupoNaoEncontradoException(disciplinaId);
         }
         acesso.exigirParticipanteAceito(disciplinaId);                       // 403
-        return aulaRepository.findByDisciplinaId(disciplinaId);
+        return encontroRepository.findByGrupoId(disciplinaId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Aula buscarPorId(UUID id) {
-        Aula aula = aulaRepository.findById(id)
-                .orElseThrow(() -> new AulaNaoEncontradaException(id));      // 404
-        acesso.exigirParticipanteAceito(aula.getDisciplina().getId());       // 403
+    public Encontro buscarPorId(UUID id) {
+        Encontro aula = encontroRepository.findById(id)
+                .orElseThrow(() -> new EncontroNaoEncontradoException(id));      // 404
+        acesso.exigirParticipanteAceito(aula.getGrupo().getId());       // 403
         return aula;
     }
 
     @Override
     @Transactional
-    public Aula atualizar(UUID id, AtualizacaoDeEncontro dto) {
-        Aula aula = aulaRepository.findById(id)
-                .orElseThrow(() -> new AulaNaoEncontradaException(id));                       // 404
-        acesso.exigirDono(aula.getDisciplina().getId(), "Somente o dono pode editar a aula.");  // 403
+    public Encontro atualizar(UUID id, AtualizacaoDeEncontro dto) {
+        Encontro aula = encontroRepository.findById(id)
+                .orElseThrow(() -> new EncontroNaoEncontradoException(id));                       // 404
+        acesso.exigirDono(aula.getGrupo().getId(), "Somente o dono pode editar a aula.");  // 403
 
         if (dto == null) {
             throw new RequisicaoInvalidaException("Corpo da requisição é obrigatório.");       // 400
@@ -111,21 +112,21 @@ public class AulaServiceImpl implements AulaService {
         if (dto.horario() != null) aula.setHorario(dto.horario().trim());
         if (dto.topico() != null) aula.setTopico(dto.topico().trim());
         if (dto.cancelada() != null) aula.setCancelada(dto.cancelada());
-        return aulaRepository.save(aula);
+        return encontroRepository.save(aula);
     }
 
     @Override
     @Transactional
     public void excluir(UUID id) {
-        Aula aula = aulaRepository.findById(id)
-                .orElseThrow(() -> new AulaNaoEncontradaException(id));                         // 404
-        acesso.exigirDono(aula.getDisciplina().getId(), "Somente o dono pode excluir a aula.");  // 403, antes de apagar qualquer coisa
+        Encontro aula = encontroRepository.findById(id)
+                .orElseThrow(() -> new EncontroNaoEncontradoException(id));                         // 404
+        acesso.exigirDono(aula.getGrupo().getId(), "Somente o dono pode excluir a aula.");  // 403, antes de apagar qualquer coisa
 
         // a cascata aula -> anotações -> imagens (e aula -> imagens avulsas) apaga os registros, mas não os arquivos;
         // as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada
-        List<String> chaves = new ArrayList<>(imagemAnotacaoRepository.findChavesArmazenamentoByAulaId(id));
-        chaves.addAll(imagemAulaRepository.findChavesArmazenamentoByAulaId(id));
-        aulaRepository.delete(aula);
+        List<String> chaves = new ArrayList<>(imagemAnotacaoRepository.findChavesArmazenamentoByEncontroId(id));
+        chaves.addAll(imagemEncontroRepository.findChavesArmazenamentoByEncontroId(id));
+        encontroRepository.delete(aula);
         remocaoArquivos.removerAoConfirmar(chaves);
     }
 }

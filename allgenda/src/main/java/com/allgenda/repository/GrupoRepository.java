@@ -4,7 +4,7 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 
-public interface DisciplinaRepository extends JpaRepository<Disciplina, UUID> {
+public interface GrupoRepository extends JpaRepository<Grupo, UUID> {
 }

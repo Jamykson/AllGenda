@@ -20,8 +20,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
-// Quando a disciplina acontece: dias da semana, horário e período. Cada disciplina tem no máximo uma.
-// As aulas de uma recorrência não existem no banco até receberem a primeira anotação, imagem ou
+// Quando o grupo se encontra: dias da semana, horário e período. Cada grupo tem no máximo uma.
+// Os encontros de uma recorrência não existem no banco até receberem a primeira anotação, imagem ou
 // cancelamento (o front as gera a partir desta configuração e as cadastra nesse momento).
 @Entity
 @Table(name = "recorrencias")
@@ -34,8 +34,8 @@ public class Recorrencia implements Serializable {
     private UUID id;
 
     @OneToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "disciplina_id", nullable = false, unique = true)
-    private Disciplina disciplina;
+    @JoinColumn(name = "grupo_id", nullable = false, unique = true)
+    private Grupo grupo;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "recorrencia_dias", joinColumns = @JoinColumn(name = "recorrencia_id"))
@@ -63,12 +63,12 @@ public class Recorrencia implements Serializable {
         return id;
     }
 
-    public Disciplina getDisciplina() {
-        return disciplina;
+    public Grupo getGrupo() {
+        return grupo;
     }
 
-    public void setDisciplina(Disciplina disciplina) {
-        this.disciplina = disciplina;
+    public void setGrupo(Grupo grupo) {
+        this.grupo = grupo;
     }
 
     public Set<DiaSemana> getDiasSemana() {

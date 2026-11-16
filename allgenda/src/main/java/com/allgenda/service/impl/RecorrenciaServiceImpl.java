@@ -7,13 +7,13 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RecorrenciaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 import com.allgenda.model.FrequenciaRecorrencia;
 import com.allgenda.model.Recorrencia;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.DadosDaRecorrencia;
@@ -26,15 +26,15 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
     private static final Pattern HORA = Pattern.compile("([01]\\d|2[0-3]):[0-5]\\d");
 
     private final RecorrenciaRepository repository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final GrupoRepository grupoRepository;
     private final AcessoDisciplina acesso;
     private final UsuarioAutenticado usuarioAutenticado;
 
-    public RecorrenciaServiceImpl(RecorrenciaRepository repository, DisciplinaRepository disciplinaRepository,
+    public RecorrenciaServiceImpl(RecorrenciaRepository repository, GrupoRepository grupoRepository,
                                   AcessoDisciplina acesso,
                                   UsuarioAutenticado usuarioAutenticado) {
         this.repository = repository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.grupoRepository = grupoRepository;
         this.acesso = acesso;
         this.usuarioAutenticado = usuarioAutenticado;
     }
@@ -44,27 +44,27 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
     public Recorrencia buscar(UUID disciplinaId) {
         exigirDisciplina(disciplinaId);                                        // 404
         acesso.exigirParticipanteAceito(disciplinaId);                         // 403
-        return repository.findByDisciplinaId(disciplinaId)
+        return repository.findByGrupoId(disciplinaId)
                 .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId));   // 404
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Recorrencia> listarDoUsuario() {
-        return repository.findDasDisciplinasDoUsuario(usuarioAutenticado.id());
+        return repository.findDosGruposDoUsuario(usuarioAutenticado.id());
     }
 
     // cria ou substitui: a disciplina tem no máximo uma recorrência
     @Override
     @Transactional
     public Recorrencia salvar(UUID disciplinaId, DadosDaRecorrencia dto) {
-        Disciplina disciplina = exigirDisciplina(disciplinaId);                // 404
+        Grupo disciplina = exigirDisciplina(disciplinaId);                // 404
         acesso.exigirDono(disciplinaId, "Somente o dono pode definir a recorrência da disciplina.");   // 403
         validar(dto);                                                          // 400
 
-        Recorrencia recorrencia = repository.findByDisciplinaId(disciplinaId).orElseGet(() -> {
+        Recorrencia recorrencia = repository.findByGrupoId(disciplinaId).orElseGet(() -> {
             Recorrencia nova = new Recorrencia();
-            nova.setDisciplina(disciplina);
+            nova.setGrupo(disciplina);
             return nova;
         });
         recorrencia.setDiasSemana(dto.diasSemana());
@@ -81,15 +81,15 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
     public void remover(UUID disciplinaId) {
         exigirDisciplina(disciplinaId);                                        // 404
         acesso.exigirDono(disciplinaId, "Somente o dono pode remover a recorrência da disciplina.");   // 403
-        Recorrencia recorrencia = repository.findByDisciplinaId(disciplinaId)
+        Recorrencia recorrencia = repository.findByGrupoId(disciplinaId)
                 .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId));    // 404
         // as aulas já cadastradas (com anotações) continuam; só a regra que gera as próximas some
         repository.delete(recorrencia);
     }
 
-    private Disciplina exigirDisciplina(UUID disciplinaId) {
-        return disciplinaRepository.findById(disciplinaId)
-                .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId));
+    private Grupo exigirDisciplina(UUID disciplinaId) {
+        return grupoRepository.findById(disciplinaId)
+                .orElseThrow(() -> new GrupoNaoEncontradoException(disciplinaId));
     }
 
     private void validar(DadosDaRecorrencia dto) {

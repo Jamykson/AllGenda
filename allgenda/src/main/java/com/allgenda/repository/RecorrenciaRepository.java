@@ -12,17 +12,17 @@ import com.allgenda.model.Recorrencia;
 
 public interface RecorrenciaRepository extends JpaRepository<Recorrencia, UUID> {
 
-    Optional<Recorrencia> findByDisciplinaId(UUID disciplinaId);
+    Optional<Recorrencia> findByGrupoId(UUID grupoId);
 
-    void deleteByDisciplinaId(UUID disciplinaId);
+    void deleteByGrupoId(UUID grupoId);
 
-    // recorrências das disciplinas em que a pessoa participa (convite aceito)
+    // recorrências dos grupos em que a pessoa participa (convite aceito)
     @Query("""
             select r from Recorrencia r
-            where r.disciplina.id in (
-                select p.disciplina.id from Participacao p
+            where r.grupo.id in (
+                select p.grupo.id from Participacao p
                 where p.usuario.id = :usuarioId and p.status = com.allgenda.model.StatusParticipacao.ACEITO
             )
             """)
-    List<Recorrencia> findDasDisciplinasDoUsuario(@Param("usuarioId") UUID usuarioId);
+    List<Recorrencia> findDosGruposDoUsuario(@Param("usuarioId") UUID usuarioId);
 }

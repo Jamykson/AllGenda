@@ -1,6 +1,6 @@
 package com.allgenda.service;
 
-import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 import com.allgenda.model.Tag;
 
 import java.util.List;
@@ -10,7 +10,7 @@ import java.util.UUID;
 // Tags são da disciplina. Listar, renomear e excluir exigem participação ACEITO nela.
 public interface TagService {
     // reaproveita as tags da disciplina com esses nomes (sem diferenciar maiúsculas) e cria as que faltam
-    Set<Tag> buscarOuCriar(Disciplina disciplina, List<String> nomes);
+    Set<Tag> buscarOuCriar(Grupo disciplina, List<String> nomes);
     // sem disciplina, lista as tags de todas as disciplinas em que o usuário participa; em ordem alfabética
     List<Tag> listar(UUID disciplinaId);
     Tag renomear(UUID tagId, String nome);

@@ -20,18 +20,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import com.allgenda.exception.AcessoNegadoException;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
-import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.DadosDoGrupo;
@@ -42,7 +43,7 @@ import com.allgenda.service.UsuarioAutenticado;
 class DisciplinaServiceImplTest {
 
     @Mock
-    private DisciplinaRepository repository;
+    private GrupoRepository repository;
     @Mock
     private ParticipacaoRepository participacaoRepository;
     @Mock
@@ -50,7 +51,7 @@ class DisciplinaServiceImplTest {
     @Mock
     private ImagemAnotacaoRepository imagemRepository;
     @Mock
-    private ImagemAulaRepository imagemAulaRepository;
+    private ImagemEncontroRepository imagemEncontroRepository;
     @Mock
     private ArmazenamentoService armazenamento;
     @Mock
@@ -62,7 +63,7 @@ class DisciplinaServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), usuarioAutenticado, acessoDisciplina);
+        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemEncontroRepository, new RemocaoArquivos(armazenamento), usuarioAutenticado, acessoDisciplina);
     }
 
     @Test
@@ -122,12 +123,12 @@ class DisciplinaServiceImplTest {
         var disciplina = new Disciplina();
         disciplina.setNome("PDS");
         var participacao = new Participacao();
-        participacao.setDisciplina(disciplina);
+        participacao.setGrupo(disciplina);
         when(usuarioAutenticado.id()).thenReturn(usuarioId);
         when(participacaoRepository.findByUsuarioIdAndStatus(usuarioId, StatusParticipacao.ACEITO))
             .thenReturn(List.of(participacao));
 
-        assertThat(service.listarDoUsuario()).extracting(Disciplina::getNome).containsExactly("PDS");
+        assertThat(service.listarDoUsuario()).extracting(Grupo::getNome).containsExactly("PDS");
         verify(repository, never()).findAll();
     }
 
@@ -140,7 +141,7 @@ class DisciplinaServiceImplTest {
 
         assertThatThrownBy(() -> service.excluir(id)).isInstanceOf(AcessoNegadoException.class);
 
-        verify(participacaoRepository, never()).deleteByDisciplinaId(any());
+        verify(participacaoRepository, never()).deleteByGrupoId(any());
         verify(repository, never()).delete(any(Disciplina.class));
     }
 
@@ -163,7 +164,7 @@ class DisciplinaServiceImplTest {
         service.excluir(id);
 
         InOrder ordem = inOrder(participacaoRepository, repository);
-        ordem.verify(participacaoRepository).deleteByDisciplinaId(id);
+        ordem.verify(participacaoRepository).deleteByGrupoId(id);
         ordem.verify(repository).delete(disciplina);
     }
 
@@ -173,7 +174,7 @@ class DisciplinaServiceImplTest {
         when(repository.findById(id)).thenReturn(java.util.Optional.empty());
 
         assertThatThrownBy(() -> service.excluir(id))
-            .isInstanceOf(DisciplinaNaoEncontradaException.class);
+            .isInstanceOf(GrupoNaoEncontradoException.class);
 
         verify(repository, never()).delete(any(Disciplina.class));
     }
@@ -183,8 +184,8 @@ class DisciplinaServiceImplTest {
         var id = java.util.UUID.randomUUID();
         var disciplina = new Disciplina();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(disciplina));
-        when(imagemRepository.findChavesArmazenamentoByDisciplinaId(id)).thenReturn(List.of("a.png", "b.jpg"));
-        when(imagemAulaRepository.findChavesArmazenamentoByDisciplinaId(id)).thenReturn(List.of("avulsa.webp"));
+        when(imagemRepository.findChavesArmazenamentoByGrupoId(id)).thenReturn(List.of("a.png", "b.jpg"));
+        when(imagemEncontroRepository.findChavesArmazenamentoByGrupoId(id)).thenReturn(List.of("avulsa.webp"));
 
         service.excluir(id);
 
@@ -200,7 +201,7 @@ class DisciplinaServiceImplTest {
         var id = java.util.UUID.randomUUID();
         var disciplina = new Disciplina();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(disciplina));
-        when(imagemRepository.findChavesArmazenamentoByDisciplinaId(id)).thenReturn(List.of("a.png"));
+        when(imagemRepository.findChavesArmazenamentoByGrupoId(id)).thenReturn(List.of("a.png"));
         doThrow(new DataIntegrityViolationException("FK")).when(repository).delete(disciplina);
 
         assertThatThrownBy(() -> service.excluir(id))

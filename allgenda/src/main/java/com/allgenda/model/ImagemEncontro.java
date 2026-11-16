@@ -13,11 +13,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
-// Imagem avulsa de uma aula, sem anotação, com legenda opcional.
+// Imagem avulsa de um encontro (a galeria do encontro), sem anotação, com legenda opcional.
 // Como em ImagemAnotacao, os bytes ficam no ArmazenamentoService, sob a chaveArmazenamento.
 @Entity
-@Table(name = "imagens_aula")
-public class ImagemAula implements Serializable {
+@Table(name = "imagens_encontro")
+public class ImagemEncontro implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -26,8 +26,8 @@ public class ImagemAula implements Serializable {
     private UUID id;
 
     @ManyToOne(optional = false)
-    @JoinColumn(name = "aula_id")
-    private Aula aula;
+    @JoinColumn(name = "encontro_id")
+    private Encontro encontro;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "usuario_id")
@@ -51,7 +51,7 @@ public class ImagemAula implements Serializable {
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao;
 
-    // ordem na galeria da aula, a mesma para todos; o default permite criar a coluna numa tabela com linhas
+    // ordem na galeria do encontro, a mesma para todos; o default permite criar a coluna numa tabela com linhas
     @Column(name = "posicao", nullable = false, columnDefinition = "integer default 0")
     private int posicao;
 
@@ -59,12 +59,12 @@ public class ImagemAula implements Serializable {
         return id;
     }
 
-    public Aula getAula() {
-        return aula;
+    public Encontro getEncontro() {
+        return encontro;
     }
 
-    public void setAula(Aula aula) {
-        this.aula = aula;
+    public void setEncontro(Encontro encontro) {
+        this.encontro = encontro;
     }
 
     public Usuario getAutor() {

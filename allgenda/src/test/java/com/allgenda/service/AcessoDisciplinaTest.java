@@ -34,14 +34,14 @@ class AcessoDisciplinaTest {
 
     @Test
     void participanteAceitoPassa() {
-        when(participacoes.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+        when(participacoes.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
                 .thenReturn(true);
         assertThatCode(() -> acesso.exigirParticipanteAceito(disciplinaId)).doesNotThrowAnyException();
     }
 
     @Test
     void quemNaoParticipaRecebeAcessoNegadoComAMensagemPedida() {
-        when(participacoes.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+        when(participacoes.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
                 .thenReturn(false);
         assertThatThrownBy(() -> acesso.exigirParticipanteAceito(disciplinaId, "sem acesso"))
                 .isInstanceOf(AcessoNegadoException.class).hasMessage("sem acesso");
@@ -49,21 +49,21 @@ class AcessoDisciplinaTest {
 
     @Test
     void donoAceitoPassa() {
-        when(participacoes.findByUsuarioIdAndDisciplinaId(usuarioId, disciplinaId))
+        when(participacoes.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId))
                 .thenReturn(Optional.of(participacao(PapelParticipacao.DONO, StatusParticipacao.ACEITO)));
         assertThatCode(() -> acesso.exigirDono(disciplinaId)).doesNotThrowAnyException();
     }
 
     @Test
     void membroNaoPassaComoDono() {
-        when(participacoes.findByUsuarioIdAndDisciplinaId(usuarioId, disciplinaId))
+        when(participacoes.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId))
                 .thenReturn(Optional.of(participacao(PapelParticipacao.MEMBRO, StatusParticipacao.ACEITO)));
         assertThatThrownBy(() -> acesso.exigirDono(disciplinaId)).isInstanceOf(AcessoNegadoException.class);
     }
 
     @Test
     void semParticipacaoNaoPassaComoDono() {
-        when(participacoes.findByUsuarioIdAndDisciplinaId(usuarioId, disciplinaId)).thenReturn(Optional.empty());
+        when(participacoes.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> acesso.exigirDono(disciplinaId)).isInstanceOf(AcessoNegadoException.class);
     }
 

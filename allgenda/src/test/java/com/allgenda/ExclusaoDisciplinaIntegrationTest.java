@@ -2,9 +2,9 @@ package com.allgenda;
 
 import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
-import com.allgenda.repository.AulaRepository;
+import com.allgenda.repository.EncontroRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
-import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.AuthService;
 import com.allgenda.service.UsuarioService;
@@ -44,9 +44,9 @@ class ExclusaoDisciplinaIntegrationTest {
     @Autowired FilterChainProxy filtros;
     @Autowired AuthService auth;
     @Autowired UsuarioService cadastroUsuarios;
-    @Autowired AulaRepository aulas;
+    @Autowired EncontroRepository aulas;
     @Autowired ImagemAnotacaoRepository imagens;
-    @Autowired ImagemAulaRepository imagensAvulsas;
+    @Autowired ImagemEncontroRepository imagensAvulsas;
     @Autowired ArmazenamentoService armazenamento;
 
     private MockMvc mvc;
@@ -120,9 +120,9 @@ class ExclusaoDisciplinaIntegrationTest {
         List<String> chavesDaOutra = criarAnotacaoComImagens(aulaDaOutraId, 1);
         String chaveAvulsaDaOutra = criarImagemAvulsa(aulaDaOutraId);
 
-        assertThat(imagens.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId)))
+        assertThat(imagens.findChavesArmazenamentoByGrupoId(UUID.fromString(disciplinaId)))
                 .containsExactlyInAnyOrderElementsOf(chavesDaDisciplina);
-        assertThat(imagensAvulsas.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId)))
+        assertThat(imagensAvulsas.findChavesArmazenamentoByGrupoId(UUID.fromString(disciplinaId)))
                 .containsExactly(chaveAvulsa);
         chavesDaDisciplina.add(chaveAvulsa);
         assertThat(chavesDaDisciplina).hasSize(4).allSatisfy(chave -> assertThat(armazenamento.carregar(chave)).isPresent());
@@ -130,16 +130,16 @@ class ExclusaoDisciplinaIntegrationTest {
         mvc.perform(comToken(delete("/api/disciplinas/{id}", disciplinaId))).andExpect(status().isNoContent());
 
         assertThat(chavesDaDisciplina).allSatisfy(chave -> assertThat(armazenamento.carregar(chave)).isEmpty());
-        assertThat(imagens.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId))).isEmpty();
-        assertThat(imagensAvulsas.findChavesArmazenamentoByDisciplinaId(UUID.fromString(disciplinaId))).isEmpty();
-        assertThat(aulas.findAll()).noneSatisfy(aula -> assertThat(aula.getDisciplina().getId().toString()).isEqualTo(disciplinaId));
+        assertThat(imagens.findChavesArmazenamentoByGrupoId(UUID.fromString(disciplinaId))).isEmpty();
+        assertThat(imagensAvulsas.findChavesArmazenamentoByGrupoId(UUID.fromString(disciplinaId))).isEmpty();
+        assertThat(aulas.findAll()).noneSatisfy(aula -> assertThat(aula.getGrupo().getId().toString()).isEqualTo(disciplinaId));
 
         // a outra disciplina não é afetada
         assertThat(chavesDaOutra).singleElement().satisfies(chave -> assertThat(armazenamento.carregar(chave)).isPresent());
         assertThat(armazenamento.carregar(chaveAvulsaDaOutra)).isPresent();
-        assertThat(imagens.findChavesArmazenamentoByDisciplinaId(UUID.fromString(outraDisciplinaId)))
+        assertThat(imagens.findChavesArmazenamentoByGrupoId(UUID.fromString(outraDisciplinaId)))
                 .containsExactlyElementsOf(chavesDaOutra);
-        assertThat(imagensAvulsas.findChavesArmazenamentoByDisciplinaId(UUID.fromString(outraDisciplinaId)))
+        assertThat(imagensAvulsas.findChavesArmazenamentoByGrupoId(UUID.fromString(outraDisciplinaId)))
                 .containsExactly(chaveAvulsaDaOutra);
     }
 

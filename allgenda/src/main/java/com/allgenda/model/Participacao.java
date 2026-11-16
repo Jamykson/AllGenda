@@ -5,7 +5,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "participacoes", uniqueConstraints = @UniqueConstraint(
-        name = "uk_participacao_usuario_disciplina", columnNames = {"usuario_id", "disciplina_id"}))
+        name = "uk_participacao_usuario_grupo", columnNames = {"usuario_id", "grupo_id"}))
 public class Participacao {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -16,8 +16,8 @@ public class Participacao {
     private Usuario usuario;
 
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "disciplina_id", nullable = false)
-    private Disciplina disciplina;
+    @JoinColumn(name = "grupo_id", nullable = false)
+    private Grupo grupo;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -39,12 +39,12 @@ public class Participacao {
         this.usuario = usuario;
     }
 
-    public Disciplina getDisciplina() {
-        return disciplina;
+    public Grupo getGrupo() {
+        return grupo;
     }
 
-    public void setDisciplina(Disciplina disciplina) {
-        this.disciplina = disciplina;
+    public void setGrupo(Grupo grupo) {
+        this.grupo = grupo;
     }
 
     public PapelParticipacao getPapel() {

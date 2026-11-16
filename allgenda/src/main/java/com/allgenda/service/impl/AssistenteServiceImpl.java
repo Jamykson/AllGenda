@@ -5,20 +5,20 @@ import com.allgenda.dto.request.PerguntaAssistenteDTO.Foco;
 import com.allgenda.dto.request.PerguntaAssistenteDTO.Mensagem;
 import com.allgenda.dto.request.PerguntaAssistenteDTO.Papel;
 import com.allgenda.exception.AssistenteIndisponivelException;
-import com.allgenda.exception.AulaNaoEncontradaException;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.EncontroNaoEncontradoException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.Anotacao;
-import com.allgenda.model.Aula;
+import com.allgenda.model.Encontro;
 import com.allgenda.model.ImagemAnotacao;
-import com.allgenda.model.Disciplina;
-import com.allgenda.model.ImagemAula;
+import com.allgenda.model.Grupo;
+import com.allgenda.model.ImagemEncontro;
 import com.allgenda.model.Tag;
 import com.allgenda.model.VisibilidadeAnotacao;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.DisciplinaRepository;
-import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.GrupoRepository;
+import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.AssistenteService;
@@ -72,10 +72,10 @@ public class AssistenteServiceImpl implements AssistenteService {
 
     private static final String MENSAGEM_SEM_ACESSO = "Somente participantes da disciplina usam o assistente.";
 
-    private final AulaRepository aulaRepository;
-    private final DisciplinaRepository disciplinaRepository;
+    private final EncontroRepository encontroRepository;
+    private final GrupoRepository grupoRepository;
     private final AnotacaoRepository anotacaoRepository;
-    private final ImagemAulaRepository imagemAulaRepository;
+    private final ImagemEncontroRepository imagemEncontroRepository;
     private final AcessoDisciplina acesso;
     private final ArmazenamentoService armazenamento;
     private final ReducaoDeImagem reducao;
@@ -85,10 +85,10 @@ public class AssistenteServiceImpl implements AssistenteService {
     private final int maximoImagens;
     private final int maximoCaracteres;
 
-    public AssistenteServiceImpl(AulaRepository aulaRepository,
-                                 DisciplinaRepository disciplinaRepository,
+    public AssistenteServiceImpl(EncontroRepository encontroRepository,
+                                 GrupoRepository grupoRepository,
                                  AnotacaoRepository anotacaoRepository,
-                                 ImagemAulaRepository imagemAulaRepository,
+                                 ImagemEncontroRepository imagemEncontroRepository,
                                  AcessoDisciplina acesso,
                                  ArmazenamentoService armazenamento,
                                  ReducaoDeImagem reducao,
@@ -97,10 +97,10 @@ public class AssistenteServiceImpl implements AssistenteService {
                                  UsuarioAutenticado usuarioAutenticado,
                                  @Value("${app.assistente.maximo-imagens}") int maximoImagens,
                                  @Value("${app.assistente.maximo-caracteres}") int maximoCaracteres) {
-        this.aulaRepository = aulaRepository;
-        this.disciplinaRepository = disciplinaRepository;
+        this.encontroRepository = encontroRepository;
+        this.grupoRepository = grupoRepository;
         this.anotacaoRepository = anotacaoRepository;
-        this.imagemAulaRepository = imagemAulaRepository;
+        this.imagemEncontroRepository = imagemEncontroRepository;
         this.acesso = acesso;
         this.armazenamento = armazenamento;
         this.reducao = reducao;
@@ -120,7 +120,7 @@ public class AssistenteServiceImpl implements AssistenteService {
     private record AnotacaoDoMaterial(Anotacao anotacao, int numero) {
         String referencia() {
             return "anotação " + numero + " (" + rotulo(anotacao) + ", de " + anotacao.getAutor().getNome()
-                    + ", aula de " + anotacao.getAula().getData().format(DATA) + ")";
+                    + ", aula de " + anotacao.getEncontro().getData().format(DATA) + ")";
         }
     }
 
@@ -129,8 +129,8 @@ public class AssistenteServiceImpl implements AssistenteService {
     @Transactional(readOnly = true)
     public PedidoAoModelo prepararDaAula(UUID aulaId, PerguntaAssistenteDTO pergunta) {
         List<Mensagem> mensagens = validarConversa(pergunta);
-        Aula aula = aulaRepository.findById(aulaId).orElseThrow(() -> new AulaNaoEncontradaException(aulaId));
-        return preparar(aula.getDisciplina(), aula, mensagens);
+        Encontro aula = encontroRepository.findById(aulaId).orElseThrow(() -> new EncontroNaoEncontradoException(aulaId));
+        return preparar(aula.getGrupo(), aula, mensagens);
     }
 
     // pedido feito na página da disciplina: sem aula em destaque
@@ -138,12 +138,12 @@ public class AssistenteServiceImpl implements AssistenteService {
     @Transactional(readOnly = true)
     public PedidoAoModelo prepararDaDisciplina(UUID disciplinaId, PerguntaAssistenteDTO pergunta) {
         List<Mensagem> mensagens = validarConversa(pergunta);
-        Disciplina disciplina = disciplinaRepository.findById(disciplinaId)
-                .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId));
+        Grupo disciplina = grupoRepository.findById(disciplinaId)
+                .orElseThrow(() -> new GrupoNaoEncontradoException(disciplinaId));
         return preparar(disciplina, null, mensagens);
     }
 
-    private PedidoAoModelo preparar(Disciplina disciplina, Aula aulaEmDestaque, List<Mensagem> mensagens) {
+    private PedidoAoModelo preparar(Grupo disciplina, Encontro aulaEmDestaque, List<Mensagem> mensagens) {
         UUID disciplinaId = disciplina.getId();
         acesso.exigirParticipanteAceito(disciplinaId, MENSAGEM_SEM_ACESSO);
         if (!modelo.configurado()) {
@@ -151,11 +151,11 @@ public class AssistenteServiceImpl implements AssistenteService {
         }
         UUID idDaAulaEmDestaque = aulaEmDestaque == null ? null : aulaEmDestaque.getId();
 
-        List<Aula> aulas = new ArrayList<>(aulaRepository.findByDisciplinaId(disciplinaId));
-        aulas.sort(Comparator.comparing(Aula::getData).thenComparing(Aula::getHorario, Comparator.nullsLast(Comparator.naturalOrder())));
+        List<Encontro> aulas = new ArrayList<>(encontroRepository.findByGrupoId(disciplinaId));
+        aulas.sort(Comparator.comparing(Encontro::getData).thenComparing(Encontro::getHorario, Comparator.nullsLast(Comparator.naturalOrder())));
         // numeradas em ordem cronológica (aula, depois criação); o número não muda quando algo fica de fora
         List<AnotacaoDoMaterial> anotacoes = new ArrayList<>();
-        for (Anotacao anotacao : anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId)) {
+        for (Anotacao anotacao : anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId)) {
             if (anotacao.getVisibilidade() == VisibilidadeAnotacao.PRIVADA) {
                 continue; // a anotação privada nunca vai ao modelo, nem a do próprio autor: o assistente é do grupo
             }
@@ -247,9 +247,9 @@ public class AssistenteServiceImpl implements AssistenteService {
     // ordem da galeria); depois as anexadas, na ordem das anotações
     private List<ImagemDoMaterial> imagensDoMaterial(UUID disciplinaId, List<AnotacaoDoMaterial> anotacoes) {
         List<ImagemDoMaterial> imagens = new ArrayList<>();
-        for (ImagemAula imagem : imagemAulaRepository.findByAulaDisciplinaIdOrderByAulaDataAscPosicaoAscDataCriacaoAsc(disciplinaId)) {
+        for (ImagemEncontro imagem : imagemEncontroRepository.findByEncontroGrupoIdOrderByEncontroDataAscPosicaoAscDataCriacaoAsc(disciplinaId)) {
             int numero = imagens.size() + 1;
-            Aula aula = imagem.getAula();
+            Encontro aula = imagem.getEncontro();
             String descricao = "Imagem " + numero + " (foto avulsa da galeria da aula de " + aula.getData().format(DATA)
                     + ", enviada por " + imagem.getAutor().getNome()
                     + (imagem.getLegenda() == null ? "" : "; legenda: \"" + imagem.getLegenda() + "\"") + ")";
@@ -257,7 +257,7 @@ public class AssistenteServiceImpl implements AssistenteService {
                     imagem.getContentType(), aula.getId(), aula.getData()));
         }
         for (AnotacaoDoMaterial item : anotacoes) {
-            Aula aula = item.anotacao().getAula();
+            Encontro aula = item.anotacao().getEncontro();
             for (ImagemAnotacao imagem : item.anotacao().getImagens()) {
                 int numero = imagens.size() + 1;
                 String descricao = "Imagem " + numero + " (anexada à " + item.referencia() + ")";
@@ -283,7 +283,7 @@ public class AssistenteServiceImpl implements AssistenteService {
     private Set<UUID> escolherAnotacoes(List<AnotacaoDoMaterial> anotacoes, UUID aulaEmDestaque, Set<UUID> focos) {
         List<AnotacaoDoMaterial> porPrioridade = new ArrayList<>(anotacoes.reversed()); // mais recentes primeiro
         porPrioridade.sort(Comparator.comparingInt(item -> prioridade(item.anotacao().getId(),
-                item.anotacao().getAula().getId(), aulaEmDestaque, focos))); // estável: mantém a ordem acima
+                item.anotacao().getEncontro().getId(), aulaEmDestaque, focos))); // estável: mantém a ordem acima
         Set<UUID> escolhidas = new HashSet<>();
         long usados = 0;
         for (AnotacaoDoMaterial item : porPrioridade) {
@@ -308,19 +308,19 @@ public class AssistenteServiceImpl implements AssistenteService {
     // o material da disciplina, em blocos: as anotações em texto, organizadas por aula; cada imagem
     // precedida da descrição; e, por último, o fechamento, que lista o que ficou de fora e marca o fim
     // do trecho que pode ficar em cache
-    private List<Bloco> material(Disciplina disciplina, List<Aula> aulas, List<AnotacaoDoMaterial> anotacoes,
+    private List<Bloco> material(Grupo disciplina, List<Encontro> aulas, List<AnotacaoDoMaterial> anotacoes,
                                  Set<UUID> anotacoesEscolhidas, List<ImagemDoMaterial> imagens,
                                  UUID aulaEmDestaque, Set<UUID> focosDeImagem) {
         List<Bloco> blocos = new ArrayList<>();
         StringBuilder texto = new StringBuilder("<material_da_disciplina>\n");
-        texto.append("Disciplina: ").append(escapar(disciplina.getNome())).append("\n\n");
+        texto.append("Grupo: ").append(escapar(disciplina.getNome())).append("\n\n");
 
         Map<UUID, List<AnotacaoDoMaterial>> porAula = new LinkedHashMap<>();
         for (AnotacaoDoMaterial item : anotacoes) {
-            porAula.computeIfAbsent(item.anotacao().getAula().getId(), id -> new ArrayList<>()).add(item);
+            porAula.computeIfAbsent(item.anotacao().getEncontro().getId(), id -> new ArrayList<>()).add(item);
         }
         List<String> omitidas = new ArrayList<>();
-        for (Aula aula : aulas) {
+        for (Encontro aula : aulas) {
             List<AnotacaoDoMaterial> daAula = porAula.getOrDefault(aula.getId(), List.of());
             texto.append("<aula data=\"").append(aula.getData().format(DATA)).append('"');
             if (aula.getHorario() != null) {
@@ -459,7 +459,7 @@ public class AssistenteServiceImpl implements AssistenteService {
         return "[Pergunta sobre " + sobre + "]\n" + mensagem.texto();
     }
 
-    private static String instrucoes(Disciplina disciplina, Aula aulaEmDestaque) {
+    private static String instrucoes(Grupo disciplina, Encontro aulaEmDestaque) {
         String destaque = "";
         if (aulaEmDestaque != null) {
             String topico = aulaEmDestaque.getTopico() == null || aulaEmDestaque.getTopico().isBlank()

@@ -84,8 +84,8 @@ class ImagemAnotacaoServiceImplTest {
         Disciplina disciplina = new Disciplina();
         ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
         Aula aula = new Aula();
-        aula.setDisciplina(disciplina);
-        anotacao.setAula(aula);
+        aula.setGrupo(disciplina);
+        anotacao.setEncontro(aula);
 
         autenticar(autorId);
     }

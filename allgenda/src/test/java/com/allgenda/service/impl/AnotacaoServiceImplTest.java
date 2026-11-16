@@ -5,8 +5,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.junit.jupiter.api.AfterEach;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
-import com.allgenda.exception.AulaNaoEncontradaException;
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.EncontroNaoEncontradoException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.UsuarioNaoEncontradoException;
 import com.allgenda.model.Anotacao;
@@ -19,8 +19,8 @@ import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.AcessoDisciplina;
@@ -56,9 +56,9 @@ class AnotacaoServiceImplTest {
     @Mock
     private AnotacaoRepository anotacaoRepository;
     @Mock
-    private AulaRepository aulaRepository;
+    private EncontroRepository encontroRepository;
     @Mock
-    private DisciplinaRepository disciplinaRepository;
+    private GrupoRepository grupoRepository;
     @Mock
     private UsuarioRepository usuarioRepository;
     @Mock 
@@ -81,7 +81,7 @@ class AnotacaoServiceImplTest {
     void setUp() {
         // UsuarioAutenticado real: lê o usuário do SecurityContext preparado abaixo e o busca no repositório simulado
         UsuarioAutenticado autenticado = new UsuarioAutenticado(usuarioRepository);
-        service = new AnotacaoServiceImpl(anotacaoRepository, aulaRepository, disciplinaRepository, participacaoRepository,
+        service = new AnotacaoServiceImpl(anotacaoRepository, encontroRepository, grupoRepository, participacaoRepository,
                 autenticado, new AcessoDisciplina(participacaoRepository, autenticado), tagService,
                 new RemocaoArquivos(armazenamento));
 
@@ -90,7 +90,7 @@ class AnotacaoServiceImplTest {
         ReflectionTestUtils.setField(disciplina, "id", disciplinaDaAulaId);
         aula = new Aula();
         aula.setTopico("Padrões de projeto");
-        aula.setDisciplina(disciplina);
+        aula.setGrupo(disciplina);
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(usuarioId.toString(), null, List.of()));
@@ -116,7 +116,7 @@ class AnotacaoServiceImplTest {
     private Anotacao anotacao(String conteudo, Tag... tags) {
         Anotacao anotacao = new Anotacao();
         anotacao.setConteudo(conteudo);
-        anotacao.setAula(aula);
+        anotacao.setEncontro(aula);
         anotacao.setAutor(usuarioPadrao);
         for (Tag tag : tags) {
             anotacao.addTag(tag);
@@ -127,9 +127,9 @@ class AnotacaoServiceImplTest {
     @Test
     void cadastraAnotacaoComUsuarioAutenticadoETags() {
         participantesDaDisciplinaDaAula();
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(aula.getDisciplina(), List.of("java", "poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("java"), tag("poo"))));
+        when(tagService.buscarOuCriar(aula.getGrupo(), List.of("java", "poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("java"), tag("poo"))));
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Anotacao resposta = service.cadastrar(new NovaAnotacao(aulaId, null, "Strategy e Observer", List.of("java", "poo"), null));
@@ -137,17 +137,17 @@ class AnotacaoServiceImplTest {
         assertThat(resposta.getConteudo()).isEqualTo("Strategy e Observer");
         assertThat(resposta.getAutor().getId()).isEqualTo(usuarioId);
         assertThat(resposta.getAutor().getNome()).isEqualTo("Maria");
-        assertThat(resposta.getAula().getTopico()).isEqualTo("Padrões de projeto");
-        assertThat(resposta.getAula().getDisciplina().getNome()).isEqualTo("PDS");
+        assertThat(resposta.getEncontro().getTopico()).isEqualTo("Padrões de projeto");
+        assertThat(resposta.getEncontro().getGrupo().getNome()).isEqualTo("PDS");
         assertThat(nomesDasTags(resposta)).containsExactlyInAnyOrder("java", "poo");
     }
 
     @Test
     void cadastraAnotacaoSemTags() {
         participantesDaDisciplinaDaAula();
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getGrupo(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Anotacao resposta = service.cadastrar(new NovaAnotacao(aulaId, null, "Sem tags", null, null));
@@ -161,9 +161,9 @@ class AnotacaoServiceImplTest {
         UUID autorId = usuarioId;
         Usuario autor = new Usuario();
         autor.setNome("Maria");
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(autorId)).thenReturn(Optional.of(autor));
-        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getGrupo(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Anotacao resposta = service.cadastrar(new NovaAnotacao(aulaId, null, "Texto", null, null));
@@ -175,7 +175,7 @@ class AnotacaoServiceImplTest {
     void autorInexistenteLancaErroTratado() {
         participantesDaDisciplinaDaAula();
         UUID autorId = usuarioId;
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(autorId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.cadastrar(new NovaAnotacao(aulaId, null, "Texto", null, null)))
@@ -185,7 +185,7 @@ class AnotacaoServiceImplTest {
 
     @Test
     void cadastrarSemParticipacaoAceitaLancaAcessoNegado() {
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
 
         assertThatThrownBy(() -> service.cadastrar(new NovaAnotacao(aulaId, null, "Texto", null, null)))
                 .isInstanceOf(AcessoNegadoException.class);
@@ -194,10 +194,10 @@ class AnotacaoServiceImplTest {
 
     @Test
     void aulaInexistenteLancaErroTratado() {
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.empty());
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.cadastrar(new NovaAnotacao(aulaId, null, "Texto", null, null)))
-                .isInstanceOf(AulaNaoEncontradaException.class);
+                .isInstanceOf(EncontroNaoEncontradoException.class);
         verify(anotacaoRepository, never()).save(any());
     }
 
@@ -212,9 +212,9 @@ class AnotacaoServiceImplTest {
     @Test
     void cadastraAnotacaoSoComTitulo() {
         participantesDaDisciplinaDaAula();
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getGrupo(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Anotacao resposta = service.cadastrar(new NovaAnotacao(aulaId, "  Prova 1  ", " ", null, null));
@@ -226,9 +226,9 @@ class AnotacaoServiceImplTest {
     @Test
     void cadastraAnotacaoComTituloEConteudo() {
         participantesDaDisciplinaDaAula();
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getGrupo(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Anotacao resposta = service.cadastrar(new NovaAnotacao(aulaId, "Padrões", "Strategy e Observer", null, null));
@@ -240,9 +240,9 @@ class AnotacaoServiceImplTest {
     @Test
     void tituloEmBrancoFicaNulo() {
         participantesDaDisciplinaDaAula();
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         when(usuarioRepository.findById(usuarioId)).thenReturn(Optional.of(usuarioPadrao));
-        when(tagService.buscarOuCriar(aula.getDisciplina(), null)).thenReturn(Set.of());
+        when(tagService.buscarOuCriar(aula.getGrupo(), null)).thenReturn(Set.of());
         when(anotacaoRepository.save(any(Anotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Anotacao resposta = service.cadastrar(new NovaAnotacao(aulaId, "   ", "Texto", null, null));
@@ -270,12 +270,12 @@ class AnotacaoServiceImplTest {
         UUID anotacaoId = UUID.randomUUID();
         Anotacao anotacao = new Anotacao();
         anotacao.setConteudo("Texto");
-        anotacao.setAula(aula);
+        anotacao.setEncontro(aula);
         anotacao.setAutor(usuarioPadrao);
         anotacao.addTag(tag("java"));
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
         participantesDaDisciplinaDaAula();
-        when(tagService.buscarOuCriar(aula.getDisciplina(), List.of("poo", "spring"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"), tag("spring"))));
+        when(tagService.buscarOuCriar(aula.getGrupo(), List.of("poo", "spring"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"), tag("spring"))));
         when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
 
         Anotacao resposta = service.associarTags(anotacaoId, List.of("poo", "spring"));
@@ -304,7 +304,7 @@ class AnotacaoServiceImplTest {
         Anotacao anotacao = anotacao("Texto", tag("java"));
         when(anotacaoRepository.findById(anotacaoId)).thenReturn(Optional.of(anotacao));
         participantesDaDisciplinaDaAula();
-        when(tagService.buscarOuCriar(aula.getDisciplina(), List.of("poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"))));
+        when(tagService.buscarOuCriar(aula.getGrupo(), List.of("poo"))).thenReturn(new LinkedHashSet<>(List.of(tag("poo"))));
         when(anotacaoRepository.save(anotacao)).thenReturn(anotacao);
         autenticarOutroUsuario();
 
@@ -375,7 +375,7 @@ class AnotacaoServiceImplTest {
 
     // qualquer usuário autenticado participa da disciplina da aula (dono ou membro com participação ACEITO)
     private void participantesDaDisciplinaDaAula() {
-        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(
+        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(
                 any(), eq(disciplinaDaAulaId), eq(StatusParticipacao.ACEITO))).thenReturn(true);
     }
 
@@ -471,7 +471,7 @@ class AnotacaoServiceImplTest {
     }
 
     private void permitirAcessoA(UUID disciplinaId) {
-        when(participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
+        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
             .thenReturn(true);
     }
 
@@ -479,50 +479,50 @@ class AnotacaoServiceImplTest {
         Disciplina disciplina = new Disciplina();
         ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
         Participacao participacao = new Participacao();
-        participacao.setDisciplina(disciplina);
+        participacao.setGrupo(disciplina);
         return participacao;
     }
 
     @Test
     void listarPorAulaRetornaAnotacoesDaAula() {
         UUID disciplinaId = UUID.randomUUID();
-        ReflectionTestUtils.setField(aula.getDisciplina(), "id", disciplinaId);
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        ReflectionTestUtils.setField(aula.getGrupo(), "id", disciplinaId);
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
         permitirAcessoA(disciplinaId);
-        when(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId))
+        when(anotacaoRepository.findByEncontroIdOrderByDataCriacaoAsc(aulaId))
                 .thenReturn(List.of(anotacao("Primeira", tag("java")), anotacao("Segunda")));
 
         List<Anotacao> resposta = service.listarPorAula(aulaId);
 
         assertThat(resposta).extracting(Anotacao::getConteudo).containsExactly("Primeira", "Segunda");
         assertThat(nomesDasTags(resposta.get(0))).containsExactly("java");
-        assertThat(resposta.get(0).getAula().getDisciplina().getNome()).isEqualTo("PDS");
+        assertThat(resposta.get(0).getEncontro().getGrupo().getNome()).isEqualTo("PDS");
     }
 
     @Test
     void listarPorAulaInexistenteLancaErroTratado() {
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.empty());
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.listarPorAula(aulaId))
-                .isInstanceOf(AulaNaoEncontradaException.class);
+                .isInstanceOf(EncontroNaoEncontradoException.class);
     }
 
     @Test
     void listarPorAulaSemParticipacaoAceitaLancaAcessoNegado() {
-        ReflectionTestUtils.setField(aula.getDisciplina(), "id", UUID.randomUUID());
-        when(aulaRepository.findById(aulaId)).thenReturn(Optional.of(aula));
+        ReflectionTestUtils.setField(aula.getGrupo(), "id", UUID.randomUUID());
+        when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
 
         assertThatThrownBy(() -> service.listarPorAula(aulaId))
                 .isInstanceOf(AcessoNegadoException.class);
-        verify(anotacaoRepository, never()).findByAulaIdOrderByDataCriacaoAsc(any());
+        verify(anotacaoRepository, never()).findByEncontroIdOrderByDataCriacaoAsc(any());
     }
 
     @Test
     void listarPorDisciplinaSemTagRetornaTodasAsAnotacoes() {
         UUID disciplinaId = UUID.randomUUID();
-        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(true);
+        when(grupoRepository.existsById(disciplinaId)).thenReturn(true);
         permitirAcessoA(disciplinaId);
-        when(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId))
+        when(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId))
                 .thenReturn(List.of(anotacao("Texto")));
 
         List<Anotacao> resposta = service.listarPorDisciplina(disciplinaId, null);
@@ -533,34 +533,34 @@ class AnotacaoServiceImplTest {
     @Test
     void listarPorDisciplinaComTagFiltraPelaTag() {
         UUID disciplinaId = UUID.randomUUID();
-        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(true);
+        when(grupoRepository.existsById(disciplinaId)).thenReturn(true);
         permitirAcessoA(disciplinaId);
-        when(anotacaoRepository.findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(disciplinaId, "java"))
+        when(anotacaoRepository.findByEncontroGrupoIdAndTagsNomeIgnoreCaseOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, "java"))
                 .thenReturn(List.of(anotacao("Com tag", tag("java"))));
 
         List<Anotacao> resposta = service.listarPorDisciplina(disciplinaId, "  java ");
 
         assertThat(resposta).extracting(Anotacao::getConteudo).containsExactly("Com tag");
-        verify(anotacaoRepository, never()).findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(any());
+        verify(anotacaoRepository, never()).findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(any());
     }
 
     @Test
     void listarPorDisciplinaInexistenteLancaErroTratado() {
         UUID disciplinaId = UUID.randomUUID();
-        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(false);
+        when(grupoRepository.existsById(disciplinaId)).thenReturn(false);
 
         assertThatThrownBy(() -> service.listarPorDisciplina(disciplinaId, null))
-                .isInstanceOf(DisciplinaNaoEncontradaException.class);
+                .isInstanceOf(GrupoNaoEncontradoException.class);
     }
 
     @Test
     void listarPorDisciplinaSemParticipacaoAceitaLancaAcessoNegado() {
         UUID disciplinaId = UUID.randomUUID();
-        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(true);
+        when(grupoRepository.existsById(disciplinaId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.listarPorDisciplina(disciplinaId, null))
                 .isInstanceOf(AcessoNegadoException.class);
-        verify(anotacaoRepository, never()).findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(any());
+        verify(anotacaoRepository, never()).findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(any());
     }
 
     @Test
@@ -568,7 +568,7 @@ class AnotacaoServiceImplTest {
         UUID disciplinaId = UUID.randomUUID();
         when(participacaoRepository.findByUsuarioIdAndStatus(usuarioId, StatusParticipacao.ACEITO))
                 .thenReturn(List.of(participacaoEm(disciplinaId)));
-        when(anotacaoRepository.findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc("java", List.of(disciplinaId)))
+        when(anotacaoRepository.findByTagsNomeIgnoreCaseAndEncontroGrupoIdInOrderByEncontroDataAscDataCriacaoAsc("java", List.of(disciplinaId)))
                 .thenReturn(List.of(anotacao("Texto", tag("java"))));
 
         List<Anotacao> resposta = service.listarPorTag(" java ");
@@ -581,7 +581,7 @@ class AnotacaoServiceImplTest {
         when(participacaoRepository.findByUsuarioIdAndStatus(usuarioId, StatusParticipacao.ACEITO)).thenReturn(List.of());
 
         assertThat(service.listarPorTag("java")).isEmpty();
-        verify(anotacaoRepository, never()).findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc(any(), any());
+        verify(anotacaoRepository, never()).findByTagsNomeIgnoreCaseAndEncontroGrupoIdInOrderByEncontroDataAscDataCriacaoAsc(any(), any());
     }
 
     @Test
@@ -593,9 +593,9 @@ class AnotacaoServiceImplTest {
     @Test
     void listarDosColegasExcluiAsAnotacoesDoSolicitante() {
         UUID disciplinaId = UUID.randomUUID();
-        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(true);
+        when(grupoRepository.existsById(disciplinaId)).thenReturn(true);
         permitirAcessoA(disciplinaId);
-        when(anotacaoRepository.findByAulaDisciplinaIdAndAutorIdNotOrderByAulaDataAscDataCriacaoAsc(disciplinaId, usuarioId))
+        when(anotacaoRepository.findByEncontroGrupoIdAndAutorIdNotOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, usuarioId))
                 .thenReturn(List.of(anotacao("Do colega")));
 
         assertThat(service.listarDosColegas(disciplinaId)).extracting(Anotacao::getConteudo).containsExactly("Do colega");
@@ -604,7 +604,7 @@ class AnotacaoServiceImplTest {
     @Test
     void listarDosColegasSemParticipacaoAceitaLancaAcessoNegado() {
         UUID disciplinaId = UUID.randomUUID();
-        when(disciplinaRepository.existsById(disciplinaId)).thenReturn(true);
+        when(grupoRepository.existsById(disciplinaId)).thenReturn(true);
 
         assertThatThrownBy(() -> service.listarDosColegas(disciplinaId)).isInstanceOf(AcessoNegadoException.class);
     }

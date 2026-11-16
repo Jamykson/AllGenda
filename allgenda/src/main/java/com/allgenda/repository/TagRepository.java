@@ -11,8 +11,8 @@ import com.allgenda.model.Tag;
 
 public interface TagRepository extends JpaRepository<Tag, UUID> {
 
-    // "Java" e "java" são a mesma tag dentro de uma disciplina
-    Optional<Tag> findByDisciplinaIdAndNomeIgnoreCase(UUID disciplinaId, String nome);
+    // "Java" e "java" são a mesma tag dentro de um grupo
+    Optional<Tag> findByGrupoIdAndNomeIgnoreCase(UUID grupoId, String nome);
 
-    List<Tag> findByDisciplinaIdIn(Collection<UUID> disciplinaIds);
+    List<Tag> findByGrupoIdIn(Collection<UUID> grupoIds);
 }

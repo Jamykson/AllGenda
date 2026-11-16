@@ -83,7 +83,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     @Transactional(readOnly = true)
     public ImagemArquivo carregar(UUID anotacaoId, UUID imagemId) {
         Anotacao anotacao = buscarAnotacao(anotacaoId);                       // 404
-        acesso.exigirParticipanteAceito(anotacao.getAula().getDisciplina().getId(),
+        acesso.exigirParticipanteAceito(anotacao.getEncontro().getGrupo().getId(),
                 "Somente participantes da disciplina veem as imagens das anotações."); // 403
         ImagemAnotacao imagem = buscarImagem(anotacaoId, imagemId);
         return armazenamento.carregar(imagem.getChaveArmazenamento())

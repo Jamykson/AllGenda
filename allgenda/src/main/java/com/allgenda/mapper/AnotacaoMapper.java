@@ -38,10 +38,10 @@ public class AnotacaoMapper {
             anotacao.getAutor().getId(),
             anotacao.getAutor().getNome(),
             nomesDasTags,
-            anotacao.getAula().getDisciplina().getNome(),
-            anotacao.getAula().getId(),
-            anotacao.getAula().getData(),
-            anotacao.getAula().getTopico(),
+            anotacao.getEncontro().getGrupo().getNome(),
+            anotacao.getEncontro().getId(),
+            anotacao.getEncontro().getData(),
+            anotacao.getEncontro().getTopico(),
             anotacao.getImagens().stream().map(this::toImagemDto).toList(),
             anotacao.getVisibilidade()
         );

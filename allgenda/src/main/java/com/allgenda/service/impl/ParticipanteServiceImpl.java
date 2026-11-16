@@ -1,6 +1,6 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.ParticipanteNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.PapelParticipacao;
@@ -8,7 +8,7 @@ import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.VisibilidadeAnotacao;
 import com.allgenda.repository.AnotacaoRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.Participante;
@@ -23,16 +23,16 @@ import java.util.UUID;
 @Service
 public class ParticipanteServiceImpl implements ParticipanteService {
 
-    private final DisciplinaRepository disciplinaRepository;
+    private final GrupoRepository grupoRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final AnotacaoRepository anotacaoRepository;
     private final AcessoDisciplina acesso;
 
-    public ParticipanteServiceImpl(DisciplinaRepository disciplinaRepository,
+    public ParticipanteServiceImpl(GrupoRepository grupoRepository,
                                    ParticipacaoRepository participacaoRepository,
                                    AnotacaoRepository anotacaoRepository,
                                    AcessoDisciplina acesso) {
-        this.disciplinaRepository = disciplinaRepository;
+        this.grupoRepository = grupoRepository;
         this.participacaoRepository = participacaoRepository;
         this.anotacaoRepository = anotacaoRepository;
         this.acesso = acesso;
@@ -44,13 +44,13 @@ public class ParticipanteServiceImpl implements ParticipanteService {
         exigirDisciplina(disciplinaId);                                                  // 404
         acesso.exigirParticipanteAceito(disciplinaId, "Somente participantes da disciplina veem quem participa."); // 403
 
-        return participacaoRepository.findByDisciplinaIdAndStatus(disciplinaId, StatusParticipacao.ACEITO).stream()
+        return participacaoRepository.findByGrupoIdAndStatus(disciplinaId, StatusParticipacao.ACEITO).stream()
                 .sorted(Comparator
                         .comparing((Participacao participacao) -> participacao.getPapel() != PapelParticipacao.DONO)
                         .thenComparing(participacao -> participacao.getUsuario().getNome(), String.CASE_INSENSITIVE_ORDER))
                 .map(participacao -> new Participante(
                         participacao,
-                        anotacaoRepository.countByAulaDisciplinaIdAndAutorIdAndVisibilidade(
+                        anotacaoRepository.countByEncontroGrupoIdAndAutorIdAndVisibilidade(
                                 disciplinaId, participacao.getUsuario().getId(), VisibilidadeAnotacao.GRUPO)))
                 .toList();
     }
@@ -61,7 +61,7 @@ public class ParticipanteServiceImpl implements ParticipanteService {
         exigirDisciplina(disciplinaId);                                                   // 404
         acesso.exigirDono(disciplinaId, "Somente o dono pode remover participantes da disciplina."); // 403
 
-        Participacao participacao = participacaoRepository.findByUsuarioIdAndDisciplinaId(usuarioId, disciplinaId)
+        Participacao participacao = participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)
                 .filter(encontrada -> encontrada.getStatus() == StatusParticipacao.ACEITO)
                 .orElseThrow(() -> new ParticipanteNaoEncontradoException(usuarioId));    // 404
         if (participacao.getPapel() == PapelParticipacao.DONO) {
@@ -71,8 +71,8 @@ public class ParticipanteServiceImpl implements ParticipanteService {
     }
 
     private void exigirDisciplina(UUID disciplinaId) {
-        if (!disciplinaRepository.existsById(disciplinaId)) {
-            throw new DisciplinaNaoEncontradaException(disciplinaId);
+        if (!grupoRepository.existsById(disciplinaId)) {
+            throw new GrupoNaoEncontradoException(disciplinaId);
         }
     }
 }

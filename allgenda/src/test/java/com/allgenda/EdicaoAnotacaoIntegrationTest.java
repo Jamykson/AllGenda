@@ -142,7 +142,7 @@ class EdicaoAnotacaoIntegrationTest {
                 .andExpect(jsonPath("$.autorId").value(autorId));
 
         assertThat(quantidadeDeTagsSalvas()).isZero();
-        assertThat(tags.findByDisciplinaIdAndNomeIgnoreCase(UUID.fromString(disciplinaId), "java")).isPresent();
+        assertThat(tags.findByGrupoIdAndNomeIgnoreCase(UUID.fromString(disciplinaId), "java")).isPresent();
     }
 
     @Test

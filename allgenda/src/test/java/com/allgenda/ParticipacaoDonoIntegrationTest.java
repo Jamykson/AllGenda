@@ -49,13 +49,13 @@ class ParticipacaoDonoIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
         UUID disciplinaId = UUID.fromString(JsonPath.read(resposta, "$.id"));
 
-        var participacao = participacoes.findByUsuarioIdAndDisciplinaId(usuario.id(), disciplinaId).orElseThrow();
+        var participacao = participacoes.findByUsuarioIdAndGrupoId(usuario.id(), disciplinaId).orElseThrow();
         assertThat(participacao.getPapel()).isEqualTo(PapelParticipacao.DONO);
         assertThat(participacao.getStatus()).isEqualTo(StatusParticipacao.ACEITO);
 
         mvc.perform(delete("/api/disciplinas/{id}", disciplinaId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isNoContent());
-        assertThat(participacoes.findByUsuarioIdAndDisciplinaId(usuario.id(), disciplinaId)).isEmpty();
+        assertThat(participacoes.findByUsuarioIdAndGrupoId(usuario.id(), disciplinaId)).isEmpty();
     }
 }

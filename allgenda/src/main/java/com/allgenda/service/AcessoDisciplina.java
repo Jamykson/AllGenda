@@ -29,7 +29,7 @@ public class AcessoDisciplina {
 
     // dono e membro têm participação ACEITO; sem participação, pendente ou recusada: sem acesso (403)
     public void exigirParticipanteAceito(UUID disciplinaId, String mensagem) {
-        boolean participa = participacaoRepository.existsByUsuarioIdAndDisciplinaIdAndStatus(
+        boolean participa = participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(
                 usuarioAutenticado.id(), disciplinaId, StatusParticipacao.ACEITO);
         if (!participa) {
             throw new AcessoNegadoException(mensagem);
@@ -42,7 +42,7 @@ public class AcessoDisciplina {
 
     // só o dono (com participação aceita) passa (403)
     public void exigirDono(UUID disciplinaId, String mensagem) {
-        boolean dono = participacaoRepository.findByUsuarioIdAndDisciplinaId(usuarioAutenticado.id(), disciplinaId)
+        boolean dono = participacaoRepository.findByUsuarioIdAndGrupoId(usuarioAutenticado.id(), disciplinaId)
                 .filter(p -> p.getPapel() == PapelParticipacao.DONO && p.getStatus() == StatusParticipacao.ACEITO)
                 .isPresent();
         if (!dono) {

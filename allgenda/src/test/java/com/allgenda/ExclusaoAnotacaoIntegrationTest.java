@@ -105,7 +105,7 @@ class ExclusaoAnotacaoIntegrationTest {
         assertThat(anotacoes.existsById(UUID.fromString(anotacaoId))).isFalse();
         assertThat(imagens.existsById(UUID.fromString(imagemId))).isFalse();
         assertThat(armazenamento.carregar(chave)).isEmpty();
-        assertThat(tags.findByDisciplinaIdAndNomeIgnoreCase(UUID.fromString(disciplinaId), tag)).isPresent();
+        assertThat(tags.findByGrupoIdAndNomeIgnoreCase(UUID.fromString(disciplinaId), tag)).isPresent();
         mvc.perform(comToken(get("/api/anotacoes").param("aulaId", aulaId), tokenAutor))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());

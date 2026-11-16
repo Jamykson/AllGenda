@@ -30,7 +30,7 @@ class ColaboracaoAceiteIntegrationTest {
 
     @Autowired UsuarioService cadastro;
     @Autowired UsuarioRepository usuarios;
-    @Autowired DisciplinaRepository disciplinas;
+    @Autowired GrupoRepository disciplinas;
     @Autowired ParticipacaoRepository participacoes;
     @Autowired EntityManager entityManager;
     @Autowired JdbcTemplate jdbc;
@@ -56,7 +56,7 @@ class ColaboracaoAceiteIntegrationTest {
         Usuario usuario = usuario();
         Disciplina disciplina = disciplina();
         UUID id = UUID.randomUUID();
-        String sql = "INSERT INTO participacoes (id, usuario_id, disciplina_id, papel, status) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO participacoes (id, usuario_id, grupo_id, papel, status) VALUES (?, ?, ?, ?, ?)";
         assertThat(jdbc.update(sql, id, usuario.getId(), disciplina.getId(), "MEMBRO", "PENDENTE")).isEqualTo(1);
         assertThat(participacoes.findById(id)).isPresent();
         assertThatThrownBy(() -> jdbc.update(sql, UUID.randomUUID(), UUID.randomUUID(), disciplina.getId(), "MEMBRO", "PENDENTE"))
@@ -71,7 +71,7 @@ class ColaboracaoAceiteIntegrationTest {
         Disciplina disciplina = disciplina();
         Participacao participacao = new Participacao();
         participacao.setUsuario(usuario);
-        participacao.setDisciplina(disciplina);
+        participacao.setGrupo(disciplina);
         participacao.setPapel(PapelParticipacao.MEMBRO);
         participacao.setStatus(StatusParticipacao.PENDENTE);
         participacao = participacoes.saveAndFlush(participacao);
@@ -79,7 +79,7 @@ class ColaboracaoAceiteIntegrationTest {
         UUID disciplinaId = disciplina.getId();
         entityManager.clear();
 
-        Disciplina carregada = disciplinas.findById(disciplinaId).orElseThrow();
+        Grupo carregada = disciplinas.findById(disciplinaId).orElseThrow();
         assertThat(carregada.getParticipacoes()).hasSize(1);
         carregada.getParticipacoes().clear();
         entityManager.flush();

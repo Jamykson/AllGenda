@@ -4,7 +4,7 @@ import com.allgenda.dto.request.ImagemAulaUpdateDTO;
 import com.allgenda.dto.response.ImagemAulaResponseDTO;
 import com.allgenda.mapper.ImagemAulaMapper;
 import com.allgenda.service.ImagemArquivo;
-import com.allgenda.service.ImagemAulaService;
+import com.allgenda.service.ImagemEncontroService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
@@ -26,10 +26,10 @@ import java.util.UUID;
 @RequestMapping("/api/aulas/{aulaId}/imagens")
 public class ImagemAulaController {
 
-    private final ImagemAulaService service;
+    private final ImagemEncontroService service;
     private final ImagemAulaMapper mapper;
 
-    public ImagemAulaController(ImagemAulaService service, ImagemAulaMapper mapper) {
+    public ImagemAulaController(ImagemEncontroService service, ImagemAulaMapper mapper) {
         this.service = service;
         this.mapper = mapper;
     }

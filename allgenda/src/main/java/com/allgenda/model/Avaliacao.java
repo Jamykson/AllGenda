@@ -1,49 +1,31 @@
 package com.allgenda.model;
 
-import jakarta.persistence.*;
-import java.time.LocalDate;
-import java.util.UUID;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 
+// Evento do AllGenda: uma avaliação da disciplina, que é uma prova ou uma entrega (TipoAvaliacao).
 @Entity
 @Table(name = "avaliacoes")
-public class Avaliacao {
+public class Avaliacao extends Evento {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    public static final String TIPO = "AVALIACAO";
 
-    @Column(nullable = false, length = 500)
-    private String descricao;
-
-    @Column(nullable = false)
-    private LocalDate data;
-
+    // o tipo de avaliação (PROVA ou ENTREGA); não confundir com tipo(), que é o nome do tipo no registro
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoAvaliacao tipo;
 
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "disciplina_id", nullable = false)
-    private Disciplina disciplina;
-
-    public UUID getId() {
-        return id;
+    @Override
+    public String tipo() {
+        return TIPO;
     }
 
-    public String getDescricao() {
-        return descricao;
-    }
-
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
-    }
-
-    public LocalDate getData() {
-        return data;
-    }
-
-    public void setData(LocalDate data) {
-        this.data = data;
+    @Override
+    public String subtipo() {
+        return tipo.name();
     }
 
     public TipoAvaliacao getTipo() {
@@ -52,13 +34,5 @@ public class Avaliacao {
 
     public void setTipo(TipoAvaliacao tipo) {
         this.tipo = tipo;
-    }
-
-    public Disciplina getDisciplina() {
-        return disciplina;
-    }
-
-    public void setDisciplina(Disciplina disciplina) {
-        this.disciplina = disciplina;
     }
 }

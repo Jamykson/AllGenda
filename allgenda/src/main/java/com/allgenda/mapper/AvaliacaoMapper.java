@@ -2,23 +2,26 @@ package com.allgenda.mapper;
 
 import com.allgenda.dto.response.AvaliacaoResponseDTO;
 import com.allgenda.model.Avaliacao;
+import com.allgenda.model.Evento;
 import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
 public class AvaliacaoMapper {
 
-    public AvaliacaoResponseDTO toDto(Avaliacao avaliacao) {
+    // no AllGenda todo evento é uma Avaliacao (o único tipo de evento registrado)
+    public AvaliacaoResponseDTO toDto(Evento evento) {
+        Avaliacao avaliacao = (Avaliacao) evento;
         return new AvaliacaoResponseDTO(
                 avaliacao.getId(),
                 avaliacao.getDescricao(),
                 avaliacao.getData(),
                 avaliacao.getTipo(),
-                avaliacao.getDisciplina().getId(),
-                avaliacao.getDisciplina().getNome());
+                avaliacao.getGrupo().getId(),
+                avaliacao.getGrupo().getNome());
     }
 
-    public List<AvaliacaoResponseDTO> toDtoList(List<Avaliacao> avaliacoes) {
+    public List<AvaliacaoResponseDTO> toDtoList(List<Evento> avaliacoes) {
         return avaliacoes.stream().map(this::toDto).toList();
     }
 }

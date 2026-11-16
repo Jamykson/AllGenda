@@ -1,7 +1,7 @@
 package com.allgenda.mapper;
 
 import com.allgenda.dto.response.DisciplinaResponseDTO;
-import com.allgenda.model.Disciplina;
+import com.allgenda.model.Grupo;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.List;
 @Component
 public class DisciplinaMapper {
 
-    public DisciplinaResponseDTO toDto(Disciplina disciplina){
+    public DisciplinaResponseDTO toDto(Grupo disciplina){
         return new DisciplinaResponseDTO(
             disciplina.getId(),
             disciplina.getNome(),
@@ -17,7 +17,7 @@ public class DisciplinaMapper {
         );
     }
 
-    public List<DisciplinaResponseDTO> toDtoList(List<Disciplina> disciplinas) {
+    public List<DisciplinaResponseDTO> toDtoList(List<Grupo> disciplinas) {
         return disciplinas.stream().map(this::toDto).toList();
     }
 }

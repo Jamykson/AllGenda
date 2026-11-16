@@ -8,9 +8,9 @@ import com.allgenda.model.Disciplina;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
-import com.allgenda.repository.AulaRepository;
-import com.allgenda.repository.DisciplinaRepository;
-import com.allgenda.repository.ImagemAulaRepository;
+import com.allgenda.repository.EncontroRepository;
+import com.allgenda.repository.GrupoRepository;
+import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.ArmazenamentoService;
@@ -60,10 +60,10 @@ class ImagemAulaIntegrationTest {
     @Autowired AuthService auth;
     @Autowired UsuarioService cadastroUsuarios;
     @Autowired UsuarioRepository usuarios;
-    @Autowired DisciplinaRepository disciplinas;
+    @Autowired GrupoRepository disciplinas;
     @Autowired ParticipacaoRepository participacoes;
-    @Autowired AulaRepository aulas;
-    @Autowired ImagemAulaRepository imagens;
+    @Autowired EncontroRepository aulas;
+    @Autowired ImagemEncontroRepository imagens;
     @Autowired ArmazenamentoService armazenamento;
 
     private MockMvc mvc;
@@ -93,7 +93,7 @@ class ImagemAulaIntegrationTest {
         participar(colega, disciplina, PapelParticipacao.MEMBRO);
 
         var aula = new Aula();
-        aula.setDisciplina(disciplina);
+        aula.setGrupo(disciplina);
         aula.setData(LocalDate.now());
         aula.setHorario("08:00");
         aulaId = aulas.save(aula).getId();
@@ -107,7 +107,7 @@ class ImagemAulaIntegrationTest {
     private void participar(UsuarioResponseDTO usuario, Disciplina disciplina, PapelParticipacao papel) {
         var participacao = new Participacao();
         participacao.setUsuario(usuarios.findById(usuario.id()).orElseThrow());
-        participacao.setDisciplina(disciplina);
+        participacao.setGrupo(disciplina);
         participacao.setPapel(papel);
         participacao.setStatus(StatusParticipacao.ACEITO);
         participacoes.save(participacao);
@@ -215,7 +215,7 @@ class ImagemAulaIntegrationTest {
         mvc.perform(comToken(envio(PNG), tokenDeFora))
                 .andExpect(status().isForbidden());
 
-        assertThat(imagens.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId)).hasSize(1);
+        assertThat(imagens.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId)).hasSize(1);
     }
 
     private RequestBuilder reordenacao(String json, String token) {
@@ -293,7 +293,7 @@ class ImagemAulaIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("A legenda deve ter no máximo 300 caracteres."));
 
-        assertThat(imagens.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId)).isEmpty();
+        assertThat(imagens.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId)).isEmpty();
     }
 
     @Test

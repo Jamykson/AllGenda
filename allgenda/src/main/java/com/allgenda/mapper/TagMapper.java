@@ -13,7 +13,7 @@ public class TagMapper {
         return new TagResponseDTO(
             tag.getId(),
             tag.getNome(),
-            tag.getDisciplina() != null ? tag.getDisciplina().getId() : null
+            tag.getGrupo().getId()
         );
     }
 

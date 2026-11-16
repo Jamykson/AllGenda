@@ -12,7 +12,7 @@ public class RecorrenciaMapper {
 
     public RecorrenciaResponseDTO toDto(Recorrencia recorrencia) {
         return new RecorrenciaResponseDTO(
-            recorrencia.getDisciplina().getId(),
+            recorrencia.getGrupo().getId(),
             recorrencia.getDiasSemana().stream().sorted().toList(),   // domingo a sábado
             recorrencia.getHoraInicio(),
             recorrencia.getHoraFim(),

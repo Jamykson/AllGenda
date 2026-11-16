@@ -1,12 +1,13 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.exception.DisciplinaNaoEncontradaException;
+import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.Avaliacao;
-import com.allgenda.model.Disciplina;
+import com.allgenda.model.Evento;
+import com.allgenda.model.Grupo;
 import com.allgenda.model.TipoAvaliacao;
-import com.allgenda.repository.AvaliacaoRepository;
-import com.allgenda.repository.DisciplinaRepository;
+import com.allgenda.repository.EventoRepository;
+import com.allgenda.repository.GrupoRepository;
 import com.allgenda.service.AvaliacaoService;
 import com.allgenda.service.DadosDoEvento;
 import com.allgenda.service.AcessoDisciplina;
@@ -20,12 +21,12 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
 
     private static final String SEM_ACESSO = "Somente participantes da disciplina acessam as avaliações.";
 
-    private final AvaliacaoRepository avaliacoes;
-    private final DisciplinaRepository disciplinas;
+    private final EventoRepository avaliacoes;
+    private final GrupoRepository disciplinas;
     private final AcessoDisciplina acesso;
 
-    public AvaliacaoServiceImpl(AvaliacaoRepository avaliacoes,
-                               DisciplinaRepository disciplinas,
+    public AvaliacaoServiceImpl(EventoRepository avaliacoes,
+                               GrupoRepository disciplinas,
                                AcessoDisciplina acesso) {
         this.avaliacoes = avaliacoes;
         this.disciplinas = disciplinas;
@@ -34,14 +35,14 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
 
     @Override
     @Transactional
-    public Avaliacao cadastrar(DadosDoEvento dto) {
+    public Evento cadastrar(DadosDoEvento dto) {
         TipoAvaliacao tipo = validar(dto);
-        Disciplina disciplina = disciplinas.findById(dto.grupoId())
-                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.grupoId()));  //404
+        Grupo disciplina = disciplinas.findById(dto.grupoId())
+                .orElseThrow(() -> new GrupoNaoEncontradoException(dto.grupoId()));  //404
         acesso.exigirParticipanteAceito(disciplina.getId(), SEM_ACESSO);
         // A referência garante que a avaliação pertença a uma disciplina existente.
         Avaliacao avaliacao = new Avaliacao();
-        avaliacao.setDisciplina(disciplina);
+        avaliacao.setGrupo(disciplina);
         avaliacao.setDescricao(dto.descricao().trim());
         avaliacao.setData(dto.data());
         avaliacao.setTipo(tipo);
@@ -50,16 +51,16 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Avaliacao> listarPorDisciplina(UUID disciplinaId) {
+    public List<Evento> listarPorDisciplina(UUID disciplinaId) {
         if (disciplinaId == null) {
             throw new RequisicaoInvalidaException("O id da disciplina é obrigatório.");
         }
         // Diferencia uma disciplina sem avaliações de uma disciplina inexistente.
         if (!disciplinas.existsById(disciplinaId)) {
-            throw new DisciplinaNaoEncontradaException(disciplinaId);
+            throw new GrupoNaoEncontradoException(disciplinaId);
         }
         acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
-        return avaliacoes.findByDisciplinaIdOrderByDataAscIdAsc(disciplinaId);
+        return avaliacoes.findByGrupoIdOrderByDataAscIdAsc(disciplinaId);
     }
 
     private TipoAvaliacao validar(DadosDoEvento dto) {
