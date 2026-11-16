@@ -7,11 +7,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.allgenda.framework.acesso.PoliticaDeAcesso;
+import com.allgenda.framework.assistente.ComportamentoDoAssistente;
 import com.allgenda.framework.extensao.DefinicaoDaAplicacao;
 import com.allgenda.framework.extensao.RegistroDeTipos;
 
 // Liga a aplicação ao núcleo (inversão de controle): encontra a única DefinicaoDaAplicacao do contexto,
-// chama registrarTipos na inicialização e expõe a política dela como beans que os services do núcleo usam.
+// chama registrarTipos na inicialização e expõe a política e o comportamento do assistente dela como beans
+// que os services do núcleo usam.
 @Configuration
 public class ConfiguracaoDaAplicacao {
 
@@ -45,5 +47,10 @@ public class ConfiguracaoDaAplicacao {
     @Bean
     public PoliticaDeAcesso politicaDeAcesso() {
         return definicao.politicaDeAcesso();
+    }
+
+    @Bean
+    public ComportamentoDoAssistente comportamentoDoAssistente() {
+        return definicao.comportamentoDoAssistente();
     }
 }

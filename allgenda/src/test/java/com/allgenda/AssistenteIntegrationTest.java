@@ -3,9 +3,9 @@ package com.allgenda;
 import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.service.AuthService;
-import com.allgenda.service.FalhaDoModeloException;
-import com.allgenda.service.ModeloDeLinguagem;
-import com.allgenda.service.PedidoAoModelo;
+import com.allgenda.framework.assistente.FalhaDoModeloException;
+import com.allgenda.framework.assistente.ModeloDeLinguagem;
+import com.allgenda.framework.assistente.PedidoAoModelo;
 import com.allgenda.service.UsuarioService;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -193,7 +193,7 @@ class AssistenteIntegrationTest {
         String material = textoDoMaterial(pedido);
         // as anotações de todos os participantes, com o texto escapado
         assertThat(material).contains("titulo=\"Padrões GoF\"", "Observer usa List&lt;Listener&gt;", "tags=\"Prova\"",
-                "Singleton é controverso", "Imagem 1 (foto avulsa da galeria da aula", "legenda: \"Diagrama do Observer\"");
+                "Singleton é controverso", "Imagem 1 (foto avulsa da galeria do encontro", "legenda: \"Diagrama do Observer\"");
         assertThat(pedido.mensagens().getFirst().blocos()).filteredOn(PedidoAoModelo.Imagem.class::isInstance).hasSize(1);
         assertThat(ultimoTexto(pedido)).isEqualTo("Resuma a aula");
     }
@@ -209,8 +209,8 @@ class AssistenteIntegrationTest {
         PedidoAoModelo pedido = modelo.pedidos.getFirst();
         assertThat(pedido.instrucoes()).contains("PDS").doesNotContain("página da aula");
         String material = textoDoMaterial(pedido);
-        assertThat(material).contains("<aula data=\"20/10/2026\"", "<aula data=\"22/10/2026\"", "Padrões GoF",
-                "Conteúdo da outra aula", "Imagem 1 (foto avulsa da galeria da aula de 20/10/2026");
+        assertThat(material).contains("<encontro data=\"20/10/2026\"", "<encontro data=\"22/10/2026\"", "Padrões GoF",
+                "Conteúdo da outra aula", "Imagem 1 (foto avulsa da galeria do encontro de 20/10/2026");
     }
 
     @Test
@@ -272,7 +272,7 @@ class AssistenteIntegrationTest {
                 [{"papel":"USUARIO","texto":"Explique","foco":{"tipo":"ANOTACAO","id":"%s"}}]
                 """.formatted(deOutraDisciplina), tokenAutor))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("O item em foco não pertence a esta disciplina."));
+                .andExpect(jsonPath("$.detail").value("O item em foco não pertence a este grupo."));
         mvc.perform(perguntaDaDisciplina(UUID.randomUUID().toString(), pergunta, tokenAutor))
                 .andExpect(status().isNotFound());
         mvc.perform(perguntaDaDisciplina(disciplinaId, pergunta, tokenDeFora))

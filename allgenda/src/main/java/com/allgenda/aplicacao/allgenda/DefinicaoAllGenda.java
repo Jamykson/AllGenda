@@ -3,6 +3,7 @@ package com.allgenda.aplicacao.allgenda;
 import org.springframework.stereotype.Component;
 
 import com.allgenda.framework.acesso.PoliticaDeAcesso;
+import com.allgenda.framework.assistente.ComportamentoDoAssistente;
 import com.allgenda.framework.extensao.DefinicaoDaAplicacao;
 import com.allgenda.framework.extensao.RegistroDeTipos;
 
@@ -28,5 +29,11 @@ public class DefinicaoAllGenda implements DefinicaoDaAplicacao {
     @Override
     public PoliticaDeAcesso politicaDeAcesso() {
         return PoliticaAllGenda.criar();
+    }
+
+    // ponto variável 3: o tutor de estudos
+    @Override
+    public ComportamentoDoAssistente comportamentoDoAssistente() {
+        return new AssistenteTutor();
     }
 }

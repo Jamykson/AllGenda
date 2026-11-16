@@ -1,4 +1,4 @@
-package com.allgenda.service;
+package com.allgenda.framework.assistente;
 
 import java.util.function.Consumer;
 

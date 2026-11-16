@@ -1,4 +1,4 @@
-package com.allgenda.service;
+package com.allgenda.framework.assistente;
 
 import com.allgenda.exception.LimiteDePerguntasException;
 import org.springframework.beans.factory.annotation.Value;

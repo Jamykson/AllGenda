@@ -1,10 +1,10 @@
-package com.allgenda.service.impl;
+package com.allgenda.framework.assistente;
 
-import com.allgenda.dto.request.PerguntaAssistenteDTO;
-import com.allgenda.dto.request.PerguntaAssistenteDTO.Foco;
-import com.allgenda.dto.request.PerguntaAssistenteDTO.Mensagem;
-import com.allgenda.dto.request.PerguntaAssistenteDTO.Papel;
-import com.allgenda.dto.request.PerguntaAssistenteDTO.TipoFoco;
+import com.allgenda.aplicacao.allgenda.AssistenteTutor;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.Foco;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.Mensagem;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.Remetente;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.TipoFoco;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AssistenteIndisponivelException;
 import com.allgenda.exception.LimiteDePerguntasException;
@@ -24,9 +24,6 @@ import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.framework.acesso.AcessoAoGrupo;
 import com.allgenda.framework.acesso.PoliticaDeTeste;
 import com.allgenda.service.ArmazenamentoService;
-import com.allgenda.service.LimitePerguntasAssistente;
-import com.allgenda.service.ModeloDeLinguagem;
-import com.allgenda.service.PedidoAoModelo;
 import com.allgenda.service.ReducaoDeImagem;
 import com.allgenda.service.UsuarioAutenticado;
 import org.junit.jupiter.api.AfterEach;
@@ -100,7 +97,7 @@ class AssistenteServiceImplTest {
         UsuarioAutenticado usuarioAutenticado = new UsuarioAutenticado(usuarioRepository);
         return new AssistenteServiceImpl(encontroRepository, grupoRepository, anotacaoRepository, imagemEncontroRepository,
                 new AcessoAoGrupo(participacaoRepository, usuarioAutenticado, PoliticaDeTeste.politica()), armazenamento, new ReducaoDeImagem(),
-                modelo, limite, usuarioAutenticado, maximoImagens, maximoCaracteres);
+                modelo, limite, usuarioAutenticado, new AssistenteTutor(), maximoImagens, maximoCaracteres);
     }
 
     private void participanteDeAulaComImagens(ImagemEncontro... imagens) {
@@ -124,8 +121,8 @@ class AssistenteServiceImplTest {
         return imagem;
     }
 
-    private static PerguntaAssistenteDTO pergunta(String texto, Foco foco) {
-        return new PerguntaAssistenteDTO(List.of(new Mensagem(Papel.USUARIO, texto, foco)));
+    private static PerguntaAoAssistente pergunta(String texto, Foco foco) {
+        return new PerguntaAoAssistente(List.of(new Mensagem(Remetente.USUARIO, texto, foco)));
     }
 
     private static List<PedidoAoModelo.Bloco> blocosDaPrimeira(PedidoAoModelo pedido) {
@@ -141,7 +138,7 @@ class AssistenteServiceImplTest {
         when(armazenamento.carregar(anyString())).thenReturn(Optional.of(new ByteArrayResource(new byte[] {1, 2, 3})));
 
         PedidoAoModelo pedido = service(2, new LimitePerguntasAssistente(30))
-                .prepararDaAula(aulaId, pergunta("O que mostra?", new Foco(TipoFoco.IMAGEM, terceira.getId())));
+                .prepararDoEncontro(aulaId, pergunta("O que mostra?", new Foco(TipoFoco.IMAGEM, terceira.getId())));
 
         List<String> descricoes = blocosDaPrimeira(pedido).stream()
                 .filter(PedidoAoModelo.Texto.class::isInstance)
@@ -164,18 +161,18 @@ class AssistenteServiceImplTest {
         participanteDeAulaComImagens(imagem("quadro"));
         when(armazenamento.carregar(anyString())).thenReturn(Optional.empty()); // arquivo sumiu do disco
 
-        PedidoAoModelo pedido = service(20, new LimitePerguntasAssistente(30)).prepararDaAula(aulaId, pergunta("Resuma", null));
+        PedidoAoModelo pedido = service(20, new LimitePerguntasAssistente(30)).prepararDoEncontro(aulaId, pergunta("Resuma", null));
 
         List<PedidoAoModelo.Texto> marcados = blocosDaPrimeira(pedido).stream()
                 .filter(bloco -> bloco instanceof PedidoAoModelo.Texto texto && texto.fimDoMaterial())
                 .map(PedidoAoModelo.Texto.class::cast)
                 .toList();
         assertThat(marcados).singleElement().satisfies(texto -> {
-            assertThat(texto.texto()).endsWith("</material_da_disciplina>");
+            assertThat(texto.texto()).endsWith("</material_do_grupo>");
             assertThat(texto.texto()).contains("Imagem 1", "não pôde ser carregada");
         });
         assertThat(blocosDaPrimeira(pedido)).noneMatch(PedidoAoModelo.Imagem.class::isInstance);
-        assertThat(((PedidoAoModelo.Texto) blocosDaPrimeira(pedido).getFirst()).texto()).contains("A aula não tem anotações.");
+        assertThat(((PedidoAoModelo.Texto) blocosDaPrimeira(pedido).getFirst()).texto()).contains("O encontro não tem anotações.");
     }
 
     @Test
@@ -185,7 +182,7 @@ class AssistenteServiceImplTest {
         when(modelo.configurado()).thenReturn(false);
         LimitePerguntasAssistente limite = new LimitePerguntasAssistente(1);
 
-        assertThatThrownBy(() -> service(20, limite).prepararDaAula(aulaId, pergunta("Resuma", null)))
+        assertThatThrownBy(() -> service(20, limite).prepararDoEncontro(aulaId, pergunta("Resuma", null)))
                 .isInstanceOf(AssistenteIndisponivelException.class);
         limite.registrar(usuarioId); // a pergunta recusada não contou
     }
@@ -195,9 +192,9 @@ class AssistenteServiceImplTest {
         participanteDeAulaComImagens();
         AssistenteServiceImpl service = service(20, new LimitePerguntasAssistente(2));
 
-        service.prepararDaAula(aulaId, pergunta("Uma", null));
-        service.prepararDaAula(aulaId, pergunta("Duas", null));
-        assertThatThrownBy(() -> service.prepararDaAula(aulaId, pergunta("Três", null)))
+        service.prepararDoEncontro(aulaId, pergunta("Uma", null));
+        service.prepararDoEncontro(aulaId, pergunta("Duas", null));
+        assertThatThrownBy(() -> service.prepararDoEncontro(aulaId, pergunta("Três", null)))
                 .isInstanceOf(LimiteDePerguntasException.class)
                 .hasMessageContaining("limite de 2 perguntas por hora");
     }
@@ -250,11 +247,11 @@ class AssistenteServiceImplTest {
         disciplinaComTresAnotacoes(recente, daAulaAberta, recente1, recente2);
 
         PedidoAoModelo pedido = service(20, 1500, new LimitePerguntasAssistente(30))
-                .prepararDaAula(aulaId, pergunta("Resuma", null));
+                .prepararDoEncontro(aulaId, pergunta("Resuma", null));
 
         String material = materialEmTexto(pedido);
         assertThat(material).contains("x".repeat(1000)).doesNotContain("y".repeat(1000)).doesNotContain("z".repeat(1000));
-        assertThat(material).contains("aula de 25/10/2026: 2 anotações", "Anotações desta aula que você não pode ver: 2.");
+        assertThat(material).contains("encontro de 25/10/2026: 2 anotações", "Anotações deste encontro que você não pode ver: 2.");
         assertThat(pedido.instrucoes()).contains("página da aula de 20/10/2026");
     }
 
@@ -268,7 +265,7 @@ class AssistenteServiceImplTest {
         disciplinaComTresAnotacoes(recente, daAulaAntiga, recente1, recente2);
 
         PedidoAoModelo pedido = service(20, 1500, new LimitePerguntasAssistente(30))
-                .prepararDaDisciplina(disciplinaId, pergunta("Resuma", null));
+                .prepararDoGrupo(disciplinaId, pergunta("Resuma", null));
 
         String material = materialEmTexto(pedido);
         assertThat(material).contains("z".repeat(1000)).doesNotContain("x".repeat(1000)).doesNotContain("y".repeat(1000));
@@ -287,7 +284,7 @@ class AssistenteServiceImplTest {
         disciplinaComTresAnotacoes(recente, antiga, recente1, recente2);
 
         PedidoAoModelo pedido = service(20, 1500, new LimitePerguntasAssistente(30))
-                .prepararDaDisciplina(disciplinaId, pergunta("Explique", new Foco(TipoFoco.ANOTACAO, antiga.getId())));
+                .prepararDoGrupo(disciplinaId, pergunta("Explique", new Foco(TipoFoco.ANOTACAO, antiga.getId())));
 
         assertThat(materialEmTexto(pedido)).contains("x".repeat(1000));
     }
@@ -298,10 +295,10 @@ class AssistenteServiceImplTest {
         disciplinaComTresAnotacoes(outraAula(LocalDate.of(2026, 10, 25)));
         LimitePerguntasAssistente limite = new LimitePerguntasAssistente(1);
 
-        assertThatThrownBy(() -> service(20, limite).prepararDaDisciplina(disciplinaId,
+        assertThatThrownBy(() -> service(20, limite).prepararDoGrupo(disciplinaId,
                 pergunta("Explique", new Foco(TipoFoco.ANOTACAO, UUID.randomUUID()))))
                 .isInstanceOf(RequisicaoInvalidaException.class)
-                .hasMessage("O item em foco não pertence a esta disciplina.");
+                .hasMessage("O item em foco não pertence a este grupo.");
         limite.registrar(usuarioId); // a pergunta recusada não contou
     }
 
@@ -310,7 +307,7 @@ class AssistenteServiceImplTest {
         when(grupoRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
         when(participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service(20, new LimitePerguntasAssistente(30)).prepararDaDisciplina(disciplinaId, pergunta("Resuma", null)))
+        assertThatThrownBy(() -> service(20, new LimitePerguntasAssistente(30)).prepararDoGrupo(disciplinaId, pergunta("Resuma", null)))
                 .isInstanceOf(AcessoNegadoException.class)
                 .hasMessage("Somente participantes do grupo usam o assistente.");
     }

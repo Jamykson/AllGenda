@@ -1,8 +1,5 @@
-package com.allgenda.service.impl;
+package com.allgenda.framework.assistente;
 
-import com.allgenda.service.FalhaDoModeloException;
-import com.allgenda.service.ModeloDeLinguagem;
-import com.allgenda.service.PedidoAoModelo;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.core.http.StreamResponse;

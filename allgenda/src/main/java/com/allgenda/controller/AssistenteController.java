@@ -1,9 +1,14 @@
 package com.allgenda.controller;
 
 import com.allgenda.dto.request.PerguntaAssistenteDTO;
-import com.allgenda.service.AssistenteService;
-import com.allgenda.service.FalhaDoModeloException;
-import com.allgenda.service.PedidoAoModelo;
+import com.allgenda.framework.assistente.PerguntaAoAssistente;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.Foco;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.Mensagem;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.Remetente;
+import com.allgenda.framework.assistente.PerguntaAoAssistente.TipoFoco;
+import com.allgenda.framework.assistente.AssistenteService;
+import com.allgenda.framework.assistente.FalhaDoModeloException;
+import com.allgenda.framework.assistente.PedidoAoModelo;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -42,13 +48,30 @@ public class AssistenteController {
     // se o modelo falhar no meio do caminho
     @PostMapping(path = "/disciplinas/{disciplinaId}/assistente", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter perguntarSobreADisciplina(@PathVariable UUID disciplinaId, @RequestBody PerguntaAssistenteDTO pergunta) {
-        return iniciar(service.prepararDaDisciplina(disciplinaId, pergunta));
+        return iniciar(service.prepararDoGrupo(disciplinaId, paraONucleo(pergunta)));
     }
 
     // mesmos eventos, com o material da disciplina da aula e a aula em destaque
     @PostMapping(path = "/aulas/{aulaId}/assistente", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter perguntarSobreAAula(@PathVariable UUID aulaId, @RequestBody PerguntaAssistenteDTO pergunta) {
-        return iniciar(service.prepararDaAula(aulaId, pergunta));
+        return iniciar(service.prepararDoEncontro(aulaId, paraONucleo(pergunta)));
+    }
+
+    // o JSON do AllGenda (papel, foco) vira a pergunta neutra do núcleo; valores ausentes continuam ausentes,
+    // para o núcleo responder 400 como antes
+    private static PerguntaAoAssistente paraONucleo(PerguntaAssistenteDTO dto) {
+        if (dto == null || dto.mensagens() == null) {
+            return new PerguntaAoAssistente(null);
+        }
+        List<Mensagem> mensagens = dto.mensagens().stream()
+                .map(m -> m == null ? null : new Mensagem(
+                        m.papel() == null ? null : Remetente.valueOf(m.papel().name()),
+                        m.texto(),
+                        m.foco() == null ? null : new Foco(
+                                m.foco().tipo() == null ? null : TipoFoco.valueOf(m.foco().tipo().name()),
+                                m.foco().id())))
+                .toList();
+        return new PerguntaAoAssistente(mensagens);
     }
 
     private SseEmitter iniciar(PedidoAoModelo pedido) {

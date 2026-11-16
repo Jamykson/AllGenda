@@ -1,4 +1,4 @@
-package com.allgenda.service;
+package com.allgenda.framework.assistente;
 
 // Falha do modelo de linguagem depois que a resposta já começou a ser enviada (serviço fora do ar,
 // sobrecarregado, erro de rede). A mensagem é mostrada ao usuário.
