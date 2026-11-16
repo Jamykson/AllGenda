@@ -4,7 +4,7 @@ Este documento acompanha a entrega "diagrama de classes indicando as mudanças f
 
 **Legenda das marcações**
 - ✅ **Combinado**: decidido com o grupo/professor ao longo da conversa.
-- 🔶 **Proposta**: detalhe de projeto necessário para fechar o diagrama, ainda sem confirmação. Pode mudar.
+- 🔶 **Proposta**: detalhe de projeto necessário para fechar o diagrama. As propostas foram fechadas no roteiro (`ROTEIRO-REFATORACAO.md`) e implementadas; a seção 7 resume como ficou no código.
 
 ## 1. O framework em uma frase
 
@@ -20,7 +20,7 @@ Domínio: **gestão colaborativa de encontros e conteúdo por grupos**. Pessoas 
 
 ## 2. Versão 1 (antes da refatoração)
 
-Modelo de domínio real do código atual (`allgenda/src/main/java/com/allgenda/model`).
+Modelo de domínio da versão 1, antes da refatoração (pacote `com.allgenda.model`).
 
 ```mermaid
 classDiagram
@@ -212,6 +212,7 @@ class Evento {
   String descricao
   LocalDate data
   +tipo() String
+  +subtipo() String
 }
 class Participacao {
   UUID id
@@ -293,7 +294,9 @@ note for Grupo "Grupo, Encontro e Evento são abstratos:<br/>as aplicações cri
 
 ### 4.1 Ponto 1: tipos especializados (herança + Factory com registro) ✅
 
-Cada aplicação cria subclasses das três abstratas e registra uma fábrica por tipo. O núcleo cria pelo nome do tipo, sem conhecer as subclasses (inversão de controle). Decidido: `Evento` ganha uma subclasse por aplicação, que carrega um enum com os tipos de evento. `Anotacao` não é especializada. 🔶 Os nomes `DadosDoGrupo`, `DadosDoEncontro` e `DadosDoEvento` são provisórios.
+Cada aplicação cria subclasses das três abstratas e registra uma fábrica por tipo. O núcleo cria pelo nome do tipo, sem conhecer as subclasses (inversão de controle). Decidido: `Evento` ganha uma subclasse por aplicação, que carrega um enum com os tipos de evento (`subtipo()` devolve o nome dele). `Anotacao` não é especializada.
+
+Divisão do trabalho na criação: o service do núcleo valida os dados comuns, pede a fábrica ao registro (tipo desconhecido dá 400), confere o grupo e a permissão, deixa a fábrica instanciar a subclasse e validar o que é dela (ex.: `FabricaDeAvaliacao` exige PROVA ou ENTREGA) e só então preenche os campos comuns e grava. Quem liga a aplicação ao núcleo é a `ConfiguracaoDaAplicacao`: ela exige exatamente uma `DefinicaoDaAplicacao` e chama `registrarTipos` na inicialização.
 
 ```mermaid
 classDiagram
@@ -339,18 +342,27 @@ class GrupoService {
 }
 class EncontroService {
   +criar(String tipo, DadosDoEncontro) Encontro
-  +editar(...)
-  +cancelar(...)
-  +excluir(...)
+  +atualizar(UUID, AtualizacaoDeEncontro) Encontro
+  +excluir(UUID)
 }
 class EventoService {
   +criar(String tipo, DadosDoEvento) Evento
 }
 class DefinicaoDaAplicacao {
   <<interface>>
+  +nome() String
   +registrarTipos(RegistroDeTipos)
+  +politicaDeAcesso() PoliticaDeAcesso
+  +comportamentoDoAssistente() ComportamentoDoAssistente
+}
+class ConfiguracaoDaAplicacao {
+  +registroDeTipos() RegistroDeTipos
+  +politicaDeAcesso() PoliticaDeAcesso
+  +comportamentoDoAssistente() ComportamentoDoAssistente
 }
 
+ConfiguracaoDaAplicacao ..> DefinicaoDaAplicacao : exige exatamente uma
+ConfiguracaoDaAplicacao ..> RegistroDeTipos : cria
 DefinicaoDaAplicacao ..> RegistroDeTipos : registra as fábricas
 RegistroDeTipos o-- FabricaDeGrupo
 RegistroDeTipos o-- FabricaDeEncontro
@@ -367,7 +379,7 @@ note for RegistroDeTipos "Ponto variável 1: TIPOS (herança + Factory com regis
 
 ### 4.2 Ponto 2: política de acesso e papéis (Strategy declarativa) ✅
 
-Cada aplicação declara seus papéis e um mapa `Acao -> papéis permitidos`. Todo serviço do núcleo pergunta ao `AcessoAoGrupo` (que substitui o `AcessoDisciplina`). 🔶 A lista final de `Acao` vem do que o código atual já exige; as ações `EDITAR_ENCONTRO`, `CANCELAR_ENCONTRO`, `EXCLUIR_ENCONTRO`, `REMOVER_MEMBRO`, `EDITAR_GRUPO` e `DEFINIR_RECORRENCIA` entraram com os commits preparatórios.
+Cada aplicação declara seus papéis e um mapa `Acao -> papéis permitidos`. Todo serviço do núcleo pergunta ao `AcessoAoGrupo` (que substitui o `AcessoDisciplina`), passando a ação e a mensagem do 403. A lista de `Acao` vem do que o código da versão 1 já exigia; as ações `EDITAR_ENCONTRO`, `CANCELAR_ENCONTRO`, `EXCLUIR_ENCONTRO`, `REMOVER_MEMBRO`, `EDITAR_GRUPO` e `DEFINIR_RECORRENCIA` entraram com os commits preparatórios. A `PoliticaDeAcessoDeclarativa` é montada por um construtor (`papel(DONO, Acao.values())`, `papelDoCriador(...)`...) e recusa, já na inicialização, criador ou convidado que não estejam entre os papéis declarados.
 
 ```mermaid
 classDiagram
@@ -406,6 +418,7 @@ class PoliticaDeAcessoDeclarativa {
 }
 class AcessoAoGrupo {
   +exigir(Acao, UUID grupoId)
+  +exigir(Acao, UUID grupoId, String mensagem)
   +exigirParticipanteAceito(UUID grupoId)
 }
 class Participacao {
@@ -438,7 +451,7 @@ AssistenteService ..> AcessoAoGrupo
 note for PoliticaDeAcessoDeclarativa "Ponto variável 2: POLÍTICA DE ACESSO E PAPÉIS (Strategy)<br/>A aplicação declara os papéis e quais podem cada ação.<br/>Regras que não mudam e ficam no núcleo: só o autor edita,<br/>exclui ou muda a visibilidade da própria anotação, e<br/>anotação privada só o autor vê."
 ```
 
-**Regras que NÃO são política (ficam fixas no núcleo):** só o autor edita, exclui ou muda a visibilidade da própria anotação; anotação privada só o autor vê (nem o dono, nem o assistente); só participante aceito acessa o grupo; o dono não pode ser removido.
+**Regras que NÃO são política (ficam fixas no núcleo):** só o autor edita, exclui ou muda a visibilidade da própria anotação (e edita ou remove as próprias imagens); anotação privada só o autor vê (nem o dono, nem o assistente); só participante aceito acessa o grupo; quem criou o grupo (`papelDoCriador`) não pode ser removido; só o convidado responde ao próprio convite.
 
 **Matriz de permissões da aplicação 1 (AllGenda), igual ao comportamento atual:**
 
@@ -475,8 +488,8 @@ class ContextoDoAssistente {
   Foco foco
 }
 class AssistenteService {
-  +prepararDoGrupo(UUID, Pergunta) PedidoAoModelo
-  +prepararDoEncontro(UUID, Pergunta) PedidoAoModelo
+  +prepararDoGrupo(UUID, PerguntaAoAssistente) PedidoAoModelo
+  +prepararDoEncontro(UUID, PerguntaAoAssistente) PedidoAoModelo
   +responder(PedidoAoModelo, Consumer)
 }
 class AcessoAoGrupo
@@ -508,11 +521,13 @@ note for ComportamentoDoAssistente "Ponto variável 3: COMPORTAMENTO DO ASSISTEN
 note for AssistenteService "Pontos fixos: validar a conversa, checar acesso,<br/>limite de perguntas, tirar as anotações privadas<br/>ANTES de chamar a aplicação, limites de texto e<br/>imagens, defesa contra injeção de prompt e chamada<br/>ao modelo. O provedor do modelo é infraestrutura."
 ```
 
-Hoje o assistente já funciona por grupo (`POST /api/disciplinas/{id}/assistente`) e por encontro em destaque (`POST /api/aulas/{id}/assistente`); a refatoração apenas generaliza os nomes e tira o texto fixo para o `ComportamentoDoAssistente`.
+O assistente funciona por grupo (`POST /api/disciplinas/{id}/assistente`) e por encontro em destaque (`POST /api/aulas/{id}/assistente`); a refatoração generalizou os nomes e tirou o texto da persona para o `ComportamentoDoAssistente`.
+
+Fluxo fixo do núcleo, nesta ordem: validar a conversa, exigir `USAR_ASSISTENTE`, conferir o modelo (503), carregar o material, **tirar as anotações privadas**, chamar `selecionarContexto`, **descartar do resultado tudo o que não estava no contexto original** (a aplicação só reduz ou reordena), numerar, validar o foco, contar o limite de perguntas e montar o pedido. As instruções são as da aplicação seguidas de uma parte fixa do núcleo (o material é conteúdo de consulta, nunca instruções; citar as fontes; avisar o que ficou de fora).
 
 ## 5. Aplicações instanciadas
 
-🔶 Ponto de entrada da aplicação: `DefinicaoDaAplicacao` (uma classe por aplicação, que registra os tipos e fornece a política e o assistente).
+Ponto de entrada da aplicação: `DefinicaoDaAplicacao` (uma classe por aplicação, anotada com `@Component`, que registra os tipos e fornece a política e o assistente).
 
 ### 5.1 Aplicação 1: AllGenda (instanciada no framework) ✅
 
@@ -553,6 +568,17 @@ class TipoAvaliacao {
 class DefinicaoAllGenda {
   +registrarTipos() Disciplina, Aula, Avaliacao
   +politicaDeAcesso() papéis DONO e MEMBRO
+  +comportamentoDoAssistente() AssistenteTutor
+}
+class FabricaDeDisciplina
+class FabricaDeAula
+class FabricaDeAvaliacao
+class PoliticaAllGenda {
+  +criar() PoliticaDeAcesso
+}
+class PapelAllGenda {
+  DONO
+  MEMBRO
 }
 class AssistenteTutor {
   tutor de estudos da disciplina
@@ -563,9 +589,14 @@ Evento <|-- Avaliacao
 Avaliacao ..> TipoAvaliacao
 DefinicaoDaAplicacao <|.. DefinicaoAllGenda
 ComportamentoDoAssistente <|.. AssistenteTutor
-DefinicaoAllGenda ..> PoliticaDeAcessoDeclarativa : configura
+DefinicaoAllGenda ..> FabricaDeDisciplina : registra
+DefinicaoAllGenda ..> FabricaDeAula : registra
+DefinicaoAllGenda ..> FabricaDeAvaliacao : registra
+DefinicaoAllGenda ..> PoliticaAllGenda : fornece
+PoliticaAllGenda ..> PoliticaDeAcessoDeclarativa : configura
+PoliticaAllGenda ..> PapelAllGenda
 DefinicaoAllGenda ..> AssistenteTutor : fornece
-note for DefinicaoAllGenda "Aplicação 1: AllGenda (implementada nesta entrega)<br/>DONO: tudo. MEMBRO: ver, anotar e usar o assistente.<br/>Ingresso por convite (status inicial PENDENTE)."
+note for DefinicaoAllGenda "Aplicação 1: AllGenda (implementada nesta entrega)<br/>DONO: tudo. MEMBRO: ver, criar aulas, avaliações e anotações<br/>e usar o assistente. Ingresso por convite (status inicial PENDENTE)."
 ```
 
 ### 5.2 Outras aplicações (fora desta entrega)
@@ -594,14 +625,33 @@ Mesa de RPG e Clube do livro foram pensadas só para validar os pontos variávei
 | `ImagemAulaService` | `ImagemEncontroService` | Renomeado |
 | `AssistenteServiceImpl` (texto fixo do tutor) | `AssistenteService` (núcleo) + `ComportamentoDoAssistente` | Instruções e contexto saem para o ponto variável; `AssistenteTutor` é a implementação do AllGenda |
 | `ModeloDeLinguagem`, `ModeloAnthropic`, `LimitePerguntasAssistente`, `ArmazenamentoService`, autenticação JWT | iguais | Infraestrutura e núcleo, sem mudança |
+| `DisciplinaNaoEncontradaException`, `AulaNaoEncontradaException` | `GrupoNaoEncontradoException`, `EncontroNaoEncontradoException` | Mensagens neutras; status iguais |
+| `controller/*`, `dto/*`, `mapper/*` | `aplicacao.allgenda.{controller,dto,mapper}` | Rotas e JSON do AllGenda; login e cadastro de usuário ficam no núcleo |
+| `MigracaoTagsPorDisciplina` | removida | Era migração de dados de um banco antigo |
 
-## 7. Pontos de atenção para quem fizer a refatoração 🔶
+## 7. Como ficou no código
 
-1. **A rede de segurança são os testes.** A suíte atual tem 224 testes que exercitam as rotas do AllGenda. A refatoração só está pronta quando todos continuam passando.
-2. **Herança no banco.** `Grupo`, `Encontro` e `Evento` abstratos precisam de uma estratégia de herança JPA. A recomendação é `JOINED` (uma tabela do núcleo e uma da subclasse). Os dados atuais são só de teste, então **não há migração de dados**: o banco local pode ser recriado (`mise run db:reset`) e os testes usam H2 em memória. A `MigracaoTagsPorDisciplina` deixa de ser necessária e sai junto.
-3. **Rotas e front.** O AllGenda deve manter `/api/disciplinas`, `/api/aulas` e `/api/avaliacoes`, para o front continuar funcionando. O núcleo oferece os serviços genéricos; a aplicação expõe as rotas.
-4. **Papel no banco.** A coluna `papel` já guarda texto (`DONO`, `MEMBRO`), então virar `Papel` não exige migração.
-5. **Pacotes.** Separar `com.allgenda.framework` (núcleo e pontos variáveis) de `com.allgenda.aplicacao.allgenda` (subclasses, política e assistente do AllGenda), sem que o núcleo importe a aplicação.
+Um módulo Maven (`allgenda/`), com dois pacotes raiz. O núcleo nunca importa a aplicação (o teste `NucleoNaoDependeDaAplicacaoTest` garante).
+
+| Pacote | O que tem |
+|---|---|
+| `com.allgenda.framework.model` | `Grupo`, `Encontro`, `Evento` (abstratas, herança `JOINED`: tabelas `grupos`, `encontros`, `eventos`), `Anotacao`, `ImagemAnotacao`, `ImagemEncontro`, `Tag`, `Participacao`, `Usuario`, `Recorrencia` e enums |
+| `com.allgenda.framework.acesso` | `Papel` (+ `PapelConverter`), `Acao`, `PoliticaDeAcesso`, `PoliticaDeAcessoDeclarativa`, `AcessoAoGrupo` |
+| `com.allgenda.framework.extensao` | `DefinicaoDaAplicacao`, `RegistroDeTipos`, `FabricaDeGrupo/Encontro/Evento`, `DadosDoGrupo/Encontro/Evento` |
+| `com.allgenda.framework.assistente` | `AssistenteService(+Impl)`, `ComportamentoDoAssistente`, `ContextoDoAssistente`, `PerguntaAoAssistente`, `ModeloDeLinguagem`, `ModeloAnthropic`, `PedidoAoModelo`, `LimitePerguntasAssistente`, `FalhaDoModeloException` |
+| `com.allgenda.framework.{repository,service,exception,config}` | repositórios, services (que recebem e devolvem entidades e records neutros), exceções e `GlobalExceptionHandler`, segurança, CORS, usuário de teste e `ConfiguracaoDaAplicacao` |
+| `com.allgenda.framework.{controller,dto}` | só os neutros: login (`/api/auth`) e cadastro de usuário (`/api/usuarios`) |
+| `com.allgenda.aplicacao.allgenda` | `DefinicaoAllGenda`, `FabricaDeDisciplina/Aula/Avaliacao`, `PoliticaAllGenda`, `AssistenteTutor`; `model` (`Disciplina`, `Aula`, `Avaliacao`, `TipoAvaliacao`, `PapelAllGenda`); `controller`, `dto` e `mapper` com as rotas e o JSON do AllGenda, que não mudaram |
+
+Decisões tomadas na implementação (além das do roteiro):
+
+- **Quem preenche o quê na criação.** A fábrica só instancia a subclasse e preenche o que é dela; os campos comuns, já validados, o núcleo preenche depois. Assim as validações comuns ficam num lugar só.
+- **Ordem das validações de evento.** O subtipo (PROVA/ENTREGA) é validado pela fábrica, depois de conferir o grupo (404) e a permissão (403). Antes, um pedido com tipo inválido *e* grupo inexistente dava 400; agora dá 404. Nos demais casos nada muda.
+- **Editar, excluir ou mudar a visibilidade da própria anotação, e editar ou remover a própria imagem do encontro**, continuam com a regra fixa do autor e sem `Acao`: na versão 1 não havia checagem de participação nesses casos, e acrescentá-la barraria quem antes passava.
+- **`PATCH` do encontro**: exige `EDITAR_ENCONTRO` e também `CANCELAR_ENCONTRO` quando o campo `cancelada` vem informado.
+- **Vocabulário neutro no núcleo.** Mensagens de erro e o material enviado ao assistente falam em grupo e encontro. Os status HTTP e o JSON não mudaram; só os textos de algumas mensagens.
+- **Banco.** As tabelas mudaram e não há migração (os dados eram de teste): o banco local precisa ser recriado com `mise run db:reset`. Os testes usam H2 em memória.
+- **Testes.** Os 224 testes da versão 1 continuam (menos os 2 da migração removida, mais os novos): 240 no total. Os novos cobrem a política declarativa com papéis de outra aplicação, o registro de tipos, a exigência de exatamente uma `DefinicaoDaAplicacao`, a privacidade do assistente diante de uma aplicação que tenta acrescentar uma anotação privada e a regra de arquitetura.
 
 ## 8. Adiado ou fora do escopo ✅
 
