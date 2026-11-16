@@ -1,5 +1,7 @@
 package com.allgenda.service.impl;
 import com.allgenda.exception.AcessoNegadoException;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.EncontroNaoEncontradoException;
 import com.allgenda.exception.GrupoNaoEncontradoException;
@@ -15,7 +17,6 @@ import com.allgenda.repository.EncontroRepository;
 import com.allgenda.repository.GrupoRepository;
 import com.allgenda.service.AnotacaoService;
 import com.allgenda.service.NovaAnotacao;
-import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
 import com.allgenda.service.UsuarioAutenticado;
@@ -30,14 +31,14 @@ import java.util.UUID;
 public class AnotacaoServiceImpl implements AnotacaoService {
 
     private static final int TAMANHO_MAXIMO_TITULO = 150;
-    private static final String SEM_ACESSO = "Somente participantes da disciplina veem as anotações.";
+    private static final String SEM_ACESSO = "Somente participantes do grupo acessam as anotações dele.";
 
     private final AnotacaoRepository anotacaoRepository;
     private final EncontroRepository encontroRepository;
     private final GrupoRepository grupoRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
     private final TagService tagService;
     private final RemocaoArquivos remocaoArquivos;
 
@@ -46,7 +47,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
                                 GrupoRepository grupoRepository,
                                 ParticipacaoRepository participacaoRepository,
                                 UsuarioAutenticado usuarioAutenticado,
-                                AcessoDisciplina acesso,
+                                AcessoAoGrupo acesso,
                                 TagService tagService,
                                 RemocaoArquivos remocaoArquivos) {
         this.anotacaoRepository = anotacaoRepository;
@@ -71,7 +72,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
         Encontro aula = encontroRepository.findById(nova.encontroId())
                 .orElseThrow(() -> new EncontroNaoEncontradoException(nova.encontroId()));   // 404
-        acesso.exigirParticipanteAceito(aula.getGrupo().getId(), SEM_ACESSO);   // 403
+        acesso.exigir(Acao.CRIAR_ANOTACAO, aula.getGrupo().getId(), SEM_ACESSO);   // 403
 
         Anotacao anotacao = new Anotacao();
         anotacao.setTitulo(titulo);
@@ -93,8 +94,8 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         }
 
         Anotacao anotacao = buscarVisivel(anotacaoId);
-        // qualquer participante da disciplina pode acrescentar tags, não só o autor (decisão do grupo, #64)
-        acesso.exigirParticipanteAceito(anotacao.getEncontro().getGrupo().getId(), SEM_ACESSO);
+        // qualquer participante que possa anotar pode acrescentar tags, não só o autor (decisão do grupo, #64)
+        acesso.exigir(Acao.CRIAR_ANOTACAO, anotacao.getEncontro().getGrupo().getId(), SEM_ACESSO);
 
         // as tags são acrescentadas às existentes; como tags é um Set, uma tag já associada não é duplicada
         tagService.buscarOuCriar(anotacao.getEncontro().getGrupo(), nomesTags).forEach(anotacao::addTag);
@@ -110,8 +111,8 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         }
 
         Anotacao anotacao = buscarVisivel(anotacaoId);
-        // como acrescentar, remover é permitido a qualquer participante da disciplina
-        acesso.exigirParticipanteAceito(anotacao.getEncontro().getGrupo().getId(), SEM_ACESSO);
+        // como acrescentar, remover é permitido a qualquer participante que possa anotar
+        acesso.exigir(Acao.CRIAR_ANOTACAO, anotacao.getEncontro().getGrupo().getId(), SEM_ACESSO);
 
         // a busca ignora maiúsculas, como a criação de tags; uma tag que a anotação não tem não é erro
         String nome = nomeTag.strip();
@@ -128,7 +129,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     public List<Anotacao> listarPorAula(UUID aulaId) {
         Encontro aula = encontroRepository.findById(aulaId)
                 .orElseThrow(() -> new EncontroNaoEncontradoException(aulaId));  
-        acesso.exigirParticipanteAceito(aula.getGrupo().getId(), SEM_ACESSO);     //403
+        acesso.exigir(Acao.VER_CONTEUDO, aula.getGrupo().getId(), SEM_ACESSO);     //403
         return soVisiveis(anotacaoRepository.findByEncontroIdOrderByDataCriacaoAsc(aulaId));
     }
 
@@ -138,7 +139,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         if (!grupoRepository.existsById(disciplinaId)) {    //404
             throw new GrupoNaoEncontradoException(disciplinaId);
         }
-        acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
+        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);
         if (tag == null || tag.isBlank()) {
             return soVisiveis(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId));
         }
@@ -264,7 +265,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         if (!grupoRepository.existsById(disciplinaId)) {    // 404
             throw new GrupoNaoEncontradoException(disciplinaId);
         }
-        acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);    // 403
+        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);    // 403
         return soVisiveis(anotacaoRepository
                 .findByEncontroGrupoIdAndAutorIdNotOrderByEncontroDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id()));
     }

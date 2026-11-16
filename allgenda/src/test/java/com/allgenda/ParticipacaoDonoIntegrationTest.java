@@ -17,7 +17,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
-import com.allgenda.model.PapelParticipacao;
+import com.allgenda.aplicacao.allgenda.model.PapelAllGenda;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.service.AuthService;
@@ -50,7 +50,7 @@ class ParticipacaoDonoIntegrationTest {
         UUID disciplinaId = UUID.fromString(JsonPath.read(resposta, "$.id"));
 
         var participacao = participacoes.findByUsuarioIdAndGrupoId(usuario.id(), disciplinaId).orElseThrow();
-        assertThat(participacao.getPapel()).isEqualTo(PapelParticipacao.DONO);
+        assertThat(participacao.getPapel()).isEqualTo(PapelAllGenda.DONO);
         assertThat(participacao.getStatus()).isEqualTo(StatusParticipacao.ACEITO);
 
         mvc.perform(delete("/api/disciplinas/{id}", disciplinaId)

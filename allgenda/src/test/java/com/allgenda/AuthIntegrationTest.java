@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import com.allgenda.dto.request.LoginRequestDTO;
 import com.allgenda.dto.request.UsuarioRequestDTO;
+import com.allgenda.aplicacao.allgenda.model.PapelAllGenda;
 import com.allgenda.model.*;
 import com.allgenda.repository.*;
 import com.allgenda.service.AuthService;
@@ -106,7 +107,7 @@ class AuthIntegrationTest {
         var participacao = new Participacao();
         participacao.setUsuario(usuario);
         participacao.setGrupo(disciplina);
-        participacao.setPapel(PapelParticipacao.MEMBRO);
+        participacao.setPapel(PapelAllGenda.MEMBRO);
         participacao.setStatus(StatusParticipacao.PENDENTE);
         participacoes.saveAndFlush(participacao);
         assertThat(participacoes.findByUsuarioIdAndGrupoId(usuario.getId(), disciplina.getId())).isPresent();

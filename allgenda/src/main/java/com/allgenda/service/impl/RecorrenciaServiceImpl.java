@@ -15,7 +15,8 @@ import com.allgenda.model.FrequenciaRecorrencia;
 import com.allgenda.model.Recorrencia;
 import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.RecorrenciaRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.service.DadosDaRecorrencia;
 import com.allgenda.service.RecorrenciaService;
 import com.allgenda.service.UsuarioAutenticado;
@@ -27,11 +28,11 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
 
     private final RecorrenciaRepository repository;
     private final GrupoRepository grupoRepository;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
     private final UsuarioAutenticado usuarioAutenticado;
 
     public RecorrenciaServiceImpl(RecorrenciaRepository repository, GrupoRepository grupoRepository,
-                                  AcessoDisciplina acesso,
+                                  AcessoAoGrupo acesso,
                                   UsuarioAutenticado usuarioAutenticado) {
         this.repository = repository;
         this.grupoRepository = grupoRepository;
@@ -43,7 +44,7 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
     @Transactional(readOnly = true)
     public Recorrencia buscar(UUID disciplinaId) {
         exigirDisciplina(disciplinaId);                                        // 404
-        acesso.exigirParticipanteAceito(disciplinaId);                         // 403
+        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, "Somente participantes do grupo têm acesso a ele."); // 403
         return repository.findByGrupoId(disciplinaId)
                 .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId));   // 404
     }
@@ -59,7 +60,7 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
     @Transactional
     public Recorrencia salvar(UUID disciplinaId, DadosDaRecorrencia dto) {
         Grupo disciplina = exigirDisciplina(disciplinaId);                // 404
-        acesso.exigirDono(disciplinaId, "Somente o dono pode definir a recorrência da disciplina.");   // 403
+        acesso.exigir(Acao.DEFINIR_RECORRENCIA, disciplinaId, "Você não tem permissão para definir a recorrência do grupo.");   // 403
         validar(dto);                                                          // 400
 
         Recorrencia recorrencia = repository.findByGrupoId(disciplinaId).orElseGet(() -> {
@@ -80,7 +81,7 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
     @Transactional
     public void remover(UUID disciplinaId) {
         exigirDisciplina(disciplinaId);                                        // 404
-        acesso.exigirDono(disciplinaId, "Somente o dono pode remover a recorrência da disciplina.");   // 403
+        acesso.exigir(Acao.DEFINIR_RECORRENCIA, disciplinaId, "Você não tem permissão para remover a recorrência do grupo.");   // 403
         Recorrencia recorrencia = repository.findByGrupoId(disciplinaId)
                 .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId));    // 404
         // as aulas já cadastradas (com anotações) continuam; só a regra que gera as próximas some

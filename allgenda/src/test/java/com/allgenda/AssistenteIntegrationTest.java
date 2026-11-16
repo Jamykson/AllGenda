@@ -253,7 +253,7 @@ class AssistenteIntegrationTest {
         String pergunta = "[{\"papel\":\"USUARIO\",\"texto\":\"Resuma\"}]";
         mvc.perform(pergunta(aulaId, pergunta, tokenDeFora))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.detail").value("Somente participantes da disciplina usam o assistente."));
+                .andExpect(jsonPath("$.detail").value("Somente participantes do grupo usam o assistente."));
         mvc.perform(pergunta(UUID.randomUUID().toString(), pergunta, tokenAutor))
                 .andExpect(status().isNotFound());
         mvc.perform(pergunta(aulaId, "[{\"papel\":\"ASSISTENTE\",\"texto\":\"Olá\"}]", tokenAutor))

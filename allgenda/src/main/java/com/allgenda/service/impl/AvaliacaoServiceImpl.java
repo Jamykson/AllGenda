@@ -10,7 +10,8 @@ import com.allgenda.repository.EventoRepository;
 import com.allgenda.repository.GrupoRepository;
 import com.allgenda.service.AvaliacaoService;
 import com.allgenda.service.DadosDoEvento;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -19,15 +20,15 @@ import java.util.UUID;
 @Service
 public class AvaliacaoServiceImpl implements AvaliacaoService {
 
-    private static final String SEM_ACESSO = "Somente participantes da disciplina acessam as avaliações.";
+    private static final String SEM_ACESSO = "Somente participantes do grupo acessam os eventos dele.";
 
     private final EventoRepository avaliacoes;
     private final GrupoRepository disciplinas;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
 
     public AvaliacaoServiceImpl(EventoRepository avaliacoes,
                                GrupoRepository disciplinas,
-                               AcessoDisciplina acesso) {
+                               AcessoAoGrupo acesso) {
         this.avaliacoes = avaliacoes;
         this.disciplinas = disciplinas;
         this.acesso = acesso;
@@ -39,7 +40,7 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
         TipoAvaliacao tipo = validar(dto);
         Grupo disciplina = disciplinas.findById(dto.grupoId())
                 .orElseThrow(() -> new GrupoNaoEncontradoException(dto.grupoId()));  //404
-        acesso.exigirParticipanteAceito(disciplina.getId(), SEM_ACESSO);
+        acesso.exigir(Acao.CRIAR_EVENTO, disciplina.getId(), SEM_ACESSO);
         // A referência garante que a avaliação pertença a uma disciplina existente.
         Avaliacao avaliacao = new Avaliacao();
         avaliacao.setGrupo(disciplina);
@@ -59,7 +60,7 @@ public class AvaliacaoServiceImpl implements AvaliacaoService {
         if (!disciplinas.existsById(disciplinaId)) {
             throw new GrupoNaoEncontradoException(disciplinaId);
         }
-        acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
+        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);
         return avaliacoes.findByGrupoIdOrderByDataAscIdAsc(disciplinaId);
     }
 

@@ -14,7 +14,8 @@ import com.allgenda.service.ImagemEncontroService;
 import com.allgenda.service.RecebimentoImagem;
 import com.allgenda.service.RecebimentoImagem.ImagemRecebida;
 import com.allgenda.service.RemocaoArquivos;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +35,7 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
 
     private final EncontroRepository encontroRepository;
     private final ImagemEncontroRepository imagemRepository;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
     private final RecebimentoImagem recebimento;
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
@@ -42,7 +43,7 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
 
     public ImagemEncontroServiceImpl(EncontroRepository encontroRepository,
                                  ImagemEncontroRepository imagemRepository,
-                                 AcessoDisciplina acesso,
+                                 AcessoAoGrupo acesso,
                                  RecebimentoImagem recebimento,
                                  ArmazenamentoService armazenamento,
                                  RemocaoArquivos remocaoArquivos,
@@ -60,7 +61,7 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
     @Transactional
     public ImagemEncontro adicionar(UUID aulaId, MultipartFile arquivo, String legenda) {
         Encontro aula = buscarAula(aulaId);
-        exigirParticipanteAceito(aula);
+        exigir(Acao.CRIAR_ANOTACAO, aula);
         String legendaNormalizada = normalizarLegenda(legenda); // antes de gravar o arquivo
 
         ImagemRecebida recebida = recebimento.receber(arquivo);
@@ -82,14 +83,14 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
     @Override
     @Transactional(readOnly = true)
     public List<ImagemEncontro> listarPorAula(UUID aulaId) {
-        exigirParticipanteAceito(buscarAula(aulaId));
+        exigir(Acao.VER_CONTEUDO, buscarAula(aulaId));
         return imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
     }
 
     @Override
     @Transactional
     public List<ImagemEncontro> reordenar(UUID aulaId, List<UUID> ids) {
-        exigirParticipanteAceito(buscarAula(aulaId));
+        exigir(Acao.CRIAR_ANOTACAO, buscarAula(aulaId)); // reordenar a galeria faz parte de anotar
         List<ImagemEncontro> imagens = imagemRepository.findByEncontroIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
 
         // a lista precisa ter cada imagem da aula exatamente uma vez; outra combinação provavelmente
@@ -108,7 +109,7 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
     @Override
     @Transactional(readOnly = true)
     public ImagemArquivo carregar(UUID aulaId, UUID imagemId) {
-        exigirParticipanteAceito(buscarAula(aulaId));
+        exigir(Acao.VER_CONTEUDO, buscarAula(aulaId));
         ImagemEncontro imagem = buscarImagem(aulaId, imagemId);
         return armazenamento.carregar(imagem.getChaveArmazenamento())
                 .map(conteudo -> new ImagemArquivo(conteudo, imagem.getContentType(), imagem.getNomeOriginal()))
@@ -152,8 +153,8 @@ public class ImagemEncontroServiceImpl implements ImagemEncontroService {
         }
     }
 
-    private void exigirParticipanteAceito(Encontro aula) {
-        acesso.exigirParticipanteAceito(aula.getGrupo().getId(), "Somente participantes da disciplina veem as imagens.");
+    private void exigir(Acao acao, Encontro aula) {
+        acesso.exigir(acao, aula.getGrupo().getId(), "Somente participantes do grupo acessam as imagens dos encontros.");
     }
 
     // legenda em branco vira null; o limite acompanha a coluna legenda de ImagemEncontro

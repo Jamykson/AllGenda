@@ -12,7 +12,8 @@ import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.model.Usuario;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemArquivo;
 import com.allgenda.service.RecebimentoImagem;
@@ -40,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -59,7 +61,7 @@ class ImagemAnotacaoServiceImplTest {
     @Mock
     private ArmazenamentoService armazenamento;
     @Mock
-    private AcessoDisciplina acessoDisciplina; // quem decide é o AcessoDisciplina (testado à parte); aqui só vemos se é chamado
+    private AcessoAoGrupo acessoAoGrupo; // quem decide é o AcessoAoGrupo (testado à parte); aqui só vemos se é chamado
     @Mock
     private UsuarioRepository usuarioRepository; // o UsuarioAutenticado só precisa dele para obter(); aqui basta o id()
 
@@ -97,7 +99,7 @@ class ImagemAnotacaoServiceImplTest {
         RemocaoArquivos remocaoArquivos = new RemocaoArquivos(armazenamento);
         return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository,
                 new RecebimentoImagem(armazenamento, remocaoArquivos, tamanhoMaximo), armazenamento,
-                remocaoArquivos, new UsuarioAutenticado(usuarioRepository), acessoDisciplina, maximoPorAnotacao);
+                remocaoArquivos, new UsuarioAutenticado(usuarioRepository), acessoAoGrupo, maximoPorAnotacao);
     }
 
     private static void autenticar(UUID usuarioId) {
@@ -225,7 +227,7 @@ class ImagemAnotacaoServiceImplTest {
         UUID imagemId = UUID.randomUUID();
         anotacaoExiste();
         doThrow(new AcessoNegadoException("sem acesso"))
-                .when(acessoDisciplina).exigirParticipanteAceito(any(), anyString());
+                .when(acessoAoGrupo).exigir(eq(Acao.VER_CONTEUDO), any(), anyString());
 
         assertThatThrownBy(() -> service.carregar(anotacaoId, imagemId))
                 .isInstanceOf(AcessoNegadoException.class);

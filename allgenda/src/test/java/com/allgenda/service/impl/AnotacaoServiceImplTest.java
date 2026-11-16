@@ -17,13 +17,13 @@ import com.allgenda.model.Tag;
 import com.allgenda.model.Usuario;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
-import com.allgenda.model.PapelParticipacao;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.EncontroRepository;
 import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.PoliticaDeTeste;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.NovaAnotacao;
 import com.allgenda.service.RemocaoArquivos;
@@ -82,7 +82,7 @@ class AnotacaoServiceImplTest {
         // UsuarioAutenticado real: lê o usuário do SecurityContext preparado abaixo e o busca no repositório simulado
         UsuarioAutenticado autenticado = new UsuarioAutenticado(usuarioRepository);
         service = new AnotacaoServiceImpl(anotacaoRepository, encontroRepository, grupoRepository, participacaoRepository,
-                autenticado, new AcessoDisciplina(participacaoRepository, autenticado), tagService,
+                autenticado, new AcessoAoGrupo(participacaoRepository, autenticado, PoliticaDeTeste.politica()), tagService,
                 new RemocaoArquivos(armazenamento));
 
         Disciplina disciplina = new Disciplina();
@@ -375,8 +375,8 @@ class AnotacaoServiceImplTest {
 
     // qualquer usuário autenticado participa da disciplina da aula (dono ou membro com participação ACEITO)
     private void participantesDaDisciplinaDaAula() {
-        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(
-                any(), eq(disciplinaDaAulaId), eq(StatusParticipacao.ACEITO))).thenReturn(true);
+        when(participacaoRepository.findByUsuarioIdAndGrupoId(any(), eq(disciplinaDaAulaId)))
+                .thenReturn(PoliticaDeTeste.membroAceito());
     }
 
     @Test
@@ -471,8 +471,8 @@ class AnotacaoServiceImplTest {
     }
 
     private void permitirAcessoA(UUID disciplinaId) {
-        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
-            .thenReturn(true);
+        when(participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId))
+            .thenReturn(PoliticaDeTeste.membroAceito());
     }
 
     private Participacao participacaoEm(UUID disciplinaId) {

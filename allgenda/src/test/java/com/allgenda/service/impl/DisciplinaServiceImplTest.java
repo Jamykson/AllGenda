@@ -24,7 +24,6 @@ import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.Grupo;
-import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
@@ -33,7 +32,9 @@ import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemEncontroRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
+import com.allgenda.framework.acesso.PoliticaDeTeste;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.DadosDoGrupo;
 import com.allgenda.service.RemocaoArquivos;
@@ -57,13 +58,13 @@ class DisciplinaServiceImplTest {
     @Mock
     private UsuarioAutenticado usuarioAutenticado;
     @Mock
-    private AcessoDisciplina acessoDisciplina;
+    private AcessoAoGrupo acessoAoGrupo;
 
     private DisciplinaServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemEncontroRepository, new RemocaoArquivos(armazenamento), usuarioAutenticado, acessoDisciplina);
+        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemEncontroRepository, new RemocaoArquivos(armazenamento), usuarioAutenticado, acessoAoGrupo, PoliticaDeTeste.politica());
     }
 
     @Test
@@ -112,7 +113,7 @@ class DisciplinaServiceImplTest {
         verify(participacaoRepository).save(any(com.allgenda.model.Participacao.class));
         assertThat(captor.getValue().getParticipacoes()).singleElement().satisfies(p -> {
             assertThat(p.getUsuario()).isSameAs(usuario);
-            assertThat(p.getPapel()).isEqualTo(PapelParticipacao.DONO);
+            assertThat(p.getPapel()).isEqualTo(PoliticaDeTeste.DONO);
             assertThat(p.getStatus()).isEqualTo(StatusParticipacao.ACEITO);
         });
     }
@@ -136,8 +137,8 @@ class DisciplinaServiceImplTest {
     void quemNaoEhDonoNaoExcluiADisciplina() {
         var id = java.util.UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(new Disciplina()));
-        doThrow(new AcessoNegadoException("Somente o dono pode excluir a disciplina."))
-            .when(acessoDisciplina).exigirDono(id, "Somente o dono pode excluir a disciplina.");
+        doThrow(new AcessoNegadoException("Você não tem permissão para excluir o grupo."))
+            .when(acessoAoGrupo).exigir(Acao.EXCLUIR_GRUPO, id, "Você não tem permissão para excluir o grupo.");
 
         assertThatThrownBy(() -> service.excluir(id)).isInstanceOf(AcessoNegadoException.class);
 
@@ -149,8 +150,8 @@ class DisciplinaServiceImplTest {
     void quemNaoParticipaNaoBuscaADisciplinaPeloId() {
         var id = java.util.UUID.randomUUID();
         when(repository.findById(id)).thenReturn(java.util.Optional.of(new Disciplina()));
-        doThrow(new AcessoNegadoException("Somente participantes da disciplina têm acesso a ela."))
-            .when(acessoDisciplina).exigirParticipanteAceito(id);
+        doThrow(new AcessoNegadoException("Somente participantes do grupo têm acesso a ele."))
+            .when(acessoAoGrupo).exigir(Acao.VER_CONTEUDO, id, "Somente participantes do grupo têm acesso a ele.");
 
         assertThatThrownBy(() -> service.buscarPorId(id)).isInstanceOf(AcessoNegadoException.class);
     }

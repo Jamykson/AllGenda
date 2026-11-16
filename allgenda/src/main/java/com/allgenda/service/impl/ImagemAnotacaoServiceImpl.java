@@ -8,7 +8,8 @@ import com.allgenda.model.Anotacao;
 import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.ImagemAnotacaoService;
 import com.allgenda.service.ImagemArquivo;
@@ -34,7 +35,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
     private final UsuarioAutenticado usuarioAutenticado;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
     private final int maximoPorAnotacao;
 
     public ImagemAnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
@@ -43,7 +44,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
                                      ArmazenamentoService armazenamento,
                                      RemocaoArquivos remocaoArquivos,
                                      UsuarioAutenticado usuarioAutenticado,
-                                     AcessoDisciplina acesso,
+                                     AcessoAoGrupo acesso,
                                      @Value("${app.uploads.maximo-por-anotacao}") int maximoPorAnotacao) {
         this.anotacaoRepository = anotacaoRepository;
         this.imagemRepository = imagemRepository;
@@ -83,8 +84,8 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     @Transactional(readOnly = true)
     public ImagemArquivo carregar(UUID anotacaoId, UUID imagemId) {
         Anotacao anotacao = buscarAnotacao(anotacaoId);                       // 404
-        acesso.exigirParticipanteAceito(anotacao.getEncontro().getGrupo().getId(),
-                "Somente participantes da disciplina veem as imagens das anotações."); // 403
+        acesso.exigir(Acao.VER_CONTEUDO, anotacao.getEncontro().getGrupo().getId(),
+                "Somente participantes do grupo veem as imagens das anotações."); // 403
         ImagemAnotacao imagem = buscarImagem(anotacaoId, imagemId);
         return armazenamento.carregar(imagem.getChaveArmazenamento())
                 .map(conteudo -> new ImagemArquivo(conteudo, imagem.getContentType(), imagem.getNomeOriginal()))

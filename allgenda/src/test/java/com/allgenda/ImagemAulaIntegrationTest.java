@@ -5,7 +5,8 @@ import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.dto.response.UsuarioResponseDTO;
 import com.allgenda.model.Aula;
 import com.allgenda.model.Disciplina;
-import com.allgenda.model.PapelParticipacao;
+import com.allgenda.aplicacao.allgenda.model.PapelAllGenda;
+import com.allgenda.framework.acesso.Papel;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.EncontroRepository;
@@ -89,8 +90,8 @@ class ImagemAulaIntegrationTest {
         var disciplina = new Disciplina();
         disciplina.setNome("PDS");
         disciplina = disciplinas.save(disciplina);
-        participar(autor, disciplina, PapelParticipacao.DONO);
-        participar(colega, disciplina, PapelParticipacao.MEMBRO);
+        participar(autor, disciplina, PapelAllGenda.DONO);
+        participar(colega, disciplina, PapelAllGenda.MEMBRO);
 
         var aula = new Aula();
         aula.setGrupo(disciplina);
@@ -104,7 +105,7 @@ class ImagemAulaIntegrationTest {
                 nome.toLowerCase() + "-" + sufixo + "@example.com", "senha-forte-123"));
     }
 
-    private void participar(UsuarioResponseDTO usuario, Disciplina disciplina, PapelParticipacao papel) {
+    private void participar(UsuarioResponseDTO usuario, Disciplina disciplina, Papel papel) {
         var participacao = new Participacao();
         participacao.setUsuario(usuarios.findById(usuario.id()).orElseThrow());
         participacao.setGrupo(disciplina);

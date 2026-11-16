@@ -5,7 +5,8 @@ import com.allgenda.dto.request.UsuarioRequestDTO;
 import com.allgenda.dto.response.UsuarioResponseDTO;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.Grupo;
-import com.allgenda.model.PapelParticipacao;
+import com.allgenda.aplicacao.allgenda.model.PapelAllGenda;
+import com.allgenda.framework.acesso.Papel;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.TipoAvaliacao;
@@ -57,7 +58,7 @@ class AvaliacaoIntegrationTest {
         mvc = webAppContextSetup(context).addFilters(filtros).build();
         dono = novaPessoa("Dono");
         Disciplina disciplina = novaDisciplina("PDS");
-        participar(dono, disciplina, PapelParticipacao.DONO, StatusParticipacao.ACEITO);
+        participar(dono, disciplina, PapelAllGenda.DONO, StatusParticipacao.ACEITO);
         disciplinaId = disciplina.getId();
     }
 
@@ -75,7 +76,7 @@ class AvaliacaoIntegrationTest {
         return disciplinas.saveAndFlush(disciplina);
     }
 
-    private void participar(Pessoa pessoa, Grupo disciplina, PapelParticipacao papel, StatusParticipacao status) {
+    private void participar(Pessoa pessoa, Grupo disciplina, Papel papel, StatusParticipacao status) {
         Participacao participacao = new Participacao();
         participacao.setUsuario(pessoa.usuario());
         participacao.setGrupo(disciplina);
@@ -103,7 +104,7 @@ class AvaliacaoIntegrationTest {
     @Test
     void cadastraProvaEEntregaEListaSomenteDisciplinaSolicitada() throws Exception {
         Disciplina outra = novaDisciplina("Outra disciplina");
-        participar(dono, outra, PapelParticipacao.DONO, StatusParticipacao.ACEITO);
+        participar(dono, outra, PapelAllGenda.DONO, StatusParticipacao.ACEITO);
         for (TipoAvaliacao tipo : TipoAvaliacao.values()) {
             cadastrar(dono, corpo(disciplinaId, "Avaliação de PDS", tipo.name()))
                     .andExpect(status().isCreated())
@@ -122,7 +123,7 @@ class AvaliacaoIntegrationTest {
     @Test
     void membroAceitoCadastraEListaAvaliacoes() throws Exception {
         Pessoa membro = novaPessoa("Membro");
-        participar(membro, disciplinas.findById(disciplinaId).orElseThrow(), PapelParticipacao.MEMBRO, StatusParticipacao.ACEITO);
+        participar(membro, disciplinas.findById(disciplinaId).orElseThrow(), PapelAllGenda.MEMBRO, StatusParticipacao.ACEITO);
 
         cadastrar(membro, corpo(disciplinaId, "Prova do membro", "PROVA")).andExpect(status().isCreated());
         listar(membro, disciplinaId)
@@ -148,7 +149,7 @@ class AvaliacaoIntegrationTest {
         Grupo disciplina = disciplinas.findById(disciplinaId).orElseThrow();
         for (StatusParticipacao status : new StatusParticipacao[] {StatusParticipacao.PENDENTE, StatusParticipacao.RECUSADO}) {
             Pessoa convidado = novaPessoa("Convidado");
-            participar(convidado, disciplina, PapelParticipacao.MEMBRO, status);
+            participar(convidado, disciplina, PapelAllGenda.MEMBRO, status);
 
             cadastrar(convidado, corpo(disciplinaId, "Prova", "PROVA")).andExpect(status().isForbidden());
             listar(convidado, disciplinaId).andExpect(status().isForbidden());

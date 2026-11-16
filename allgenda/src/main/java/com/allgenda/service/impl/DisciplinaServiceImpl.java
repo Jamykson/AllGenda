@@ -11,7 +11,6 @@ import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.Grupo;
-import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.repository.GrupoRepository;
@@ -19,7 +18,9 @@ import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemEncontroRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
+import com.allgenda.framework.acesso.PoliticaDeAcesso;
 import com.allgenda.service.DadosDoGrupo;
 import com.allgenda.service.DisciplinaService;
 import com.allgenda.service.RemocaoArquivos;
@@ -35,7 +36,8 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     private final ImagemEncontroRepository imagemEncontroRepository;
     private final RemocaoArquivos remocaoArquivos;
     private final UsuarioAutenticado usuarioAutenticado;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
+    private final PoliticaDeAcesso politica;
 
     public DisciplinaServiceImpl(GrupoRepository repository,
                                  ParticipacaoRepository participacaoRepository,
@@ -44,7 +46,8 @@ public class DisciplinaServiceImpl implements DisciplinaService {
                                  ImagemEncontroRepository imagemEncontroRepository,
                                  RemocaoArquivos remocaoArquivos,
                                  UsuarioAutenticado usuarioAutenticado,
-                                 AcessoDisciplina acesso){
+                                 AcessoAoGrupo acesso,
+                                 PoliticaDeAcesso politica) {
         this.repository = repository;
         this.participacaoRepository = participacaoRepository;
         this.recorrenciaRepository = recorrenciaRepository;
@@ -53,6 +56,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         this.remocaoArquivos = remocaoArquivos;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
+        this.politica = politica;
     }
 
     @Override
@@ -73,10 +77,10 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         disciplina.setNome(nome);
         disciplina.setDescricao(descricao == null || descricao.isBlank() ? null : descricao);
 
-        // quem cria a disciplina vira o dono, com a participação já aceita.
+        // quem cria o grupo recebe o papel de criador definido pela política, com a participação já aceita
         Participacao participacao = new Participacao();
         participacao.setUsuario(usuarioAutenticado.obter());
-        participacao.setPapel(PapelParticipacao.DONO);
+        participacao.setPapel(politica.papelDoCriador());
         participacao.setStatus(StatusParticipacao.ACEITO);
         Grupo salva = repository.save(disciplina);
         salva.addParticipacao(participacao);
@@ -101,7 +105,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public Grupo buscarPorId(UUID id) {
         Grupo disciplina = repository.findById(id)
             .orElseThrow(() -> new GrupoNaoEncontradoException(id));   // 404
-        acesso.exigirParticipanteAceito(id);                                 // 403
+        acesso.exigir(Acao.VER_CONTEUDO, id, "Somente participantes do grupo têm acesso a ele."); // 403
         return disciplina;
     }
 
@@ -110,7 +114,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public Grupo atualizarDescricao(UUID id, String descricaoInformada) {
         Grupo disciplina = repository.findById(id)
             .orElseThrow(() -> new GrupoNaoEncontradoException(id));       // 404
-        acesso.exigirDono(id, "Somente o dono pode editar a disciplina.");       // 403
+        acesso.exigir(Acao.EDITAR_GRUPO, id, "Você não tem permissão para editar o grupo.");       // 403
 
         String descricao = descricaoInformada == null ? null : descricaoInformada.trim();
         if (descricao != null && descricao.length() > 500) {
@@ -126,7 +130,7 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     public void excluir(UUID id) {
         Grupo disciplina = repository.findById(id)
             .orElseThrow(() -> new GrupoNaoEncontradoException(id));   // 404
-        acesso.exigirDono(id, "Somente o dono pode excluir a disciplina."); // 403, antes de apagar qualquer coisa
+        acesso.exigir(Acao.EXCLUIR_GRUPO, id, "Você não tem permissão para excluir o grupo."); // 403, antes de apagar qualquer coisa
 
         // a cascata disciplina -> aulas -> anotações -> imagens (e aulas -> imagens avulsas) apaga os registros,
         // mas não os arquivos; as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada

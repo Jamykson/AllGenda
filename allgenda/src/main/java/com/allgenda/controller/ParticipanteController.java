@@ -29,7 +29,7 @@ public class ParticipanteController {
                 .map(participante -> new ParticipanteResponseDTO(
                         participante.participacao().getUsuario().getId(),
                         participante.participacao().getUsuario().getNome(),
-                        participante.participacao().getPapel(),
+                        participante.participacao().getPapel().codigo(),
                         participante.anotacoesDoGrupo()))
                 .toList();
     }

@@ -1,6 +1,7 @@
 package com.allgenda;
 
 import com.allgenda.dto.request.UsuarioRequestDTO;
+import com.allgenda.aplicacao.allgenda.model.PapelAllGenda;
 import com.allgenda.model.*;
 import com.allgenda.repository.*;
 import com.allgenda.service.UsuarioService;
@@ -72,7 +73,7 @@ class ColaboracaoAceiteIntegrationTest {
         Participacao participacao = new Participacao();
         participacao.setUsuario(usuario);
         participacao.setGrupo(disciplina);
-        participacao.setPapel(PapelParticipacao.MEMBRO);
+        participacao.setPapel(PapelAllGenda.MEMBRO);
         participacao.setStatus(StatusParticipacao.PENDENTE);
         participacao = participacoes.saveAndFlush(participacao);
         UUID participacaoId = participacao.getId();

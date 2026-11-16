@@ -17,7 +17,7 @@ public class ConviteMapper {
             participacao.getGrupo().getNome(),
             participacao.getUsuario().getId(),
             participacao.getUsuario().getNome(),
-            participacao.getPapel(),
+            participacao.getPapel().codigo(),
             participacao.getStatus()
         );
     }

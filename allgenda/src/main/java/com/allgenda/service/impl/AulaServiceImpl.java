@@ -10,7 +10,8 @@ import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.service.RemocaoArquivos;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.service.AtualizacaoDeEncontro;
 import com.allgenda.service.AulaService;
 import com.allgenda.service.DadosDoEncontro;
@@ -25,15 +26,17 @@ import java.util.UUID;
 @Service
 public class AulaServiceImpl implements AulaService {
 
+    private static final String SEM_ACESSO = "Somente participantes do grupo têm acesso aos encontros dele.";
+
     private final EncontroRepository encontroRepository;
     private final GrupoRepository grupoRepository;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
     private final ImagemAnotacaoRepository imagemAnotacaoRepository;
     private final ImagemEncontroRepository imagemEncontroRepository;
     private final RemocaoArquivos remocaoArquivos;
 
     public AulaServiceImpl(EncontroRepository encontroRepository, GrupoRepository grupoRepository,
-                           AcessoDisciplina acesso, ImagemAnotacaoRepository imagemAnotacaoRepository,
+                           AcessoAoGrupo acesso, ImagemAnotacaoRepository imagemAnotacaoRepository,
                            ImagemEncontroRepository imagemEncontroRepository, RemocaoArquivos remocaoArquivos) {
         this.imagemAnotacaoRepository = imagemAnotacaoRepository;
         this.imagemEncontroRepository = imagemEncontroRepository;
@@ -60,7 +63,7 @@ public class AulaServiceImpl implements AulaService {
 
         Grupo disciplina = grupoRepository.findById(dados.grupoId())           // a disciplina informada existe?
                 .orElseThrow(() -> new GrupoNaoEncontradoException(dados.grupoId()));
-        acesso.exigirParticipanteAceito(disciplina.getId());   // 403
+        acesso.exigir(Acao.CRIAR_ENCONTRO, disciplina.getId(), "Você não tem permissão para criar encontros neste grupo.");   // 403
 
         Encontro aula = new Aula();
         aula.setData(dados.data());
@@ -77,7 +80,7 @@ public class AulaServiceImpl implements AulaService {
         if (!grupoRepository.existsById(disciplinaId)) {                // 404
             throw new GrupoNaoEncontradoException(disciplinaId);
         }
-        acesso.exigirParticipanteAceito(disciplinaId);                       // 403
+        acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);                 // 403
         return encontroRepository.findByGrupoId(disciplinaId);
     }
 
@@ -86,7 +89,7 @@ public class AulaServiceImpl implements AulaService {
     public Encontro buscarPorId(UUID id) {
         Encontro aula = encontroRepository.findById(id)
                 .orElseThrow(() -> new EncontroNaoEncontradoException(id));      // 404
-        acesso.exigirParticipanteAceito(aula.getGrupo().getId());       // 403
+        acesso.exigir(Acao.VER_CONTEUDO, aula.getGrupo().getId(), SEM_ACESSO);      // 403
         return aula;
     }
 
@@ -95,7 +98,12 @@ public class AulaServiceImpl implements AulaService {
     public Encontro atualizar(UUID id, AtualizacaoDeEncontro dto) {
         Encontro aula = encontroRepository.findById(id)
                 .orElseThrow(() -> new EncontroNaoEncontradoException(id));                       // 404
-        acesso.exigirDono(aula.getGrupo().getId(), "Somente o dono pode editar a aula.");  // 403
+        UUID grupoId = aula.getGrupo().getId();
+        acesso.exigir(Acao.EDITAR_ENCONTRO, grupoId, "Você não tem permissão para editar o encontro.");  // 403
+        // o mesmo PATCH também cancela ou reativa o encontro, que é uma ação à parte na política
+        if (dto != null && dto.cancelada() != null) {
+            acesso.exigir(Acao.CANCELAR_ENCONTRO, grupoId, "Você não tem permissão para cancelar o encontro.");
+        }
 
         if (dto == null) {
             throw new RequisicaoInvalidaException("Corpo da requisição é obrigatório.");       // 400
@@ -120,7 +128,7 @@ public class AulaServiceImpl implements AulaService {
     public void excluir(UUID id) {
         Encontro aula = encontroRepository.findById(id)
                 .orElseThrow(() -> new EncontroNaoEncontradoException(id));                         // 404
-        acesso.exigirDono(aula.getGrupo().getId(), "Somente o dono pode excluir a aula.");  // 403, antes de apagar qualquer coisa
+        acesso.exigir(Acao.EXCLUIR_ENCONTRO, aula.getGrupo().getId(), "Você não tem permissão para excluir o encontro.");  // 403, antes de apagar qualquer coisa
 
         // a cascata aula -> anotações -> imagens (e aula -> imagens avulsas) apaga os registros, mas não os arquivos;
         // as chaves são lidas antes e os arquivos só saem do disco depois que a exclusão é confirmada

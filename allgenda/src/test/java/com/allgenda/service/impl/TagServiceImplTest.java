@@ -11,7 +11,8 @@ import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.TagRepository;
 import com.allgenda.repository.UsuarioRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.PoliticaDeTeste;
 import com.allgenda.service.UsuarioAutenticado;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,7 +64,7 @@ class TagServiceImplTest {
     void setUp() {
         UsuarioAutenticado autenticado = new UsuarioAutenticado(usuarioRepository);
         service = new TagServiceImpl(repository, anotacaoRepository, grupoRepository, participacaoRepository,
-                autenticado, new AcessoDisciplina(participacaoRepository, autenticado));
+                autenticado, new AcessoAoGrupo(participacaoRepository, autenticado, PoliticaDeTeste.politica()));
         disciplina = new Disciplina();
         ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
         SecurityContextHolder.getContext().setAuthentication(
@@ -82,8 +83,8 @@ class TagServiceImplTest {
     }
 
     private void participa(boolean participa) {
-        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
-                .thenReturn(participa);
+        when(participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId))
+                .thenReturn(participa ? PoliticaDeTeste.membroAceito() : Optional.empty());
     }
 
     @Test

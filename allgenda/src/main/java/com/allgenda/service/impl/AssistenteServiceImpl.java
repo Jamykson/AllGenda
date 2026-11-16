@@ -19,7 +19,8 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.EncontroRepository;
 import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ImagemEncontroRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.AssistenteService;
 import com.allgenda.service.LimitePerguntasAssistente;
@@ -70,13 +71,13 @@ public class AssistenteServiceImpl implements AssistenteService {
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATA_E_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private static final String MENSAGEM_SEM_ACESSO = "Somente participantes da disciplina usam o assistente.";
+    private static final String MENSAGEM_SEM_ACESSO = "Somente participantes do grupo usam o assistente.";
 
     private final EncontroRepository encontroRepository;
     private final GrupoRepository grupoRepository;
     private final AnotacaoRepository anotacaoRepository;
     private final ImagemEncontroRepository imagemEncontroRepository;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
     private final ArmazenamentoService armazenamento;
     private final ReducaoDeImagem reducao;
     private final ModeloDeLinguagem modelo;
@@ -89,7 +90,7 @@ public class AssistenteServiceImpl implements AssistenteService {
                                  GrupoRepository grupoRepository,
                                  AnotacaoRepository anotacaoRepository,
                                  ImagemEncontroRepository imagemEncontroRepository,
-                                 AcessoDisciplina acesso,
+                                 AcessoAoGrupo acesso,
                                  ArmazenamentoService armazenamento,
                                  ReducaoDeImagem reducao,
                                  ModeloDeLinguagem modelo,
@@ -145,7 +146,7 @@ public class AssistenteServiceImpl implements AssistenteService {
 
     private PedidoAoModelo preparar(Grupo disciplina, Encontro aulaEmDestaque, List<Mensagem> mensagens) {
         UUID disciplinaId = disciplina.getId();
-        acesso.exigirParticipanteAceito(disciplinaId, MENSAGEM_SEM_ACESSO);
+        acesso.exigir(Acao.USAR_ASSISTENTE, disciplinaId, MENSAGEM_SEM_ACESSO);
         if (!modelo.configurado()) {
             throw new AssistenteIndisponivelException("O assistente não está configurado neste servidor.");
         }

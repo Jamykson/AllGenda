@@ -158,7 +158,7 @@ class ParticipanteIntegrationTest {
                 .andExpect(status().isForbidden());
         mvc.perform(comToken(delete("/api/disciplinas/{d}/participantes/{u}", disciplinaId, dono.id()), dono))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value("O dono não pode ser removido da disciplina."));
+                .andExpect(jsonPath("$.detail").value("Quem criou o grupo não pode ser removido dele."));
         mvc.perform(comToken(delete("/api/disciplinas/{d}/participantes/{u}", disciplinaId, estranho.id()), dono))
                 .andExpect(status().isNotFound());
         mvc.perform(comToken(delete("/api/disciplinas/{d}/participantes/{u}", UUID.randomUUID(), membro.id()), dono))

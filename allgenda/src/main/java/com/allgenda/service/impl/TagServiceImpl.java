@@ -11,7 +11,8 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.TagRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
 import com.allgenda.service.TagService;
 import com.allgenda.service.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
@@ -31,21 +32,21 @@ import java.util.UUID;
 public class TagServiceImpl implements TagService {
 
     private static final int TAMANHO_MAXIMO_NOME = 255;
-    private static final String SEM_ACESSO = "Somente participantes da disciplina gerenciam as tags dela.";
+    private static final String SEM_ACESSO = "Somente participantes do grupo gerenciam as tags dele.";
 
     private final TagRepository repository;
     private final AnotacaoRepository anotacaoRepository;
     private final GrupoRepository grupoRepository;
     private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
 
     public TagServiceImpl(TagRepository repository,
                           AnotacaoRepository anotacaoRepository,
                           GrupoRepository grupoRepository,
                           ParticipacaoRepository participacaoRepository,
                           UsuarioAutenticado usuarioAutenticado,
-                          AcessoDisciplina acesso) {
+                          AcessoAoGrupo acesso) {
         this.repository = repository;
         this.anotacaoRepository = anotacaoRepository;
         this.grupoRepository = grupoRepository;
@@ -97,7 +98,7 @@ public class TagServiceImpl implements TagService {
             if (!grupoRepository.existsById(disciplinaId)) {
                 throw new GrupoNaoEncontradoException(disciplinaId);
             }
-            acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
+            acesso.exigir(Acao.VER_CONTEUDO, disciplinaId, SEM_ACESSO);
             disciplinas = List.of(disciplinaId);
         }
         else {
@@ -153,7 +154,8 @@ public class TagServiceImpl implements TagService {
     private Tag buscarTagDeParticipante(UUID tagId) {
         Tag tag = repository.findById(tagId)
             .orElseThrow(() -> new TagNaoEncontradaException(tagId));
-        acesso.exigirParticipanteAceito(tag.getGrupo().getId(), SEM_ACESSO);
+        // renomear e excluir tags fazem parte de anotar
+        acesso.exigir(Acao.CRIAR_ANOTACAO, tag.getGrupo().getId(), SEM_ACESSO);
         return tag;
     }
 

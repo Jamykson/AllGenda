@@ -15,7 +15,6 @@ import com.allgenda.exception.GrupoNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.UsuarioNaoEncontradoException;
 import com.allgenda.model.Grupo;
-import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Usuario;
@@ -23,7 +22,9 @@ import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
 import com.allgenda.service.ConviteService;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.Acao;
+import com.allgenda.framework.acesso.PoliticaDeAcesso;
 import com.allgenda.service.UsuarioAutenticado;
 
 @Service
@@ -36,18 +37,21 @@ public class ConviteServiceImpl implements ConviteService {
     private final GrupoRepository grupoRepository;
     private final UsuarioRepository usuarioRepository;
     private final UsuarioAutenticado usuarioAutenticado;
-    private final AcessoDisciplina acesso;
+    private final AcessoAoGrupo acesso;
+    private final PoliticaDeAcesso politica;
 
     public ConviteServiceImpl(ParticipacaoRepository participacaoRepository,
                               GrupoRepository grupoRepository,
                               UsuarioRepository usuarioRepository,
                               UsuarioAutenticado usuarioAutenticado,
-                              AcessoDisciplina acesso) {
+                              AcessoAoGrupo acesso,
+                              PoliticaDeAcesso politica) {
         this.participacaoRepository = participacaoRepository;
         this.grupoRepository = grupoRepository;
         this.usuarioRepository = usuarioRepository;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
+        this.politica = politica;
     }
 
     @Override
@@ -59,7 +63,7 @@ public class ConviteServiceImpl implements ConviteService {
           .orElseThrow(() -> new GrupoNaoEncontradoException(disciplinaId)); // 404
 
     UUID solicitanteId = usuarioAutenticado.id();
-    acesso.exigirDono(disciplinaId, "Apenas o dono pode enviar convites.");   // 403
+    acesso.exigir(Acao.CONVIDAR, disciplinaId, "Você não tem permissão para convidar pessoas para este grupo.");   // 403
 
     Usuario destinatario = usuarioRepository.findByEmail(email)   // 404
         .orElseThrow(() -> new UsuarioNaoEncontradoException(email));
@@ -71,12 +75,12 @@ public class ConviteServiceImpl implements ConviteService {
             throw new ConflitoException("Este usuário já tem uma participação nesta disciplina.");   // 409
         }
 
-        // convite = participação de membro ainda pendente; grava-se pelo lado dono (Participacao)
+        // convite = participação com o papel e o status de ingresso definidos pela política; grava-se pelo lado dono (Participacao)
         Participacao convite = new Participacao();
         convite.setUsuario(destinatario);
         convite.setGrupo(disciplina);
-        convite.setPapel(PapelParticipacao.MEMBRO);
-        convite.setStatus(StatusParticipacao.PENDENTE);
+        convite.setPapel(politica.papelDoConvidado());
+        convite.setStatus(politica.statusAoIngressar());
 
         return participacaoRepository.save(convite);
     }
@@ -86,7 +90,7 @@ public class ConviteServiceImpl implements ConviteService {
     public List<Participacao> listar(StatusParticipacao status) {
         UUID usuarioId = usuarioAutenticado.id();
         return 
-            participacaoRepository.findByUsuarioIdAndPapelAndStatus(usuarioId, PapelParticipacao.MEMBRO, status);
+            participacaoRepository.findByUsuarioIdAndPapelAndStatus(usuarioId, politica.papelDoConvidado(), status);
     }
 
     @Override

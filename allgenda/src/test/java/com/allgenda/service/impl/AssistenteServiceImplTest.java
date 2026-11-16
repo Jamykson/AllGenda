@@ -21,7 +21,8 @@ import com.allgenda.repository.GrupoRepository;
 import com.allgenda.repository.ImagemEncontroRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.repository.UsuarioRepository;
-import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.framework.acesso.AcessoAoGrupo;
+import com.allgenda.framework.acesso.PoliticaDeTeste;
 import com.allgenda.service.ArmazenamentoService;
 import com.allgenda.service.LimitePerguntasAssistente;
 import com.allgenda.service.ModeloDeLinguagem;
@@ -98,14 +99,13 @@ class AssistenteServiceImplTest {
     private AssistenteServiceImpl service(int maximoImagens, int maximoCaracteres, LimitePerguntasAssistente limite) {
         UsuarioAutenticado usuarioAutenticado = new UsuarioAutenticado(usuarioRepository);
         return new AssistenteServiceImpl(encontroRepository, grupoRepository, anotacaoRepository, imagemEncontroRepository,
-                new AcessoDisciplina(participacaoRepository, usuarioAutenticado), armazenamento, new ReducaoDeImagem(),
+                new AcessoAoGrupo(participacaoRepository, usuarioAutenticado, PoliticaDeTeste.politica()), armazenamento, new ReducaoDeImagem(),
                 modelo, limite, usuarioAutenticado, maximoImagens, maximoCaracteres);
     }
 
     private void participanteDeAulaComImagens(ImagemEncontro... imagens) {
         when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
-        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
-                .thenReturn(true);
+        when(participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)).thenReturn(PoliticaDeTeste.membroAceito());
         when(modelo.configurado()).thenReturn(true);
         when(encontroRepository.findByGrupoId(disciplinaId)).thenReturn(List.of(aula));
         when(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of());
@@ -181,8 +181,7 @@ class AssistenteServiceImplTest {
     @Test
     void semModeloConfiguradoOAssistenteFicaIndisponivelSemGastarOLimite() {
         when(encontroRepository.findById(aulaId)).thenReturn(Optional.of(aula));
-        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
-                .thenReturn(true);
+        when(participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)).thenReturn(PoliticaDeTeste.membroAceito());
         when(modelo.configurado()).thenReturn(false);
         LimitePerguntasAssistente limite = new LimitePerguntasAssistente(1);
 
@@ -224,8 +223,7 @@ class AssistenteServiceImplTest {
 
     // três anotações de ~1100 caracteres, das quais só uma cabe no limite de 1500
     private void disciplinaComTresAnotacoes(Aula recente, Anotacao... anotacoes) {
-        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
-                .thenReturn(true);
+        when(participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)).thenReturn(PoliticaDeTeste.membroAceito());
         when(modelo.configurado()).thenReturn(true);
         when(encontroRepository.findByGrupoId(disciplinaId)).thenReturn(List.of(recente, aula));
         when(anotacaoRepository.findByEncontroGrupoIdOrderByEncontroDataAscDataCriacaoAsc(disciplinaId)).thenReturn(List.of(anotacoes));
@@ -310,11 +308,10 @@ class AssistenteServiceImplTest {
     @Test
     void quemNaoParticipaDaDisciplinaNaoUsaOAssistente() {
         when(grupoRepository.findById(disciplinaId)).thenReturn(Optional.of(disciplina));
-        when(participacaoRepository.existsByUsuarioIdAndGrupoIdAndStatus(usuarioId, disciplinaId, StatusParticipacao.ACEITO))
-                .thenReturn(false);
+        when(participacaoRepository.findByUsuarioIdAndGrupoId(usuarioId, disciplinaId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service(20, new LimitePerguntasAssistente(30)).prepararDaDisciplina(disciplinaId, pergunta("Resuma", null)))
                 .isInstanceOf(AcessoNegadoException.class)
-                .hasMessage("Somente participantes da disciplina usam o assistente.");
+                .hasMessage("Somente participantes do grupo usam o assistente.");
     }
 }
