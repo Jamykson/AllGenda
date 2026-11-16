@@ -1,12 +1,9 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.dto.request.ImagemAulaUpdateDTO;
-import com.allgenda.dto.response.ImagemAulaResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AulaNaoEncontradaException;
 import com.allgenda.exception.ImagemNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.ImagemAulaMapper;
 import com.allgenda.model.Aula;
 import com.allgenda.model.ImagemAula;
 import com.allgenda.repository.AulaRepository;
@@ -41,7 +38,6 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
     private final RecebimentoImagem recebimento;
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
-    private final ImagemAulaMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
 
     public ImagemAulaServiceImpl(AulaRepository aulaRepository,
@@ -50,7 +46,6 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
                                  RecebimentoImagem recebimento,
                                  ArmazenamentoService armazenamento,
                                  RemocaoArquivos remocaoArquivos,
-                                 ImagemAulaMapper mapper,
                                  UsuarioAutenticado usuarioAutenticado) {
         this.aulaRepository = aulaRepository;
         this.imagemRepository = imagemRepository;
@@ -58,13 +53,12 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
         this.recebimento = recebimento;
         this.armazenamento = armazenamento;
         this.remocaoArquivos = remocaoArquivos;
-        this.mapper = mapper;
         this.usuarioAutenticado = usuarioAutenticado;
     }
 
     @Override
     @Transactional
-    public ImagemAulaResponseDTO adicionar(UUID aulaId, MultipartFile arquivo, String legenda) {
+    public ImagemAula adicionar(UUID aulaId, MultipartFile arquivo, String legenda) {
         Aula aula = buscarAula(aulaId);
         exigirParticipanteAceito(aula);
         String legendaNormalizada = normalizarLegenda(legenda); // antes de gravar o arquivo
@@ -82,19 +76,19 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
         imagem.setAutor(usuarioAutenticado.obter());
         aula.addImagem(imagem);
 
-        return mapper.toDto(imagemRepository.save(imagem));
+        return imagemRepository.save(imagem);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ImagemAulaResponseDTO> listarPorAula(UUID aulaId) {
+    public List<ImagemAula> listarPorAula(UUID aulaId) {
         exigirParticipanteAceito(buscarAula(aulaId));
-        return mapper.toDtoList(imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId));
+        return imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
     }
 
     @Override
     @Transactional
-    public List<ImagemAulaResponseDTO> reordenar(UUID aulaId, List<UUID> ids) {
+    public List<ImagemAula> reordenar(UUID aulaId, List<UUID> ids) {
         exigirParticipanteAceito(buscarAula(aulaId));
         List<ImagemAula> imagens = imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
 
@@ -108,7 +102,7 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
         for (int i = 0; i < ids.size(); i++) {
             porId.get(ids.get(i)).setPosicao(i);
         }
-        return mapper.toDtoList(imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId));
+        return imagemRepository.findByAulaIdOrderByPosicaoAscDataCriacaoAsc(aulaId);
     }
 
     @Override
@@ -123,13 +117,13 @@ public class ImagemAulaServiceImpl implements ImagemAulaService {
 
     @Override
     @Transactional
-    public ImagemAulaResponseDTO editarLegenda(UUID aulaId, UUID imagemId, ImagemAulaUpdateDTO dto) {
-        String legenda = normalizarLegenda(dto.legenda());
+    public ImagemAula editarLegenda(UUID aulaId, UUID imagemId, String legendaInformada) {
+        String legenda = normalizarLegenda(legendaInformada);
         ImagemAula imagem = buscarImagem(aulaId, imagemId);
         exigirAutor(imagem);
 
         imagem.setLegenda(legenda);
-        return mapper.toDto(imagemRepository.save(imagem));
+        return imagemRepository.save(imagem);
     }
 
     @Override

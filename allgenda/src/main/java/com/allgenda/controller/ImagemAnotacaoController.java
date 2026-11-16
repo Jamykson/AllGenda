@@ -1,6 +1,7 @@
 package com.allgenda.controller;
 
 import com.allgenda.dto.response.ImagemAnotacaoResponseDTO;
+import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.service.ImagemAnotacaoService;
 import com.allgenda.service.ImagemArquivo;
 import org.springframework.core.io.Resource;
@@ -23,15 +24,17 @@ import java.util.UUID;
 public class ImagemAnotacaoController {
 
     private final ImagemAnotacaoService service;
+    private final AnotacaoMapper mapper;
 
-    public ImagemAnotacaoController(ImagemAnotacaoService service) {
+    public ImagemAnotacaoController(ImagemAnotacaoService service, AnotacaoMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE) // o arquivo vai no campo "arquivo" do formulário
     public ResponseEntity<ImagemAnotacaoResponseDTO> anexar(@PathVariable UUID anotacaoId,
                                                             @RequestParam("arquivo") MultipartFile arquivo) {
-        ImagemAnotacaoResponseDTO criada = service.anexar(anotacaoId, arquivo);
+        ImagemAnotacaoResponseDTO criada = mapper.toImagemDto(service.anexar(anotacaoId, arquivo));
         return ResponseEntity.created(URI.create(criada.url())).body(criada);
     }
 

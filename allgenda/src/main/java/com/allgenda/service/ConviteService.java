@@ -3,13 +3,13 @@ package com.allgenda.service;
 import java.util.List;
 import java.util.UUID;
 
-import com.allgenda.dto.request.ConviteRequestDTO;
-import com.allgenda.dto.response.ConviteResponseDTO;
+import com.allgenda.model.Participacao;
 import com.allgenda.model.StatusParticipacao;
 
+// Um convite é uma participação de membro ainda pendente.
 public interface ConviteService {
-    ConviteResponseDTO enviar(UUID disciplinaId, ConviteRequestDTO dto);
-    List<ConviteResponseDTO> listar(StatusParticipacao status); // convites do usuário logado
-    ConviteResponseDTO aceitar(UUID conviteId);
-    ConviteResponseDTO recusar(UUID conviteId);
+    Participacao enviar(UUID disciplinaId, String email);
+    List<Participacao> listar(StatusParticipacao status); // convites do usuário logado
+    Participacao aceitar(UUID conviteId);
+    Participacao recusar(UUID conviteId);
 }

@@ -1,6 +1,5 @@
 package com.allgenda.service;
 
-import com.allgenda.dto.response.TagResponseDTO;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.Tag;
 
@@ -13,7 +12,7 @@ public interface TagService {
     // reaproveita as tags da disciplina com esses nomes (sem diferenciar maiúsculas) e cria as que faltam
     Set<Tag> buscarOuCriar(Disciplina disciplina, List<String> nomes);
     // sem disciplina, lista as tags de todas as disciplinas em que o usuário participa; em ordem alfabética
-    List<TagResponseDTO> listar(UUID disciplinaId);
-    TagResponseDTO renomear(UUID tagId, String nome);
+    List<Tag> listar(UUID disciplinaId);
+    Tag renomear(UUID tagId, String nome);
     void excluir(UUID tagId); // tira a tag de todas as anotações que a usam
 }

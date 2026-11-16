@@ -1,6 +1,7 @@
 package com.allgenda.controller;
 
 import com.allgenda.dto.response.AnotacaoResponseDTO;
+import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.service.AnotacaoService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,13 +16,15 @@ import java.util.UUID;
 public class AnotacaoColegaController {
 
     private final AnotacaoService service;
+    private final AnotacaoMapper mapper;
 
-    public AnotacaoColegaController(AnotacaoService service) {
+    public AnotacaoColegaController(AnotacaoService service, AnotacaoMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @GetMapping("/colegas")
     public List<AnotacaoResponseDTO> listar(@PathVariable UUID disciplinaId) {
-        return service.listarDosColegas(disciplinaId);
+        return mapper.toDtoList(service.listarDosColegas(disciplinaId));
     }
 }

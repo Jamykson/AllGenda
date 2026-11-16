@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.allgenda.dto.request.ConviteRequestDTO;
 import com.allgenda.dto.response.ConviteResponseDTO;
+import com.allgenda.mapper.ConviteMapper;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.service.ConviteService;
 
@@ -24,28 +25,30 @@ import com.allgenda.service.ConviteService;
 public class ConviteController {
 
     private final ConviteService service;
+    private final ConviteMapper mapper;
 
-    public ConviteController(ConviteService service) {
+    public ConviteController(ConviteService service, ConviteMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     @PostMapping("/disciplinas/{disciplinaId}/convites")
     public ResponseEntity<ConviteResponseDTO> enviar(@PathVariable UUID disciplinaId, @RequestBody ConviteRequestDTO dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.enviar(disciplinaId, dto));
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toDto(service.enviar(disciplinaId, dto.email())));
     }
 
     @GetMapping("/convites")
     public List<ConviteResponseDTO> listar(@RequestParam(defaultValue = "PENDENTE") StatusParticipacao status) {
-        return service.listar(status);
+        return mapper.toDtoList(service.listar(status));
     }
 
     @PatchMapping("/convites/{id}/aceitar")
     public ConviteResponseDTO aceitar(@PathVariable UUID id) {
-        return service.aceitar(id);
+        return mapper.toDto(service.aceitar(id));
     }
 
     @PatchMapping("/convites/{id}/recusar")
     public ConviteResponseDTO recusar(@PathVariable UUID id) {
-        return service.recusar(id);
+        return mapper.toDto(service.recusar(id));
     }
 }

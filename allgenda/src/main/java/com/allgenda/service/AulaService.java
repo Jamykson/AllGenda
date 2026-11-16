@@ -1,16 +1,14 @@
 package com.allgenda.service;
 
-import com.allgenda.dto.request.AulaRequestDTO;
-import com.allgenda.dto.request.AulaUpdateDTO;
-import com.allgenda.dto.response.AulaResponseDTO;
+import com.allgenda.model.Aula;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface AulaService {
-    AulaResponseDTO cadastrar(AulaRequestDTO dto);
-    List<AulaResponseDTO> listarPorDisciplina(UUID disciplinaId);
-    AulaResponseDTO buscarPorId(UUID id);
-    AulaResponseDTO atualizar(UUID id, AulaUpdateDTO dto);
+    Aula cadastrar(DadosDoEncontro dados);
+    List<Aula> listarPorDisciplina(UUID disciplinaId);
+    Aula buscarPorId(UUID id);
+    Aula atualizar(UUID id, AtualizacaoDeEncontro atualizacao);
     void excluir(UUID id);
 }

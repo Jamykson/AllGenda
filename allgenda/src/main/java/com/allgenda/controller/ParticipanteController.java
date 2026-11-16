@@ -24,7 +24,14 @@ public class ParticipanteController {
 
     @GetMapping
     public List<ParticipanteResponseDTO> listar(@PathVariable UUID disciplinaId) {
-        return service.listar(disciplinaId);
+        // o JSON mostra a pessoa, o papel e quantas anotações do grupo ela escreveu
+        return service.listar(disciplinaId).stream()
+                .map(participante -> new ParticipanteResponseDTO(
+                        participante.participacao().getUsuario().getId(),
+                        participante.participacao().getUsuario().getNome(),
+                        participante.participacao().getPapel(),
+                        participante.anotacoesDoGrupo()))
+                .toList();
     }
 
     @DeleteMapping("/{usuarioId}")

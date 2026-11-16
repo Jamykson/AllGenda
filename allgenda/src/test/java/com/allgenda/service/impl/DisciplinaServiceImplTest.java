@@ -19,12 +19,9 @@ import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
-import com.allgenda.dto.request.DisciplinaRequestDTO;
-import com.allgenda.dto.response.DisciplinaResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.DisciplinaMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
@@ -37,6 +34,7 @@ import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.ArmazenamentoService;
+import com.allgenda.service.DadosDoGrupo;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
 
@@ -64,7 +62,7 @@ class DisciplinaServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), new DisciplinaMapper(), usuarioAutenticado, acessoDisciplina);
+        service = new DisciplinaServiceImpl(repository, participacaoRepository, recorrenciaRepository, imagemRepository, imagemAulaRepository, new RemocaoArquivos(armazenamento), usuarioAutenticado, acessoDisciplina);
     }
 
     @Test
@@ -74,17 +72,17 @@ class DisciplinaServiceImplTest {
             .thenAnswer(invocation -> invocation.getArgument(0));
 
         var criada = service.cadastrar(
-            new DisciplinaRequestDTO("  Física  ", "  Mecânica clássica  ")
+            new DadosDoGrupo("  Física  ", "  Mecânica clássica  ")
         );
 
-        assertThat(criada.nome()).isEqualTo("Física");
-        assertThat(criada.descricao()).isEqualTo("Mecânica clássica");
+        assertThat(criada.getNome()).isEqualTo("Física");
+        assertThat(criada.getDescricao()).isEqualTo("Mecânica clássica");
         verify(repository).save(any(Disciplina.class));
     }
 
     @Test
     void rejeitaNomeEmBranco() {
-        assertThatThrownBy(() -> service.cadastrar(new DisciplinaRequestDTO("  ", null)))
+        assertThatThrownBy(() -> service.cadastrar(new DadosDoGrupo("  ", null)))
             .isInstanceOf(RequisicaoInvalidaException.class);
 
         verify(repository, never()).save(any(Disciplina.class));
@@ -94,7 +92,7 @@ class DisciplinaServiceImplTest {
     void rejeitaDescricaoMaiorQueQuinhentosCaracteres() {
         String descricao = "a".repeat(501);
 
-        assertThatThrownBy(() -> service.cadastrar(new DisciplinaRequestDTO("Física", descricao)))
+        assertThatThrownBy(() -> service.cadastrar(new DadosDoGrupo("Física", descricao)))
             .isInstanceOf(RequisicaoInvalidaException.class);
 
         verify(repository, never()).save(any(Disciplina.class));
@@ -106,7 +104,7 @@ class DisciplinaServiceImplTest {
         when(usuarioAutenticado.obter()).thenReturn(usuario);
         when(repository.save(any(Disciplina.class))).thenAnswer(i -> i.getArgument(0));
 
-        service.cadastrar(new DisciplinaRequestDTO("Física", null));
+        service.cadastrar(new DadosDoGrupo("Física", null));
 
         var captor = org.mockito.ArgumentCaptor.forClass(Disciplina.class);
         verify(repository).save(captor.capture());
@@ -129,7 +127,7 @@ class DisciplinaServiceImplTest {
         when(participacaoRepository.findByUsuarioIdAndStatus(usuarioId, StatusParticipacao.ACEITO))
             .thenReturn(List.of(participacao));
 
-        assertThat(service.listarDoUsuario()).extracting(DisciplinaResponseDTO::nome).containsExactly("PDS");
+        assertThat(service.listarDoUsuario()).extracting(Disciplina::getNome).containsExactly("PDS");
         verify(repository, never()).findAll();
     }
 

@@ -1,12 +1,10 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.dto.response.ImagemAnotacaoResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.ArquivoMuitoGrandeException;
 import com.allgenda.exception.ImagemNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
 import com.allgenda.model.Disciplina;
@@ -99,7 +97,7 @@ class ImagemAnotacaoServiceImplTest {
         RemocaoArquivos remocaoArquivos = new RemocaoArquivos(armazenamento);
         return new ImagemAnotacaoServiceImpl(anotacaoRepository, imagemRepository,
                 new RecebimentoImagem(armazenamento, remocaoArquivos, tamanhoMaximo), armazenamento,
-                remocaoArquivos, new AnotacaoMapper(), new UsuarioAutenticado(usuarioRepository), acessoDisciplina, maximoPorAnotacao);
+                remocaoArquivos, new UsuarioAutenticado(usuarioRepository), acessoDisciplina, maximoPorAnotacao);
     }
 
     private static void autenticar(UUID usuarioId) {
@@ -130,12 +128,12 @@ class ImagemAnotacaoServiceImplTest {
         when(armazenamento.salvar(PNG, "png")).thenReturn("chave.png");
         when(imagemRepository.save(any(ImagemAnotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        ImagemAnotacaoResponseDTO resposta = service.anexar(anotacaoId, arquivo("../../fotos/quadro.png", PNG));
+        ImagemAnotacao resposta = service.anexar(anotacaoId, arquivo("../../fotos/quadro.png", PNG));
 
-        assertThat(resposta.nome()).isEqualTo("quadro.png");
-        assertThat(resposta.contentType()).isEqualTo("image/png");
-        assertThat(resposta.tamanho()).isEqualTo(PNG.length);
-        assertThat(resposta.url()).startsWith("/api/anotacoes/" + anotacaoId + "/imagens/");
+        assertThat(resposta.getNomeOriginal()).isEqualTo("quadro.png");
+        assertThat(resposta.getContentType()).isEqualTo("image/png");
+        assertThat(resposta.getTamanho()).isEqualTo(PNG.length);
+        assertThat(resposta.getAnotacao().getId()).isEqualTo(anotacaoId);
         assertThat(anotacao.getImagens()).singleElement()
                 .satisfies(imagem -> assertThat(imagem.getChaveArmazenamento()).isEqualTo("chave.png"));
     }
@@ -146,8 +144,8 @@ class ImagemAnotacaoServiceImplTest {
         when(armazenamento.salvar(any(), anyString())).thenAnswer(inv -> "chave." + inv.getArgument(1));
         when(imagemRepository.save(any(ImagemAnotacao.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThat(service.anexar(anotacaoId, arquivo("foto.jpeg", JPEG)).contentType()).isEqualTo("image/jpeg");
-        assertThat(service.anexar(anotacaoId, arquivo("foto.webp", WEBP)).contentType()).isEqualTo("image/webp");
+        assertThat(service.anexar(anotacaoId, arquivo("foto.jpeg", JPEG)).getContentType()).isEqualTo("image/jpeg");
+        assertThat(service.anexar(anotacaoId, arquivo("foto.webp", WEBP)).getContentType()).isEqualTo("image/webp");
         verify(armazenamento).salvar(JPEG, "jpg");
         verify(armazenamento).salvar(WEBP, "webp");
     }

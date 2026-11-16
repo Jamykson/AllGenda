@@ -3,12 +3,11 @@ package com.allgenda.service;
 import java.util.List;
 import java.util.UUID;
 
-import com.allgenda.dto.request.RecorrenciaRequestDTO;
-import com.allgenda.dto.response.RecorrenciaResponseDTO;
+import com.allgenda.model.Recorrencia;
 
 public interface RecorrenciaService {
-    RecorrenciaResponseDTO buscar(UUID disciplinaId);
-    List<RecorrenciaResponseDTO> listarDoUsuario();
-    RecorrenciaResponseDTO salvar(UUID disciplinaId, RecorrenciaRequestDTO dto);
+    Recorrencia buscar(UUID disciplinaId);
+    List<Recorrencia> listarDoUsuario();
+    Recorrencia salvar(UUID disciplinaId, DadosDaRecorrencia dados);
     void remover(UUID disciplinaId);
 }

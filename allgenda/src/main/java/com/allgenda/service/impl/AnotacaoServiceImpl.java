@@ -1,15 +1,9 @@
 package com.allgenda.service.impl;
-import com.allgenda.dto.request.AnotacaoUpdateDTO;
-
-import com.allgenda.dto.request.AnotacaoRequestDTO;
-import com.allgenda.dto.request.AnotacaoVisibilidadeDTO;
-import com.allgenda.dto.response.AnotacaoResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.AulaNaoEncontradaException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.Aula;
 import com.allgenda.model.ImagemAnotacao;
@@ -20,6 +14,7 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.AulaRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.service.AnotacaoService;
+import com.allgenda.service.NovaAnotacao;
 import com.allgenda.service.AcessoDisciplina;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.TagService;
@@ -45,7 +40,6 @@ public class AnotacaoServiceImpl implements AnotacaoService {
     private final AcessoDisciplina acesso;
     private final TagService tagService;
     private final RemocaoArquivos remocaoArquivos;
-    private final AnotacaoMapper mapper;
 
     public AnotacaoServiceImpl(AnotacaoRepository anotacaoRepository,
                                 AulaRepository aulaRepository,
@@ -54,8 +48,7 @@ public class AnotacaoServiceImpl implements AnotacaoService {
                                 UsuarioAutenticado usuarioAutenticado,
                                 AcessoDisciplina acesso,
                                 TagService tagService,
-                                RemocaoArquivos remocaoArquivos,
-                                AnotacaoMapper mapper) {
+                                RemocaoArquivos remocaoArquivos) {
         this.anotacaoRepository = anotacaoRepository;
         this.aulaRepository = aulaRepository;
         this.disciplinaRepository = disciplinaRepository;
@@ -64,21 +57,20 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         this.acesso = acesso;
         this.tagService = tagService;
         this.remocaoArquivos = remocaoArquivos;
-        this.mapper = mapper;
     }
 
     @Override
     @Transactional // anotação e tags novas são salvas juntas: se algo falhar, nada fica salvo pela metade
-    public AnotacaoResponseDTO cadastrar(AnotacaoRequestDTO dto) {
-        if (dto.aulaId() == null) {
+    public Anotacao cadastrar(NovaAnotacao nova) {
+        if (nova.encontroId() == null) {
             throw new RequisicaoInvalidaException("O id da aula é obrigatório.");
         }
-        String titulo = normalizarTitulo(dto.titulo());
-        String conteudo = normalizarConteudo(dto.conteudo());
+        String titulo = normalizarTitulo(nova.titulo());
+        String conteudo = normalizarConteudo(nova.conteudo());
         exigirTituloOuConteudo(titulo, conteudo);
 
-        Aula aula = aulaRepository.findById(dto.aulaId())
-                .orElseThrow(() -> new AulaNaoEncontradaException(dto.aulaId()));   // 404
+        Aula aula = aulaRepository.findById(nova.encontroId())
+                .orElseThrow(() -> new AulaNaoEncontradaException(nova.encontroId()));   // 404
         acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), SEM_ACESSO);   // 403
 
         Anotacao anotacao = new Anotacao();
@@ -87,16 +79,15 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         anotacao.setDataCriacao(LocalDateTime.now());
         anotacao.setAula(aula);
         anotacao.setAutor(usuarioAutenticado.obter());
-        anotacao.setVisibilidade(dto.visibilidade() == null ? VisibilidadeAnotacao.GRUPO : dto.visibilidade());
-        tagService.buscarOuCriar(aula.getDisciplina(), dto.tags()).forEach(anotacao::addTag); // tags são opcionais
+        anotacao.setVisibilidade(nova.visibilidade() == null ? VisibilidadeAnotacao.GRUPO : nova.visibilidade());
+        tagService.buscarOuCriar(aula.getDisciplina(), nova.tags()).forEach(anotacao::addTag); // tags são opcionais
 
-        Anotacao salva = anotacaoRepository.save(anotacao);
-        return mapper.toDto(salva);
+        return anotacaoRepository.save(anotacao);
     }
 
     @Override
     @Transactional
-    public AnotacaoResponseDTO associarTags(UUID anotacaoId, List<String> nomesTags) {
+    public Anotacao associarTags(UUID anotacaoId, List<String> nomesTags) {
         if (nomesTags == null || nomesTags.stream().allMatch(nome -> nome == null || nome.isBlank())) {
             throw new RequisicaoInvalidaException("Informe ao menos uma tag.");
         }
@@ -108,13 +99,12 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         // as tags são acrescentadas às existentes; como tags é um Set, uma tag já associada não é duplicada
         tagService.buscarOuCriar(anotacao.getAula().getDisciplina(), nomesTags).forEach(anotacao::addTag);
 
-        Anotacao salva = anotacaoRepository.save(anotacao);
-        return mapper.toDto(salva);
+        return anotacaoRepository.save(anotacao);
     }
 
     @Override
     @Transactional
-    public AnotacaoResponseDTO removerTag(UUID anotacaoId, String nomeTag) {
+    public Anotacao removerTag(UUID anotacaoId, String nomeTag) {
         if (nomeTag == null || nomeTag.isBlank()) {
             throw new RequisicaoInvalidaException("O nome da tag é obrigatório.");
         }
@@ -130,36 +120,35 @@ public class AnotacaoServiceImpl implements AnotacaoService {
                 .toList()
                 .forEach(anotacao::removeTag);
 
-        Anotacao salva = anotacaoRepository.save(anotacao);
-        return mapper.toDto(salva);
-    }
-
-    @Override
-    @Transactional(readOnly = true) // mantém a sessão aberta enquanto o mapper lê as tags (carregadas sob demanda)
-    public List<AnotacaoResponseDTO> listarPorAula(UUID aulaId) {
-        Aula aula = aulaRepository.findById(aulaId)
-                .orElseThrow(() -> new AulaNaoEncontradaException(aulaId));  
-        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), SEM_ACESSO);     //403
-        return mapper.toDtoList(soVisiveis(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId)));
+        return anotacaoRepository.save(anotacao);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnotacaoResponseDTO> listarPorDisciplina(UUID disciplinaId, String tag) {
+    public List<Anotacao> listarPorAula(UUID aulaId) {
+        Aula aula = aulaRepository.findById(aulaId)
+                .orElseThrow(() -> new AulaNaoEncontradaException(aulaId));  
+        acesso.exigirParticipanteAceito(aula.getDisciplina().getId(), SEM_ACESSO);     //403
+        return soVisiveis(anotacaoRepository.findByAulaIdOrderByDataCriacaoAsc(aulaId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Anotacao> listarPorDisciplina(UUID disciplinaId, String tag) {
         if (!disciplinaRepository.existsById(disciplinaId)) {    //404
             throw new DisciplinaNaoEncontradaException(disciplinaId);
         }
         acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);
         if (tag == null || tag.isBlank()) {
-            return mapper.toDtoList(soVisiveis(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId)));
+            return soVisiveis(anotacaoRepository.findByAulaDisciplinaIdOrderByAulaDataAscDataCriacaoAsc(disciplinaId));
         }
-        return mapper.toDtoList(soVisiveis(anotacaoRepository
-                .findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(disciplinaId, tag.trim())));
+        return soVisiveis(anotacaoRepository
+                .findByAulaDisciplinaIdAndTagsNomeIgnoreCaseOrderByAulaDataAscDataCriacaoAsc(disciplinaId, tag.trim()));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnotacaoResponseDTO> listarPorTag(String tag) {
+    public List<Anotacao> listarPorTag(String tag) {
         if (tag == null || tag.isBlank()) {
             throw new RequisicaoInvalidaException("O nome da tag é obrigatório.");
         }
@@ -173,8 +162,8 @@ public class AnotacaoServiceImpl implements AnotacaoService {
             return List.of();
         }
         // tag que não existe não é erro: só não há anotações com ela
-        return mapper.toDtoList(soVisiveis(anotacaoRepository
-                .findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc(tag.trim(), disciplinasDoUsuario)));
+        return soVisiveis(anotacaoRepository
+                .findByTagsNomeIgnoreCaseAndAulaDisciplinaIdInOrderByAulaDataAscDataCriacaoAsc(tag.trim(), disciplinasDoUsuario));
     }
 
     // título em branco vira null; o limite acompanha a coluna titulo de Anotacao
@@ -226,9 +215,9 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
     @Override
     @Transactional
-    public AnotacaoResponseDTO editar(UUID id, AnotacaoUpdateDTO dto) {
-        String titulo = normalizarTitulo(dto.titulo());
-        String conteudo = normalizarConteudo(dto.conteudo());
+    public Anotacao editar(UUID id, String tituloInformado, String conteudoInformado) {
+        String titulo = normalizarTitulo(tituloInformado);
+        String conteudo = normalizarConteudo(conteudoInformado);
         exigirTituloOuConteudo(titulo, conteudo);
 
         Anotacao anotacao = buscarVisivel(id);
@@ -237,21 +226,20 @@ public class AnotacaoServiceImpl implements AnotacaoService {
         anotacao.setTitulo(titulo);
         anotacao.setConteudo(conteudo);
 
-        Anotacao salva = anotacaoRepository.save(anotacao);
-        return mapper.toDto(salva);
+        return anotacaoRepository.save(anotacao);
     }
 
     @Override
     @Transactional
-    public AnotacaoResponseDTO alterarVisibilidade(UUID id, AnotacaoVisibilidadeDTO dto) {
-        if (dto == null || dto.visibilidade() == null) {
+    public Anotacao alterarVisibilidade(UUID id, VisibilidadeAnotacao visibilidade) {
+        if (visibilidade == null) {
             throw new RequisicaoInvalidaException("Informe a visibilidade: GRUPO ou PRIVADA.");
         }
         Anotacao anotacao = buscarVisivel(id);
         exigirAutor(anotacao, "alterar a visibilidade da anotação");
 
-        anotacao.setVisibilidade(dto.visibilidade());
-        return mapper.toDto(anotacaoRepository.save(anotacao));
+        anotacao.setVisibilidade(visibilidade);
+        return anotacaoRepository.save(anotacao);
     }
 
     @Override
@@ -272,14 +260,13 @@ public class AnotacaoServiceImpl implements AnotacaoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnotacaoResponseDTO> listarDosColegas(UUID disciplinaId) {
+    public List<Anotacao> listarDosColegas(UUID disciplinaId) {
         if (!disciplinaRepository.existsById(disciplinaId)) {    // 404
             throw new DisciplinaNaoEncontradaException(disciplinaId);
-    }
-    acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);    // 403
-        return mapper.toDtoList(soVisiveis(anotacaoRepository
-                .findByAulaDisciplinaIdAndAutorIdNotOrderByAulaDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id())));
-
+        }
+        acesso.exigirParticipanteAceito(disciplinaId, SEM_ACESSO);    // 403
+        return soVisiveis(anotacaoRepository
+                .findByAulaDisciplinaIdAndAutorIdNotOrderByAulaDataAscDataCriacaoAsc(disciplinaId, usuarioAutenticado.id()));
     }
 
 }

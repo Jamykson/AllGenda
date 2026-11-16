@@ -1,11 +1,9 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.dto.response.ImagemAnotacaoResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.AnotacaoNaoEncontradaException;
 import com.allgenda.exception.ImagemNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.AnotacaoMapper;
 import com.allgenda.model.Anotacao;
 import com.allgenda.model.ImagemAnotacao;
 import com.allgenda.repository.AnotacaoRepository;
@@ -35,7 +33,6 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
     private final RecebimentoImagem recebimento;
     private final ArmazenamentoService armazenamento;
     private final RemocaoArquivos remocaoArquivos;
-    private final AnotacaoMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
     private final AcessoDisciplina acesso;
     private final int maximoPorAnotacao;
@@ -45,7 +42,6 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
                                      RecebimentoImagem recebimento,
                                      ArmazenamentoService armazenamento,
                                      RemocaoArquivos remocaoArquivos,
-                                     AnotacaoMapper mapper,
                                      UsuarioAutenticado usuarioAutenticado,
                                      AcessoDisciplina acesso,
                                      @Value("${app.uploads.maximo-por-anotacao}") int maximoPorAnotacao) {
@@ -54,7 +50,6 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
         this.recebimento = recebimento;
         this.armazenamento = armazenamento;
         this.remocaoArquivos = remocaoArquivos;
-        this.mapper = mapper;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
         this.maximoPorAnotacao = maximoPorAnotacao;
@@ -62,7 +57,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
 
     @Override
     @Transactional
-    public ImagemAnotacaoResponseDTO anexar(UUID anotacaoId, MultipartFile arquivo) {
+    public ImagemAnotacao anexar(UUID anotacaoId, MultipartFile arquivo) {
         Anotacao anotacao = buscarAnotacao(anotacaoId);
         exigirAutor(anotacao);
 
@@ -81,7 +76,7 @@ public class ImagemAnotacaoServiceImpl implements ImagemAnotacaoService {
         imagem.setDataCriacao(LocalDateTime.now());
         anotacao.addImagem(imagem);
 
-        return mapper.toImagemDto(imagemRepository.save(imagem));
+        return imagemRepository.save(imagem);
     }
 
     @Override

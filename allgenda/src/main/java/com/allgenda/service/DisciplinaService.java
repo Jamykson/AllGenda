@@ -1,17 +1,15 @@
 package com.allgenda.service;
 
-import com.allgenda.dto.request.DisciplinaRequestDTO;
-import com.allgenda.dto.request.DisciplinaUpdateDTO;
-import com.allgenda.dto.response.DisciplinaResponseDTO;
+import com.allgenda.model.Disciplina;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface DisciplinaService {
-    DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto);
-    List<DisciplinaResponseDTO> listarDoUsuario();
-    DisciplinaResponseDTO buscarPorId(UUID id);
-    // só o dono edita; por ora, só a descrição
-    DisciplinaResponseDTO atualizar(UUID id, DisciplinaUpdateDTO dto);
+    Disciplina cadastrar(DadosDoGrupo dados);
+    List<Disciplina> listarDoUsuario();
+    Disciplina buscarPorId(UUID id);
+    // só o dono edita; por ora, só a descrição (ausente ou em branco: sem descrição)
+    Disciplina atualizarDescricao(UUID id, String descricao);
     void excluir(UUID id);
 }

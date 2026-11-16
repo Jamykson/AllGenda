@@ -2,6 +2,7 @@ package com.allgenda.controller;
 
 import com.allgenda.dto.request.TagUpdateDTO;
 import com.allgenda.dto.response.TagResponseDTO;
+import com.allgenda.mapper.TagMapper;
 import com.allgenda.service.TagService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -15,20 +16,22 @@ import java.util.UUID;
 public class TagController {
 
     private final TagService service;
+    private final TagMapper mapper;
 
-    public TagController(TagService service) {
+    public TagController(TagService service, TagMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     // ?disciplinaId=: as tags da disciplina; sem filtro: as de todas as disciplinas do usuário
     @GetMapping
     public List<TagResponseDTO> listar(@RequestParam(required = false) UUID disciplinaId) {
-        return service.listar(disciplinaId);
+        return mapper.toDtoList(service.listar(disciplinaId));
     }
 
     @PatchMapping("/{id}")
     public TagResponseDTO renomear(@PathVariable UUID id, @RequestBody TagUpdateDTO dto) {
-        return service.renomear(id, dto.nome());
+        return mapper.toDto(service.renomear(id, dto.nome()));
     }
 
     @DeleteMapping("/{id}")

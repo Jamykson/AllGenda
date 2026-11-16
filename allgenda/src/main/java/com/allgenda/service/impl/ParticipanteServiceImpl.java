@@ -1,6 +1,5 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.dto.response.ParticipanteResponseDTO;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.ParticipanteNaoEncontradoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
@@ -12,6 +11,7 @@ import com.allgenda.repository.AnotacaoRepository;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.ParticipacaoRepository;
 import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.service.Participante;
 import com.allgenda.service.ParticipanteService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +40,7 @@ public class ParticipanteServiceImpl implements ParticipanteService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ParticipanteResponseDTO> listar(UUID disciplinaId) {
+    public List<Participante> listar(UUID disciplinaId) {
         exigirDisciplina(disciplinaId);                                                  // 404
         acesso.exigirParticipanteAceito(disciplinaId, "Somente participantes da disciplina veem quem participa."); // 403
 
@@ -48,10 +48,8 @@ public class ParticipanteServiceImpl implements ParticipanteService {
                 .sorted(Comparator
                         .comparing((Participacao participacao) -> participacao.getPapel() != PapelParticipacao.DONO)
                         .thenComparing(participacao -> participacao.getUsuario().getNome(), String.CASE_INSENSITIVE_ORDER))
-                .map(participacao -> new ParticipanteResponseDTO(
-                        participacao.getUsuario().getId(),
-                        participacao.getUsuario().getNome(),
-                        participacao.getPapel(),
+                .map(participacao -> new Participante(
+                        participacao,
                         anotacaoRepository.countByAulaDisciplinaIdAndAutorIdAndVisibilidade(
                                 disciplinaId, participacao.getUsuario().getId(), VisibilidadeAnotacao.GRUPO)))
                 .toList();

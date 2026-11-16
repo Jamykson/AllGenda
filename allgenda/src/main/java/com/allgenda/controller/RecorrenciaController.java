@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.allgenda.dto.request.RecorrenciaRequestDTO;
 import com.allgenda.dto.response.RecorrenciaResponseDTO;
+import com.allgenda.mapper.RecorrenciaMapper;
+import com.allgenda.service.DadosDaRecorrencia;
 import com.allgenda.service.RecorrenciaService;
 
 @RestController
@@ -21,25 +23,29 @@ import com.allgenda.service.RecorrenciaService;
 public class RecorrenciaController {
 
     private final RecorrenciaService service;
+    private final RecorrenciaMapper mapper;
 
-    public RecorrenciaController(RecorrenciaService service) {
+    public RecorrenciaController(RecorrenciaService service, RecorrenciaMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     // as recorrências de todas as disciplinas da pessoa, para a agenda e a pesquisa
     @GetMapping("/recorrencias")
     public List<RecorrenciaResponseDTO> listar() {
-        return service.listarDoUsuario();
+        return mapper.toDtoList(service.listarDoUsuario());
     }
 
     @GetMapping("/disciplinas/{disciplinaId}/recorrencia")
     public RecorrenciaResponseDTO buscar(@PathVariable UUID disciplinaId) {
-        return service.buscar(disciplinaId);
+        return mapper.toDto(service.buscar(disciplinaId));
     }
 
     @PutMapping("/disciplinas/{disciplinaId}/recorrencia")
     public RecorrenciaResponseDTO salvar(@PathVariable UUID disciplinaId, @RequestBody RecorrenciaRequestDTO dto) {
-        return service.salvar(disciplinaId, dto);
+        DadosDaRecorrencia dados = dto == null ? null : new DadosDaRecorrencia(dto.diasSemana(), dto.horaInicio(),
+                dto.horaFim(), dto.dataInicio(), dto.dataFim(), dto.frequencia());
+        return mapper.toDto(service.salvar(disciplinaId, dados));
     }
 
     @DeleteMapping("/disciplinas/{disciplinaId}/recorrencia")

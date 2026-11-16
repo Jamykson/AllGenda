@@ -1,11 +1,9 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.dto.response.TagResponseDTO;
 import com.allgenda.exception.ConflitoException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.TagNaoEncontradaException;
-import com.allgenda.mapper.TagMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Tag;
@@ -41,22 +39,19 @@ public class TagServiceImpl implements TagService {
     private final ParticipacaoRepository participacaoRepository;
     private final UsuarioAutenticado usuarioAutenticado;
     private final AcessoDisciplina acesso;
-    private final TagMapper mapper;
 
     public TagServiceImpl(TagRepository repository,
                           AnotacaoRepository anotacaoRepository,
                           DisciplinaRepository disciplinaRepository,
                           ParticipacaoRepository participacaoRepository,
                           UsuarioAutenticado usuarioAutenticado,
-                          AcessoDisciplina acesso,
-                          TagMapper mapper) {
+                          AcessoDisciplina acesso) {
         this.repository = repository;
         this.anotacaoRepository = anotacaoRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.participacaoRepository = participacaoRepository;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
-        this.mapper = mapper;
     }
 
     /*/ Para cada nome recebido, reaproveita a tag da disciplina que já existe ou cria uma nova nela.
@@ -96,7 +91,7 @@ public class TagServiceImpl implements TagService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TagResponseDTO> listar(UUID disciplinaId) {
+    public List<Tag> listar(UUID disciplinaId) {
         List<UUID> disciplinas;
         if (disciplinaId != null) {
             if (!disciplinaRepository.existsById(disciplinaId)) {
@@ -119,14 +114,14 @@ public class TagServiceImpl implements TagService {
         // ordem alfabética do português, sem diferenciar maiúsculas ("árvore" vem antes de "Banco")
         Collator collator = Collator.getInstance(Locale.of("pt", "BR"));
         collator.setStrength(Collator.SECONDARY);
-        return mapper.toDtoList(repository.findByDisciplinaIdIn(disciplinas).stream()
+        return repository.findByDisciplinaIdIn(disciplinas).stream()
             .sorted(Comparator.comparing(Tag::getNome, collator))
-            .toList());
+            .toList();
     }
 
     @Override
     @Transactional
-    public TagResponseDTO renomear(UUID tagId, String nome) {
+    public Tag renomear(UUID tagId, String nome) {
         if (nome == null || nome.isBlank()) {
             throw new RequisicaoInvalidaException("O nome da tag é obrigatório.");
         }
@@ -142,7 +137,7 @@ public class TagServiceImpl implements TagService {
             });
 
         tag.setNome(novoNome);
-        return mapper.toDto(repository.save(tag));
+        return repository.save(tag);
     }
 
     @Override

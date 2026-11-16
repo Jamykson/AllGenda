@@ -7,12 +7,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.allgenda.dto.request.DisciplinaRequestDTO;
-import com.allgenda.dto.request.DisciplinaUpdateDTO;
-import com.allgenda.dto.response.DisciplinaResponseDTO;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.DisciplinaMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
@@ -23,6 +19,7 @@ import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.service.DadosDoGrupo;
 import com.allgenda.service.DisciplinaService;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.UsuarioAutenticado;
@@ -36,7 +33,6 @@ public class DisciplinaServiceImpl implements DisciplinaService {
     private final ImagemAnotacaoRepository imagemRepository;
     private final ImagemAulaRepository imagemAulaRepository;
     private final RemocaoArquivos remocaoArquivos;
-    private final DisciplinaMapper mapper;
     private final UsuarioAutenticado usuarioAutenticado;
     private final AcessoDisciplina acesso;
 
@@ -46,7 +42,6 @@ public class DisciplinaServiceImpl implements DisciplinaService {
                                  ImagemAnotacaoRepository imagemRepository,
                                  ImagemAulaRepository imagemAulaRepository,
                                  RemocaoArquivos remocaoArquivos,
-                                 DisciplinaMapper mapper,
                                  UsuarioAutenticado usuarioAutenticado,
                                  AcessoDisciplina acesso){
         this.repository = repository;
@@ -55,14 +50,13 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         this.imagemRepository = imagemRepository;
         this.imagemAulaRepository = imagemAulaRepository;
         this.remocaoArquivos = remocaoArquivos;
-        this.mapper = mapper;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
     }
 
     @Override
     @Transactional
-    public DisciplinaResponseDTO cadastrar(DisciplinaRequestDTO dto) {
+    public Disciplina cadastrar(DadosDoGrupo dto) {
         if(dto.nome() == null || dto.nome().isBlank()){
             throw new RequisicaoInvalidaException("O nome da disciplina é obrigatório.");
         }
@@ -87,44 +81,43 @@ public class DisciplinaServiceImpl implements DisciplinaService {
         salva.addParticipacao(participacao);
         // A associação não usa cascata: disciplina e dono são gravados na mesma transação.
         participacaoRepository.save(participacao);
-        return mapper.toDto(salva); // mapeia a disciplina salva para um DisciplinaResponseDTO, para assim retornar ao controller o objeto adequado.
+        return salva;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<DisciplinaResponseDTO> listarDoUsuario() {
+    public List<Disciplina> listarDoUsuario() {
         // só as disciplinas em que a pessoa participa com status ACEITO (dono ou membro)
-        List<Disciplina> disciplinasDoUsuario = participacaoRepository
+        return participacaoRepository
             .findByUsuarioIdAndStatus(usuarioAutenticado.id(), StatusParticipacao.ACEITO)
             .stream()
             .map(Participacao::getDisciplina)
             .toList();
-        return mapper.toDtoList(disciplinasDoUsuario);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public DisciplinaResponseDTO buscarPorId(UUID id) {
+    public Disciplina buscarPorId(UUID id) {
         Disciplina disciplina = repository.findById(id)
             .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));   // 404
         acesso.exigirParticipanteAceito(id);                                 // 403
-        return mapper.toDto(disciplina);
+        return disciplina;
     }
 
     @Override
     @Transactional
-    public DisciplinaResponseDTO atualizar(UUID id, DisciplinaUpdateDTO dto) {
+    public Disciplina atualizarDescricao(UUID id, String descricaoInformada) {
         Disciplina disciplina = repository.findById(id)
             .orElseThrow(() -> new DisciplinaNaoEncontradaException(id));       // 404
         acesso.exigirDono(id, "Somente o dono pode editar a disciplina.");       // 403
 
-        String descricao = dto == null || dto.descricao() == null ? null : dto.descricao().trim();
+        String descricao = descricaoInformada == null ? null : descricaoInformada.trim();
         if (descricao != null && descricao.length() > 500) {
             throw new RequisicaoInvalidaException("A descrição deve ter no máximo 500 caracteres."); // 400
         }
         // em branco, a disciplina fica sem descrição
         disciplina.setDescricao(descricao == null || descricao.isBlank() ? null : descricao);
-        return mapper.toDto(repository.save(disciplina));
+        return repository.save(disciplina);
     }
 
     @Override

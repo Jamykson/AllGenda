@@ -3,7 +3,6 @@ package com.allgenda.service.impl;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.ConflitoException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.TagMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.StatusParticipacao;
 import com.allgenda.model.Tag;
@@ -64,7 +63,7 @@ class TagServiceImplTest {
     void setUp() {
         UsuarioAutenticado autenticado = new UsuarioAutenticado(usuarioRepository);
         service = new TagServiceImpl(repository, anotacaoRepository, disciplinaRepository, participacaoRepository,
-                autenticado, new AcessoDisciplina(participacaoRepository, autenticado), new TagMapper());
+                autenticado, new AcessoDisciplina(participacaoRepository, autenticado));
         disciplina = new Disciplina();
         ReflectionTestUtils.setField(disciplina, "id", disciplinaId);
         SecurityContextHolder.getContext().setAuthentication(
@@ -143,7 +142,7 @@ class TagServiceImplTest {
         when(repository.findByDisciplinaIdAndNomeIgnoreCase(disciplinaId, "Prova 1")).thenReturn(Optional.empty());
         when(repository.save(tag)).thenReturn(tag);
 
-        assertThat(service.renomear(tag.getId(), "  Prova 1 ").nome()).isEqualTo("Prova 1");
+        assertThat(service.renomear(tag.getId(), "  Prova 1 ").getNome()).isEqualTo("Prova 1");
     }
 
     @Test
@@ -154,7 +153,7 @@ class TagServiceImplTest {
         when(repository.findByDisciplinaIdAndNomeIgnoreCase(disciplinaId, "Prova")).thenReturn(Optional.of(tag));
         when(repository.save(tag)).thenReturn(tag);
 
-        assertThat(service.renomear(tag.getId(), "Prova").nome()).isEqualTo("Prova");
+        assertThat(service.renomear(tag.getId(), "Prova").getNome()).isEqualTo("Prova");
     }
 
     @Test

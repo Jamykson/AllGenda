@@ -8,15 +8,12 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.allgenda.dto.request.ConviteRequestDTO;
-import com.allgenda.dto.response.ConviteResponseDTO;
 import com.allgenda.exception.AcessoNegadoException;
 import com.allgenda.exception.ConflitoException;
 import com.allgenda.exception.ConviteNaoEncontradoException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import com.allgenda.exception.UsuarioNaoEncontradoException;
-import com.allgenda.mapper.ConviteMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.PapelParticipacao;
 import com.allgenda.model.Participacao;
@@ -40,26 +37,23 @@ public class ConviteServiceImpl implements ConviteService {
     private final UsuarioRepository usuarioRepository;
     private final UsuarioAutenticado usuarioAutenticado;
     private final AcessoDisciplina acesso;
-    private final ConviteMapper mapper;
 
     public ConviteServiceImpl(ParticipacaoRepository participacaoRepository,
                               DisciplinaRepository disciplinaRepository,
                               UsuarioRepository usuarioRepository,
                               UsuarioAutenticado usuarioAutenticado,
-                              AcessoDisciplina acesso,
-                              ConviteMapper mapper) {
+                              AcessoDisciplina acesso) {
         this.participacaoRepository = participacaoRepository;
         this.disciplinaRepository = disciplinaRepository;
         this.usuarioRepository = usuarioRepository;
         this.usuarioAutenticado = usuarioAutenticado;
         this.acesso = acesso;
-        this.mapper = mapper;
     }
 
     @Override
     @Transactional
-    public ConviteResponseDTO enviar(UUID disciplinaId, ConviteRequestDTO dto) {
-        String email = normalizarEmail(dto.email());   // 400
+    public Participacao enviar(UUID disciplinaId, String emailInformado) {
+        String email = normalizarEmail(emailInformado);   // 400
 
         Disciplina disciplina = disciplinaRepository.findById(disciplinaId)   
           .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId)); // 404
@@ -84,31 +78,31 @@ public class ConviteServiceImpl implements ConviteService {
         convite.setPapel(PapelParticipacao.MEMBRO);
         convite.setStatus(StatusParticipacao.PENDENTE);
 
-        return mapper.toDto(participacaoRepository.save(convite));
+        return participacaoRepository.save(convite);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<ConviteResponseDTO> listar(StatusParticipacao status) {
+    public List<Participacao> listar(StatusParticipacao status) {
         UUID usuarioId = usuarioAutenticado.id();
-        return mapper.toDtoList(
-            participacaoRepository.findByUsuarioIdAndPapelAndStatus(usuarioId, PapelParticipacao.MEMBRO, status));
+        return 
+            participacaoRepository.findByUsuarioIdAndPapelAndStatus(usuarioId, PapelParticipacao.MEMBRO, status);
     }
 
     @Override
     @Transactional
-    public ConviteResponseDTO aceitar(UUID conviteId) {
+    public Participacao aceitar(UUID conviteId) {
         return responder(conviteId, StatusParticipacao.ACEITO);
     }
 
     @Override
     @Transactional
-    public ConviteResponseDTO recusar(UUID conviteId) {
+    public Participacao recusar(UUID conviteId) {
         return responder(conviteId, StatusParticipacao.RECUSADO);
     }
 
     // aceitar e recusar têm as mesmas regras; só muda o status final
-    private ConviteResponseDTO responder(UUID conviteId, StatusParticipacao novoStatus) {
+    private Participacao responder(UUID conviteId, StatusParticipacao novoStatus) {
         Participacao convite = participacaoRepository.findById(conviteId)       // 404
             .orElseThrow(() -> new ConviteNaoEncontradoException(conviteId));
 
@@ -120,7 +114,7 @@ public class ConviteServiceImpl implements ConviteService {
         }
 
         convite.setStatus(novoStatus);
-        return mapper.toDto(participacaoRepository.save(convite));
+        return participacaoRepository.save(convite);
     }
 
 

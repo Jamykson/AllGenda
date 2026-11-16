@@ -2,6 +2,7 @@ package com.allgenda.controller;
 
 import com.allgenda.dto.request.ImagemAulaUpdateDTO;
 import com.allgenda.dto.response.ImagemAulaResponseDTO;
+import com.allgenda.mapper.ImagemAulaMapper;
 import com.allgenda.service.ImagemArquivo;
 import com.allgenda.service.ImagemAulaService;
 import org.springframework.core.io.Resource;
@@ -26,9 +27,11 @@ import java.util.UUID;
 public class ImagemAulaController {
 
     private final ImagemAulaService service;
+    private final ImagemAulaMapper mapper;
 
-    public ImagemAulaController(ImagemAulaService service) {
+    public ImagemAulaController(ImagemAulaService service, ImagemAulaMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
     }
 
     // o arquivo vai no campo "arquivo" do formulário e a legenda, opcional, no campo "legenda"
@@ -36,19 +39,19 @@ public class ImagemAulaController {
     public ResponseEntity<ImagemAulaResponseDTO> adicionar(@PathVariable UUID aulaId,
                                                            @RequestParam("arquivo") MultipartFile arquivo,
                                                            @RequestParam(value = "legenda", required = false) String legenda) {
-        ImagemAulaResponseDTO criada = service.adicionar(aulaId, arquivo, legenda);
+        ImagemAulaResponseDTO criada = mapper.toDto(service.adicionar(aulaId, arquivo, legenda));
         return ResponseEntity.created(URI.create(criada.url())).body(criada);
     }
 
     @GetMapping
     public List<ImagemAulaResponseDTO> listar(@PathVariable UUID aulaId) {
-        return service.listarPorAula(aulaId);
+        return mapper.toDtoList(service.listarPorAula(aulaId));
     }
 
     // corpo: todos os ids das imagens da aula, na nova ordem, ex: ["id1", "id2"]
     @PutMapping("/ordem")
     public List<ImagemAulaResponseDTO> reordenar(@PathVariable UUID aulaId, @RequestBody List<UUID> ids) {
-        return service.reordenar(aulaId, ids);
+        return mapper.toDtoList(service.reordenar(aulaId, ids));
     }
 
     @GetMapping("/{imagemId}")
@@ -65,7 +68,7 @@ public class ImagemAulaController {
     @PatchMapping("/{imagemId}")
     public ImagemAulaResponseDTO editarLegenda(@PathVariable UUID aulaId, @PathVariable UUID imagemId,
                                                @RequestBody ImagemAulaUpdateDTO dto) {
-        return service.editarLegenda(aulaId, imagemId, dto);
+        return mapper.toDto(service.editarLegenda(aulaId, imagemId, dto.legenda()));
     }
 
     @DeleteMapping("/{imagemId}")

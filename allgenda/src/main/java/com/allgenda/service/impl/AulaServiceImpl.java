@@ -1,11 +1,7 @@
 package com.allgenda.service.impl;
 
-import com.allgenda.dto.request.AulaRequestDTO;
-import com.allgenda.dto.request.AulaUpdateDTO;
-import com.allgenda.dto.response.AulaResponseDTO;
 import com.allgenda.exception.AulaNaoEncontradaException;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
-import com.allgenda.mapper.AulaMapper;
 import com.allgenda.model.Aula;
 import com.allgenda.model.Disciplina;
 import com.allgenda.repository.AulaRepository;
@@ -14,7 +10,9 @@ import com.allgenda.repository.ImagemAnotacaoRepository;
 import com.allgenda.repository.ImagemAulaRepository;
 import com.allgenda.service.RemocaoArquivos;
 import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.service.AtualizacaoDeEncontro;
 import com.allgenda.service.AulaService;
+import com.allgenda.service.DadosDoEncontro;
 import org.springframework.stereotype.Service;
 import com.allgenda.exception.RequisicaoInvalidaException;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,13 +26,12 @@ public class AulaServiceImpl implements AulaService {
 
     private final AulaRepository aulaRepository;
     private final DisciplinaRepository disciplinaRepository;
-    private final AulaMapper mapper;
     private final AcessoDisciplina acesso;
     private final ImagemAnotacaoRepository imagemAnotacaoRepository;
     private final ImagemAulaRepository imagemAulaRepository;
     private final RemocaoArquivos remocaoArquivos;
 
-    public AulaServiceImpl(AulaRepository aulaRepository, DisciplinaRepository disciplinaRepository, AulaMapper mapper,
+    public AulaServiceImpl(AulaRepository aulaRepository, DisciplinaRepository disciplinaRepository,
                            AcessoDisciplina acesso, ImagemAnotacaoRepository imagemAnotacaoRepository,
                            ImagemAulaRepository imagemAulaRepository, RemocaoArquivos remocaoArquivos) {
         this.imagemAnotacaoRepository = imagemAnotacaoRepository;
@@ -42,61 +39,59 @@ public class AulaServiceImpl implements AulaService {
         this.remocaoArquivos = remocaoArquivos;
         this.aulaRepository = aulaRepository;
         this.disciplinaRepository = disciplinaRepository;
-        this.mapper = mapper;
         this.acesso = acesso;
     }
 
     @Override
-    public AulaResponseDTO cadastrar(AulaRequestDTO dto) {
-        if (dto.disciplinaId() == null) {
+    public Aula cadastrar(DadosDoEncontro dados) {
+        if (dados.grupoId() == null) {
             throw new RequisicaoInvalidaException("O id da disciplina é obrigatório.");
         }
-        if (dto.data() == null) {
+        if (dados.data() == null) {
             throw new RequisicaoInvalidaException("A data da aula é obrigatória.");
         }
-        if (dto.horario() == null || dto.horario().isBlank()) {
+        if (dados.horario() == null || dados.horario().isBlank()) {
             throw new RequisicaoInvalidaException("O horário da aula é obrigatório.");
         }
-        if (dto.topico() == null || dto.topico().isBlank()) {
+        if (dados.topico() == null || dados.topico().isBlank()) {
             throw new RequisicaoInvalidaException("O tópico da aula é obrigatório.");
         }
 
-        Disciplina disciplina = disciplinaRepository.findById(dto.disciplinaId())           // checar se o disciplinaId recebido é válido (tal disciplina existe?)
-                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dto.disciplinaId()));
+        Disciplina disciplina = disciplinaRepository.findById(dados.grupoId())           // a disciplina informada existe?
+                .orElseThrow(() -> new DisciplinaNaoEncontradaException(dados.grupoId()));
         acesso.exigirParticipanteAceito(disciplina.getId());   // 403
 
         Aula aula = new Aula();
-        aula.setData(dto.data());
-        aula.setHorario(dto.horario());
-        aula.setTopico(dto.topico());
+        aula.setData(dados.data());
+        aula.setHorario(dados.horario());
+        aula.setTopico(dados.topico());
         aula.setDisciplina(disciplina);
 
-        Aula salva = aulaRepository.save(aula);
-        return mapper.toDto(salva);
+        return aulaRepository.save(aula);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AulaResponseDTO> listarPorDisciplina(UUID disciplinaId) {
+    public List<Aula> listarPorDisciplina(UUID disciplinaId) {
         if (!disciplinaRepository.existsById(disciplinaId)) {                // 404
             throw new DisciplinaNaoEncontradaException(disciplinaId);
         }
         acesso.exigirParticipanteAceito(disciplinaId);                       // 403
-        return mapper.toDtoList(aulaRepository.findByDisciplinaId(disciplinaId));
+        return aulaRepository.findByDisciplinaId(disciplinaId);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AulaResponseDTO buscarPorId(UUID id) {
+    public Aula buscarPorId(UUID id) {
         Aula aula = aulaRepository.findById(id)
                 .orElseThrow(() -> new AulaNaoEncontradaException(id));      // 404
         acesso.exigirParticipanteAceito(aula.getDisciplina().getId());       // 403
-        return mapper.toDto(aula);
+        return aula;
     }
 
     @Override
     @Transactional
-    public AulaResponseDTO atualizar(UUID id, AulaUpdateDTO dto) {
+    public Aula atualizar(UUID id, AtualizacaoDeEncontro dto) {
         Aula aula = aulaRepository.findById(id)
                 .orElseThrow(() -> new AulaNaoEncontradaException(id));                       // 404
         acesso.exigirDono(aula.getDisciplina().getId(), "Somente o dono pode editar a aula.");  // 403
@@ -116,7 +111,7 @@ public class AulaServiceImpl implements AulaService {
         if (dto.horario() != null) aula.setHorario(dto.horario().trim());
         if (dto.topico() != null) aula.setTopico(dto.topico().trim());
         if (dto.cancelada() != null) aula.setCancelada(dto.cancelada());
-        return mapper.toDto(aulaRepository.save(aula));
+        return aulaRepository.save(aula);
     }
 
     @Override

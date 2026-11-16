@@ -7,18 +7,16 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.allgenda.dto.request.RecorrenciaRequestDTO;
-import com.allgenda.dto.response.RecorrenciaResponseDTO;
 import com.allgenda.exception.DisciplinaNaoEncontradaException;
 import com.allgenda.exception.RecorrenciaNaoEncontradaException;
 import com.allgenda.exception.RequisicaoInvalidaException;
-import com.allgenda.mapper.RecorrenciaMapper;
 import com.allgenda.model.Disciplina;
 import com.allgenda.model.FrequenciaRecorrencia;
 import com.allgenda.model.Recorrencia;
 import com.allgenda.repository.DisciplinaRepository;
 import com.allgenda.repository.RecorrenciaRepository;
 import com.allgenda.service.AcessoDisciplina;
+import com.allgenda.service.DadosDaRecorrencia;
 import com.allgenda.service.RecorrenciaService;
 import com.allgenda.service.UsuarioAutenticado;
 
@@ -29,39 +27,37 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
 
     private final RecorrenciaRepository repository;
     private final DisciplinaRepository disciplinaRepository;
-    private final RecorrenciaMapper mapper;
     private final AcessoDisciplina acesso;
     private final UsuarioAutenticado usuarioAutenticado;
 
     public RecorrenciaServiceImpl(RecorrenciaRepository repository, DisciplinaRepository disciplinaRepository,
-                                  RecorrenciaMapper mapper, AcessoDisciplina acesso,
+                                  AcessoDisciplina acesso,
                                   UsuarioAutenticado usuarioAutenticado) {
         this.repository = repository;
         this.disciplinaRepository = disciplinaRepository;
-        this.mapper = mapper;
         this.acesso = acesso;
         this.usuarioAutenticado = usuarioAutenticado;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public RecorrenciaResponseDTO buscar(UUID disciplinaId) {
+    public Recorrencia buscar(UUID disciplinaId) {
         exigirDisciplina(disciplinaId);                                        // 404
         acesso.exigirParticipanteAceito(disciplinaId);                         // 403
-        return mapper.toDto(repository.findByDisciplinaId(disciplinaId)
-                .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId)));   // 404
+        return repository.findByDisciplinaId(disciplinaId)
+                .orElseThrow(() -> new RecorrenciaNaoEncontradaException(disciplinaId));   // 404
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<RecorrenciaResponseDTO> listarDoUsuario() {
-        return mapper.toDtoList(repository.findDasDisciplinasDoUsuario(usuarioAutenticado.id()));
+    public List<Recorrencia> listarDoUsuario() {
+        return repository.findDasDisciplinasDoUsuario(usuarioAutenticado.id());
     }
 
     // cria ou substitui: a disciplina tem no máximo uma recorrência
     @Override
     @Transactional
-    public RecorrenciaResponseDTO salvar(UUID disciplinaId, RecorrenciaRequestDTO dto) {
+    public Recorrencia salvar(UUID disciplinaId, DadosDaRecorrencia dto) {
         Disciplina disciplina = exigirDisciplina(disciplinaId);                // 404
         acesso.exigirDono(disciplinaId, "Somente o dono pode definir a recorrência da disciplina.");   // 403
         validar(dto);                                                          // 400
@@ -77,7 +73,7 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
         recorrencia.setDataInicio(dto.dataInicio());
         recorrencia.setDataFim(dto.dataFim());
         recorrencia.setFrequencia(dto.frequencia() == null ? FrequenciaRecorrencia.SEMANAL : dto.frequencia());
-        return mapper.toDto(repository.save(recorrencia));
+        return repository.save(recorrencia);
     }
 
     @Override
@@ -96,7 +92,7 @@ public class RecorrenciaServiceImpl implements RecorrenciaService {
                 .orElseThrow(() -> new DisciplinaNaoEncontradaException(disciplinaId));
     }
 
-    private void validar(RecorrenciaRequestDTO dto) {
+    private void validar(DadosDaRecorrencia dto) {
         if (dto == null || dto.diasSemana() == null || dto.diasSemana().isEmpty()) {
             throw new RequisicaoInvalidaException("Informe pelo menos um dia da semana.");
         }
